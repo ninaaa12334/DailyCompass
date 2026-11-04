@@ -10,7 +10,7 @@ This is a standalone learning project even though its local folder is inside a W
 
 ## Lesson 1: add and display a task
 
-The starter contains a labelled form, responsive styling, and a JavaScript submit listener. The display logic is intentionally unfinished so you can write it yourself.
+This milestone implements adding task titles and displaying them, with an iPhone-widget-inspired layout: rounded floating cards, soft shadows, a local date widget, and a task-count badge. Saving, completion, and scheduling are not implemented yet.
 
 - `index.html` defines the page and form. `defer` runs the script after the HTML has been read.
 - `styles.css` controls appearance and allows the form to wrap on narrow screens.
@@ -18,29 +18,32 @@ The starter contains a labelled form, responsive styling, and a JavaScript submi
 - `preventDefault()` prevents normal form submission from reloading the page.
 - `trim()` removes spaces from the beginning and end of the input.
 
-Replace the exercise comment in `app.js` with three steps:
+Read the submit listener in `app.js` and follow these steps:
 
-1. Use `document.createElement('li')` to create a list item and store it in a variable.
-2. Assign `title` to that item's `textContent` so the title is displayed as plain text.
-3. Call `taskList.append(...)` with your new item.
+1. `document.createElement('li')` creates a list item. A span inside holds the title.
+2. `textContent` assigns plain text, keeping typed HTML from becoming page markup.
+3. `taskList.append(item)` attaches the item to the visible list.
+4. The number of list children updates the task-count badge.
+5. `taskForm.reset()` clears the input, and `focus()` returns the cursor to it.
 
-Then try clearing the input with `taskForm.reset()` after adding a task. Explain why the reset belongs after validation, rather than before reading the title.
+Your small exercise: change the initial empty-list message to your own wording in `index.html`. Then explain why `reset()` belongs after reading and validating the title. Try this before the next feature.
 
 ### Test your attempt
 
 - Add `Practise algebra`: one task should appear without a page reload.
 - Add a second task using Enter: both should remain visible.
+- Check that the task count becomes 2 and the input clears after adding.
 - Submit an empty title: the browser should require a value.
 - Submit spaces only: a message should appear and no item should be added.
 - Enter `<strong>Hello</strong>`: it should appear literally, rather than as bold HTML.
 - Try a narrow browser window: the input and button should fit.
 - Refresh: tasks will disappear at this stage. Persistence is a later lesson.
 
-Send your attempt for review before moving to the next lesson. This starter has not been visually tested in a browser.
+Send your test results and explanation for review before moving to the next lesson. JavaScript syntax checks pass. The browser preview tool was unavailable during this milestone, so visual and real-browser interaction testing remain pending.
 
 ## Next milestones
 
-1. Finish and understand adding task titles.
+1. Test and understand adding task titles (implemented in this milestone).
 2. Introduce a task array and localStorage, then completion, editing, categories, deadlines, durations, and priorities one feature at a time.
 3. Add fixed commitments and planning hours.
 4. Build and test a scheduler incrementally: commitments first, tasks ordered by deadline and priority, breaks, visible unscheduled tasks, and explanations. Later support adjustments and preserve completed work when replanning.
@@ -62,6 +65,6 @@ Choose the integration after checking the full current challenge requirements. K
 
 ## Learning and AI assistance
 
-This initial HTML/CSS scaffold, JavaScript event-handler skeleton, and README were generated with AI assistance. The learner's first exercise is to implement task display and test it. Keep this attribution accurate as the project develops.
+The initial scaffold, widget styling, task-display implementation, and README were generated with AI assistance. The learner's next exercise is to test and explain the implementation and make a small wording change. Keep this attribution accurate as the project develops.
 
 Hack Club rules differ by program. Verify TRMNT's current AI-use, originality, and time-tracking rules before submitting; this README does not establish eligibility. Track only genuine eligible work using the required tools. Do not fabricate hours, claim generated work as your own, or submit AI-written text as a personal journal.

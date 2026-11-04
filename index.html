@@ -10,25 +10,44 @@
   <body>
     <main>
       <header>
-        <p class="eyebrow">A little direction for your day</p>
-        <h1>Day Compass</h1>
-        <p>Start with one thing you want to do.</p>
+        <a class="brand" href="./"><span aria-hidden="true">↗</span> Day Compass</a>
+        <p class="eyebrow">YOUR DAY, A LITTLE LIGHTER</p>
+        <h1>Room for what matters.</h1>
+        <p class="intro">One thing at a time. A little more space to breathe.</p>
       </header>
 
-      <section aria-labelledby="tasks-heading">
-        <h2 id="tasks-heading">Your tasks</h2>
+      <div class="widgets">
+      <aside class="widget date-widget" aria-label="Today's date">
+        <p class="widget-label" id="today-weekday">TODAY</p>
+        <p class="date-number" id="today-day"></p>
+        <p class="date-month" id="today-month"></p>
+        <div class="date-footer"><span class="status-dot" aria-hidden="true"></span> A fresh little start</div>
+      </aside>
+      <aside class="widget intention-widget" aria-labelledby="intention-heading">
+        <span class="sun-icon" aria-hidden="true">✳</span>
+        <p class="widget-label">A MOMENT OF CLARITY</p>
+        <h2 id="intention-heading">Big days begin<br>with small steps.</h2>
+        <p>Start with one task. You can take it from there.</p>
+      </aside>
+      <section class="widget tasks-widget" aria-labelledby="tasks-heading">
+        <div class="section-heading">
+          <div><p class="widget-label">OFF YOUR MIND, ON YOUR LIST</p><h2 id="tasks-heading">Your little to-dos</h2></div>
+          <span class="task-count" id="task-count" aria-label="0 tasks">0</span>
+        </div>
         <form id="task-form">
-          <label for="task-title">Task title</label>
+          <label for="task-title">What would you like to do?</label>
           <div class="form-row">
             <input id="task-title" name="title" required maxlength="120"
-              placeholder="For example, practise algebra" aria-describedby="task-help">
-            <button type="submit">Add task</button>
+              placeholder="Maybe a little algebra practice…" aria-describedby="task-help">
+            <button type="submit"><span aria-hidden="true">+</span> Add task</button>
           </div>
-          <p id="task-help">Tasks stay on this page until you refresh. Saving comes next.</p>
+          <p id="task-help">For now, this list clears when you refresh.</p>
         </form>
-        <p id="task-status" role="status">No tasks yet.</p>
+        <p id="task-status" role="status">Your list is clear. Add your first small step.</p>
         <ul id="task-list"></ul>
       </section>
+      </div>
+      <footer>Made for a calmer kind of productive.<span>Day Compass · First steps</span></footer>
     </main>
   </body>
 </html>
