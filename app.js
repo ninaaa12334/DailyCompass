@@ -1,38 +1,158 @@
-// querySelector finds an HTML element using its CSS selector.
-const taskForm = document.querySelector('#task-form');
-const taskTitle = document.querySelector('#task-title');
-const taskList = document.querySelector('#task-list');
-const taskStatus = document.querySelector('#task-status');
-const taskCount = document.querySelector('#task-count');
+﻿import { createTaskStore } from './task-store.mjs';
 
-// Use the visitor's local date rather than a hard-coded date.
-const today = new Date();
-document.querySelector('#today-weekday').textContent = today.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
-document.querySelector('#today-day').textContent = today.getDate();
-document.querySelector('#today-month').textContent = today.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+const form = document.querySelector('#task-form');
+const titleInput = document.querySelector('#task-title');
+const list = document.querySelector('#task-list');
+const status = document.querySelector('#task-status');
+const count = document.querySelector('#task-count');
+const filter = document.querySelector('#task-filter');
+const saveButton = document.querySelector('#save-task');
+const cancelButton = document.querySelector('#cancel-edit');
+const storageError = document.querySelector('#storage-error');
+let editingId = null;
+let store;
 
-// A form's submit event works for both the button and the Enter key.
-taskForm.addEventListener('submit', function (event) {
+function showError(message) {
+  storageError.textContent = message;
+  storageError.hidden = false;
+}
+
+try {
+  store = createTaskStore(window.localStorage);
+} catch {
+  // Keep unreadable data intact rather than silently replacing it with an empty list.
+  showError('Saved tasks could not be read. Nothing has been overwritten. Check browser storage permissions; if needed, ask for help recovering the saved data.');
+  for (const control of form.elements) control.disabled = true;
+}
+
+function updateDate() {
+  const today = new Date();
+  document.querySelector('#today-weekday').textContent = today.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
+  document.querySelector('#today-day').textContent = today.getDate();
+  document.querySelector('#today-month').textContent = today.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+updateDate();
+setInterval(updateDate, 60000);
+
+function resetEditor() {
+  editingId = null;
+  form.reset();
+  saveButton.textContent = 'Add task';
+  cancelButton.hidden = true;
+}
+
+function mutate(action, message) {
+  try {
+    action();
+    storageError.hidden = true;
+    render();
+    status.textContent = message;
+    return true;
+  } catch {
+    showError('Your change could not be saved. Check browser storage permissions or available space, then try again.');
+    return false;
+  }
+}
+
+function editTask(task) {
+  editingId = task.id;
+  for (const field of ['title', 'category', 'deadline', 'duration', 'priority']) {
+    form.elements.namedItem(field).value = task[field];
+  }
+  saveButton.textContent = 'Save changes';
+  cancelButton.hidden = false;
+  status.textContent = 'Editing task. Save your changes or cancel.';
+  titleInput.focus();
+}
+
+// Rebuild the list from data after each change. The array is the source of truth.
+function render() {
+  if (!store) return;
+  const tasks = store.list();
+  const visible = tasks.filter(task => filter.value === 'all' || (filter.value === 'completed' ? task.completed : !task.completed));
+  list.replaceChildren();
+  count.textContent = tasks.length;
+  count.setAttribute('aria-label', `${tasks.length} tasks`);
+  document.querySelector('#completion-summary').textContent = `${tasks.filter(task => task.completed).length} of ${tasks.length} completed`;
+  status.textContent = visible.length ? '' : 'No tasks to show here yet.';
+
+  for (const task of visible) {
+    const item = document.createElement('li');
+    item.className = task.completed ? 'completed' : '';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = task.completed;
+    checkbox.setAttribute('aria-label', `Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`);
+    checkbox.addEventListener('change', () => {
+      if (!mutate(() => store.toggle(task.id), task.completed ? 'Task reopened.' : 'Task completed.')) checkbox.checked = task.completed;
+    });
+
+    const content = document.createElement('div');
+    content.className = 'task-content';
+    const title = document.createElement('span');
+    title.className = 'task-title';
+    title.textContent = task.title;
+    const details = document.createElement('p');
+    details.className = 'task-details';
+    const deadline = task.deadline ? new Date(`${task.deadline}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No deadline';
+    details.textContent = `${task.category} · ${task.duration} min · ${task.priority} priority · ${deadline}`;
+    content.append(title, details);
+
+    const actions = document.createElement('div');
+    actions.className = 'task-actions';
+    for (const label of ['Edit', 'Delete']) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'secondary';
+      button.textContent = label;
+      button.setAttribute('aria-label', `${label} ${task.title}`);
+      button.addEventListener('click', () => {
+        if (label === 'Edit') return editTask(task);
+        if (mutate(() => store.remove(task.id), 'Task deleted.')) {
+          if (editingId === task.id) resetEditor();
+          titleInput.focus();
+        }
+      });
+      actions.append(button);
+    }
+    item.append(checkbox, content, actions);
+    list.append(item);
+  }
+}
+
+form.addEventListener('submit', event => {
   event.preventDefault();
-
-  const title = taskTitle.value.trim();
-  if (title === '') {
-    taskStatus.textContent = 'Please enter a task title.';
+  if (!store) return;
+  const title = titleInput.value.trim();
+  if (!title) {
+    status.textContent = 'Please enter a task title.';
+    titleInput.focus();
     return;
   }
-
-  // textContent keeps user input as plain text, even if it contains HTML.
-  const item = document.createElement('li');
-  const itemTitle = document.createElement('span');
-  itemTitle.className = 'task-title';
-  itemTitle.textContent = title;
-  item.append(itemTitle);
-  taskList.append(item);
-
-  const count = taskList.children.length;
-  taskCount.textContent = count;
-  taskCount.setAttribute('aria-label', `${count} ${count === 1 ? 'task' : 'tasks'}`);
-  taskStatus.textContent = `Added “${title}”.`;
-  taskForm.reset();
-  taskTitle.focus();
+  const fields = {
+    title,
+    category: form.elements.namedItem('category').value,
+    deadline: form.elements.namedItem('deadline').value,
+    duration: Number(form.elements.namedItem('duration').value),
+    priority: form.elements.namedItem('priority').value
+  };
+  const wasEditing = editingId !== null;
+  if (mutate(() => {
+    if (wasEditing) store.update(editingId, fields);
+    else store.add({ ...fields, id: crypto.randomUUID(), completed: false });
+  }, wasEditing ? 'Task updated.' : 'Task added.')) {
+    resetEditor();
+    filter.value = 'all';
+    render();
+    status.textContent = wasEditing ? 'Task updated.' : 'Task added.';
+    titleInput.focus();
+  }
 });
+
+cancelButton.addEventListener('click', () => {
+  resetEditor();
+  status.textContent = 'Edit cancelled.';
+  titleInput.focus();
+});
+filter.addEventListener('change', render);
+render();

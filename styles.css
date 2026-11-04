@@ -62,3 +62,36 @@ footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5
   button { width: 100%; }
   footer span { display: block; }
 }
+
+/* Task controls reuse the same widget shapes on phones and laptops. */
+[hidden] { display: none !important; }
+.task-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; margin-top: 1.2rem; }
+.task-fields > div { min-width: 0; }
+select { width: 100%; font: inherit; padding: .9rem .7rem; border: 1px solid #c1ccda; border-radius: 1rem; background: #f4f7fb; color: #27394e; }
+.task-fields label { font-size: .75rem; }
+.secondary { background: #edf2f8; color: #304b6d; border-color: #c1ccda; padding: .55rem .8rem; font-size: .8rem; }
+.secondary:hover { background: #dbe5f2; }
+#cancel-edit { margin-top: 1rem; }
+.list-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; border-top: 1px solid #e0e6ef; margin-top: 1.4rem; padding-top: 1rem; }
+.list-toolbar label { margin: 0; }
+.list-toolbar select { width: auto; padding: .45rem .7rem; }
+#completion-summary { margin-left: auto; font-size: .8rem; color: #526278; }
+li { align-items: center; flex-wrap: wrap; }
+li::before { display: none; }
+li input[type="checkbox"] { flex: 0 0 1.3rem; width: 1.3rem; height: 1.3rem; padding: 0; margin: 0; accent-color: #304b6d; cursor: pointer; }
+.task-content { flex: 1; min-width: 0; }
+.task-title { display: block; }
+.completed .task-title { text-decoration: line-through; color: #59697e; }
+.task-details { font-size: .75rem; color: #59697e; margin: .25rem 0 0; }
+.task-actions { display: flex; gap: .5rem; }
+#storage-error { color: #9b3025; font-size: .85rem; }
+:disabled { cursor: not-allowed; opacity: .6; }
+@media (max-width: 650px) {
+  .task-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .task-actions { width: 100%; padding-left: 2.1rem; }
+  .task-actions button { width: auto; }
+  #completion-summary { margin-left: 0; width: 100%; }
+}
+@media (max-width: 360px) {
+  .task-fields { grid-template-columns: 1fr; }
+}
