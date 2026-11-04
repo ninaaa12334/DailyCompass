@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Day Compass</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">A little direction for your day</p>
+        <h1>Day Compass</h1>
+        <p>Start with one thing you want to do.</p>
+      </header>
+
+      <section aria-labelledby="tasks-heading">
+        <h2 id="tasks-heading">Your tasks</h2>
+        <form id="task-form">
+          <label for="task-title">Task title</label>
+          <div class="form-row">
+            <input id="task-title" name="title" required maxlength="120"
+              placeholder="For example, practise algebra" aria-describedby="task-help">
+            <button type="submit">Add task</button>
+          </div>
+          <p id="task-help">Tasks stay on this page until you refresh. Saving comes next.</p>
+        </form>
+        <p id="task-status" role="status">No tasks yet.</p>
+        <ul id="task-list"></ul>
+      </section>
+    </main>
+  </body>
+</html>
