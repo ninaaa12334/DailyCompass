@@ -1,4 +1,5 @@
-﻿import { createCalendarStore, dateKey, capacity, minutes } from './calendar-store.mjs';
+import { createCalendarStore, dateKey, capacity, minutes } from './calendar-store.mjs';
+import { storage } from './runtime.mjs';
 
 export function initCalendar(getTasks) {
   const $ = selector => document.querySelector(selector);
@@ -11,7 +12,7 @@ export function initCalendar(getTasks) {
   let store;
   const formatDate = date => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
-  try { store = createCalendarStore(window.localStorage); }
+  try { store = createCalendarStore(storage); }
   catch {
     $('#calendar-error').hidden = false;
     $('#calendar-error').textContent = 'Your saved calendar could not be read. Nothing has been overwritten. Check browser storage permissions or ask for help recovering the saved data.';
@@ -120,7 +121,6 @@ export function initCalendar(getTasks) {
       grid.append(button);
     }
     const day = store.getDay(selected);
-    document.body.dataset.color = day.color;
     const { booked, free, ratio } = capacity(day);
     $('#selected-day').textContent = formatDate(selected);
     $('#day-capacity').textContent = `${booked} min booked · ${free} min unbooked`;
@@ -129,6 +129,7 @@ export function initCalendar(getTasks) {
     renderCommitments($('#day-commitments'));
     const due = tasks.filter(task => task.deadline === selected && !task.completed);
     $('#day-deadlines').textContent = due.length ? `Due this day: ${due.map(task => task.title).join(', ')}` : 'No incomplete tasks due this day.';
+    document.dispatchEvent(new Event('calendar-changed'));
   }
 
   $('#setup-day').addEventListener('click', () => {
@@ -167,4 +168,5 @@ export function initCalendar(getTasks) {
   });
   document.addEventListener('tasks-changed', render);
   render();
+  return { getDay: store.getDay, getSelectedDate: () => selected };
 }

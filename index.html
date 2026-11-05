@@ -1,111 +1,29 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Day Compass</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="app.js" type="module"></script>
-  </head>
-  <body>
-    <main>
-      <header>
-        <a class="brand" href="./"><span aria-hidden="true">↗</span> Day Compass</a>
-        <p class="eyebrow">YOUR DAY, A LITTLE LIGHTER</p>
-        <h1>Room for what matters.</h1>
-        <p class="intro">One thing at a time. A little more space to breathe.</p>
-      </header>
-
-      <div class="widgets">
-      <aside class="widget date-widget" aria-label="Today's date">
-        <p class="widget-label" id="today-weekday">TODAY</p>
-        <p class="date-number" id="today-day"></p>
-        <p class="date-month" id="today-month"></p>
-        <div class="date-footer"><span class="status-dot" aria-hidden="true"></span> A fresh little start</div>
-      </aside>
-      <aside class="widget intention-widget" aria-labelledby="intention-heading">
-        <span class="sun-icon" aria-hidden="true">✳</span>
-        <p class="widget-label">A MOMENT OF CLARITY</p>
-        <h2 id="intention-heading">Big days begin<br>with small steps.</h2>
-        <p>Start with one task. You can take it from there.</p>
-      </aside>
-      <section class="widget calendar-widget" aria-labelledby="calendar-heading">
-        <div class="section-heading">
-          <div><p class="widget-label">MAKE SOME ROOM</p><h2 id="calendar-heading">Your calendar</h2></div>
-          <button type="button" id="setup-day">Set up your day</button>
-        </div>
-        <div class="calendar-layout">
-          <div>
-            <div class="month-nav"><button type="button" class="secondary" id="previous-month" aria-label="Previous month">&larr;</button><h3 id="calendar-month"></h3><button type="button" class="secondary" id="next-month" aria-label="Next month">&rarr;</button></div>
-            <div class="weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
-            <div class="calendar-days" id="calendar-days" aria-label="Choose a day"></div>
-            <p class="calendar-legend"><span aria-hidden="true">○ ◔ ●</span> Darker = more planning time booked. A dot = a task deadline.</p>
-            <button type="button" class="secondary" id="calendar-today">Back to today</button>
-          </div>
-          <div class="day-overview">
-            <p class="widget-label">YOUR SELECTED DAY</p><h3 id="selected-day"></h3>
-            <p id="day-capacity"></p>
-            <div class="capacity-track" aria-hidden="true"><span id="capacity-fill"></span></div>
-            <p id="day-hours"></p>
-            <ul id="day-commitments"></ul>
-            <p id="day-deadlines"></p>
-            <p class="calendar-note">Fixed commitments only for now. Task deadlines do not reserve time.</p>
-          </div>
-        </div>
-        <p id="calendar-status" role="status"></p>
-        <p id="calendar-error" role="alert" hidden></p>
-      </section>
-      <section class="widget tasks-widget" aria-labelledby="tasks-heading">
-        <div class="section-heading">
-          <div><p class="widget-label">OFF YOUR MIND, ON YOUR LIST</p><h2 id="tasks-heading">Your little to-dos</h2></div>
-          <span class="task-count" id="task-count" aria-label="0 tasks">0</span>
-        </div>
-        <form id="task-form">
-          <label for="task-title">What would you like to do?</label>
-          <div class="form-row">
-            <input id="task-title" name="title" required maxlength="120"
-              placeholder="Maybe a little algebra practice…" aria-describedby="task-help">
-            <button type="submit" id="save-task">Add task</button>
-          </div>
-          <div class="task-fields">
-            <div><label for="task-category">Category</label><select id="task-category" name="category">
-              <option>Study</option><option>Exercise</option><option>Chores</option><option>Personal projects</option><option>Social</option>
-            </select></div>
-            <div><label for="task-deadline">Deadline (optional)</label><input id="task-deadline" name="deadline" type="date"></div>
-            <div><label for="task-duration">Minutes</label><input id="task-duration" name="duration" type="number" min="1" max="1440" step="1" value="30" required></div>
-            <div><label for="task-priority">Priority</label><select id="task-priority" name="priority"><option>Low</option><option selected>Medium</option><option>High</option></select></div>
-          </div>
-          <button type="button" class="secondary" id="cancel-edit" hidden>Cancel edit</button>
-          <p id="task-help">Saved in this browser. Your list stays here after refresh.</p>
-          <p id="storage-error" role="alert" hidden></p>
-        </form>
-        <div class="list-toolbar"><label for="task-filter">Show tasks</label><select id="task-filter"><option value="all">All</option><option value="active">Active</option><option value="completed">Completed</option></select><span id="completion-summary"></span></div>
-        <p id="task-status" role="status">Your list is clear. Add your first small step.</p>
-        <ul id="task-list"></ul>
-      </section>
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Your time. Your rhythm. A calmer place for your tasks, commitments, and daily plans.">
+  <title>Day Compass · Your time. Your rhythm.</title>
+  <link rel="stylesheet" href="styles.css"><script src="theme-ui.mjs" type="module"></script><script src="welcome.mjs" type="module"></script>
+</head>
+<body class="welcome-page">
+  <noscript><p class="local-banner">JavaScript is needed for appearance controls and the planner. <a href="dashboard.html">Open the planner page</a>.</p></noscript>
+  <a class="skip-link" href="#welcome">Skip to content</a>
+  <nav class="topbar" aria-label="Main navigation"><a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">↗</span> Day Compass</a><div class="nav-actions"><a href="#how-it-works">How it works</a><button class="text-button" type="button" data-open-appearance>Appearance</button><button class="secondary" type="button" data-open-access>Log in</button></div></nav>
+  <main id="welcome" tabindex="-1">
+    <section class="hero" aria-labelledby="welcome-heading">
+      <div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> A LITTLE DIRECTION. A LOT MORE ROOM.</p><h1 id="welcome-heading">Your time.<br><em>Your rhythm.</em></h1><p class="hero-description">Choose how you want to spend your day. Day Compass helps you turn your tasks, plans, and priorities into a schedule that fits your life.</p><div class="hero-actions"><button type="button" data-open-access>Start planning <span aria-hidden="true">↗</span></button><a class="button secondary" href="dashboard.html?demo=1">Explore a demo</a></div><p class="hero-note">Start small. Make space. Find your own pace.</p></div>
+      <div class="hero-preview" aria-label="Illustrative planner preview. Example activities, not your personal data.">
+        <div class="preview-halo" aria-hidden="true"></div>
+        <div class="preview-tag">A LITTLE LOOK INSIDE · EXAMPLE DAY</div>
+        <div class="widget preview-calendar"><p class="widget-label">NOVEMBER</p><div class="preview-calendar-top"><strong>05</strong><span>Thursday<br><small>A fresh little start</small></span></div><div class="mini-week" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span><b>2</b><b>3</b><b>4</b><b class="mini-selected">5</b><b>6</b><b>7</b><b>8</b></div></div>
+        <div class="widget preview-tasks"><span class="mini-icon" aria-hidden="true">✓</span><p class="widget-label">LITTLE WINS</p><h2>One thing at a time.</h2><p><span class="sample-check checked" aria-hidden="true">✓</span><s>Finish that first draft</s></p><p><span class="sample-check" aria-hidden="true"></span>Get outside for a bit</p><p><span class="sample-check" aria-hidden="true"></span>A little algebra practice</p></div>
+        <div class="widget preview-plan"><div class="section-heading"><div><p class="widget-label">A DAY WITH ROOM TO BREATHE</p><h2>Your daily rhythm</h2></div><span class="mini-icon" aria-hidden="true">↗</span></div><div class="sample-event"><time>08:00</time><span><strong>School</strong><small>A little focus</small></span></div><div class="sample-event"><time>16:00</time><span><strong>Volleyball practice</strong><small>Time to move</small></span></div><div class="sample-free">17:00–18:00 <span>A little room for you</span></div></div>
       </div>
-      <footer>Made for a calmer kind of productive.<span>Day Compass · First steps</span></footer>
-    </main>
-    <dialog id="day-dialog" aria-labelledby="day-dialog-title">
-      <div class="dialog-heading"><div><p class="widget-label">A DAY THAT FITS YOU</p><h2 id="day-dialog-title">Set up your day</h2></div><button type="button" class="secondary" id="close-day-dialog" aria-label="Close day setup">Close</button></div>
-      <p id="setup-date-label"></p>
-      <form id="day-settings-form">
-        <div class="task-fields day-settings">
-          <div><label for="planning-start">Planning starts</label><input id="planning-start" name="start" type="time" required value="08:00"></div>
-          <div><label for="planning-end">Planning ends</label><input id="planning-end" name="end" type="time" required value="20:00"></div>
-          <div><label for="day-color">Widget colour</label><select id="day-color" name="color"><option value="blue">Ocean blue</option><option value="sage">Soft sage</option><option value="lavender">Lavender</option><option value="rose">Dusty rose</option></select></div>
-        </div>
-        <button type="submit">Save day settings</button>
-      </form>
-      <hr>
-      <h3>Fixed commitments</h3><p class="calendar-note">School, practice, appointments. Enter one day at a time; overnight activities need two entries.</p>
-      <form id="commitment-form">
-        <label for="commitment-title">What is happening?</label><input id="commitment-title" name="title" maxlength="120" required placeholder="For example, volleyball practice">
-        <div class="task-fields commitment-times"><div><label for="commitment-start">Starts</label><input id="commitment-start" name="start" type="time" required></div><div><label for="commitment-end">Ends</label><input id="commitment-end" name="end" type="time" required></div></div>
-        <div class="dialog-actions"><button type="submit" id="save-commitment">Add commitment</button><button type="button" class="secondary" id="cancel-commitment" hidden>Cancel edit</button></div>
-      </form>
-      <ul id="setup-commitments"></ul>
-      <p id="setup-feedback" role="status"></p><p id="setup-error" role="alert" hidden></p>
-    </dialog>
-  </body>
+    </section>
+    <section class="how-it-works" id="how-it-works" aria-labelledby="steps-heading"><div class="steps-intro"><p class="eyebrow">LESS JUGGLING. MORE LIVING.</p><h2 id="steps-heading">Make the day your own.</h2></div><div class="steps"><article><span>01</span><h3>Start with the essentials</h3><p>Add school, work, and the things that already have a time.</p></article><article><span>02</span><h3>Find your kind of calm</h3><p>Choose your colours and set the hours you want to plan.</p></article><article><span>03</span><h3>Build your daily rhythm</h3><p>Bring your tasks together and see where your time goes.</p></article></div><p class="fine-print">The local planner supports tasks and fixed commitments today. Automatic scheduling is coming next.</p></section>
+    <footer><span>Day Compass · A calmer kind of productive.</span><a href="dashboard.html">Open my local planner →</a></footer>
+  </main>
+  <dialog id="access-dialog" aria-labelledby="access-heading"><div class="dialog-heading"><p class="widget-label">LET’S START SMALL</p><button class="secondary" type="button" id="close-access">Close</button></div><h2 id="access-heading">Your space, in this browser.</h2><p>Accounts and sign-in aren’t available yet. You can start a local planner without an account, or explore a separate sample demo.</p><p class="muted">Local data stays in this browser and does not sync between devices. There is no password to enter.</p><div class="dialog-actions"><a class="button" href="dashboard.html">Continue to local planner</a><a class="button secondary" href="dashboard.html?demo=1">Try the sample demo</a></div></dialog>
+</body>
 </html>

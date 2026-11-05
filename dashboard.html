@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your planner · Day Compass</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme-ui.mjs" type="module"></script><script src="app.js" type="module"></script>
+</head>
+<body class="dashboard-page">
+  <noscript><p class="local-banner">Please enable JavaScript to load and edit your saved local planner.</p></noscript>
+  <a class="skip-link" href="#planner">Skip to planner</a>
+  <nav class="topbar" aria-label="Main navigation">
+    <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">↗</span> Day Compass</a>
+    <div class="nav-actions"><a href="#calendar-heading">Calendar</a><a href="#tasks-heading">Tasks</a><button type="button" class="secondary" data-open-appearance>Appearance</button></div>
+  </nav>
+  <main id="planner" tabindex="-1">
+    <div class="local-banner" id="planner-mode">Local planner · Saved in this browser</div>
+    <header class="dashboard-heading"><div><p class="eyebrow" id="dashboard-date">A LITTLE DIRECTION FOR YOUR DAY</p><h1>A day that feels like you.</h1><p class="muted">Make room for the things that matter.</p></div><a class="button secondary" href="#task-title">+ Add a task</a></header>
+    <div class="dashboard-grid">
+      <section class="widget now-widget" aria-labelledby="now-heading"><p class="widget-label">RIGHT NOW · FIXED EVENTS</p><h2 id="now-heading">Loading your day…</h2><p id="now-detail" class="muted"></p><div class="next-row"><span class="status-dot" aria-hidden="true"></span><p id="next-activity">Reading saved commitments.</p></div></section>
+      <section class="widget free-widget" aria-labelledby="free-heading"><p class="widget-label">SPACE IN YOUR DAY</p><h2 id="free-heading"><span id="free-minutes">—</span> <small>min free</small></h2><p class="muted" id="free-date">Within selected planning hours</p><p class="fine-print">Based on fixed commitments. Flexible tasks are not placed yet.</p></section>
+      <section class="widget progress-widget" aria-labelledby="progress-heading"><p class="widget-label">ONE SMALL WIN AT A TIME</p><h2 id="progress-heading">Task progress</h2><div class="progress-line"><strong id="progress-value">—</strong><span class="muted">completed</span></div><progress id="task-progress" value="0" max="1" aria-label="Task completion"></progress><p class="fine-print">Across your task list</p></section>
+      <section class="widget calendar-widget" aria-labelledby="calendar-heading">
+        <div class="section-heading"><div><p class="widget-label">THE BIGGER PICTURE</p><h2 id="calendar-heading">Your calendar</h2></div><button type="button" class="secondary" id="calendar-today">Today</button></div>
+        <div class="month-nav"><button type="button" class="secondary" id="previous-month" aria-label="Previous month">←</button><h3 id="calendar-month" aria-live="polite"></h3><button type="button" class="secondary" id="next-month" aria-label="Next month">→</button></div>
+        <div class="weekdays" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+        <div class="calendar-days" id="calendar-days" aria-label="Choose a day"></div>
+        <div class="calendar-legend"><span><i class="legend-shades" aria-hidden="true"></i> Free → Busy</span><span>• Deadline</span><span><u>Underlined</u> Today</span><span>Outline: selected</span></div>
+        <p id="calendar-status" role="status"></p><p id="calendar-error" role="alert" hidden></p>
+      </section>
+      <section class="widget timeline-widget" aria-labelledby="selected-day">
+        <div class="section-heading"><div><p class="widget-label">YOUR DAY, AT A GLANCE</p><h2 id="selected-day">Selected day</h2></div><button type="button" id="setup-day">+ Add activity</button></div>
+        <p id="day-hours" class="muted"></p><p id="day-capacity"></p><div class="capacity-track" aria-hidden="true"><span id="capacity-fill"></span></div>
+        <ul id="day-commitments" class="timeline-list"></ul><p id="day-deadlines" class="fine-print"></p>
+        <p class="calendar-note">Fixed commitments only. Add flexible work in Tasks & deadlines below.</p>
+      </section>
+<section class="widget tasks-widget" aria-labelledby="tasks-heading">
+        <div class="section-heading">
+          <div><p class="widget-label">A LITTLE LESS TO REMEMBER</p><h2 id="tasks-heading">Tasks & deadlines</h2></div>
+          <span class="task-count" id="task-count" aria-label="0 tasks">0</span>
+        </div>
+        <form id="task-form">
+          <label for="task-title">What would you like to do?</label>
+          <div class="form-row">
+            <input id="task-title" name="title" required maxlength="120"
+              placeholder="Maybe a little algebra practice…" aria-describedby="task-help">
+            <button type="submit" id="save-task">Add task</button>
+          </div>
+          <details class="task-options"><summary>Category, deadline & priority</summary><div class="task-fields">
+            <div><label for="task-category">Category</label><select id="task-category" name="category">
+              <option>Study</option><option>Exercise</option><option>Chores</option><option>Personal projects</option><option>Social</option>
+            </select></div>
+            <div><label for="task-deadline">Deadline (optional)</label><input id="task-deadline" name="deadline" type="date"></div>
+            <div><label for="task-duration">Minutes</label><input id="task-duration" name="duration" type="number" min="1" max="1440" step="1" value="30" required></div>
+            <div><label for="task-priority">Priority</label><select id="task-priority" name="priority"><option>Low</option><option selected>Medium</option><option>High</option></select></div>
+          </div>
+          </details><button type="button" class="secondary" id="cancel-edit" hidden>Cancel edit</button>
+          <p id="task-help">Saved in this browser. Your list stays here after refresh.</p>
+          <p id="storage-error" role="alert" hidden></p>
+        </form>
+        <div class="list-toolbar"><label for="task-filter">Show tasks</label><select id="task-filter"><option value="all">All</option><option value="active">Active</option><option value="completed">Completed</option></select><span id="completion-summary"></span></div>
+        <p id="task-status" role="status">Your list is clear. Add your first small step.</p>
+        <ul id="task-list"></ul>
+      </section>
+    </div>
+    <footer><span>A calmer kind of productive.</span><a href="index.html">Back to welcome</a></footer>
+  </main>
+<dialog id="day-dialog" aria-labelledby="day-dialog-title">
+      <div class="dialog-heading"><div><p class="widget-label">A DAY THAT FITS YOU</p><h2 id="day-dialog-title">Set up your day</h2></div><button type="button" class="secondary" id="close-day-dialog" aria-label="Close day setup">Close</button></div>
+      <p id="setup-date-label"></p>
+      <form id="day-settings-form">
+        <div class="task-fields day-settings">
+          <div><label for="planning-start">Planning starts</label><input id="planning-start" name="start" type="time" required value="08:00"></div>
+          <div><label for="planning-end">Planning ends</label><input id="planning-end" name="end" type="time" required value="20:00"></div>
+          <div><label for="day-color">This date's busy colour</label><select id="day-color" name="color"><option value="theme">Use my theme</option><option value="blue">Ocean blue</option><option value="sage">Soft sage</option><option value="lavender">Lavender</option><option value="rose">Dusty rose</option></select></div>
+        </div>
+        <button type="submit">Save day settings</button>
+      </form>
+      <hr>
+      <h3>Fixed commitments</h3><p class="calendar-note">School, practice, appointments. Enter one day at a time; overnight activities are not supported yet.</p>
+      <form id="commitment-form">
+        <label for="commitment-title">What is happening?</label><input id="commitment-title" name="title" maxlength="120" required placeholder="For example, volleyball practice">
+        <div class="task-fields commitment-times"><div><label for="commitment-start">Starts</label><input id="commitment-start" name="start" type="time" required></div><div><label for="commitment-end">Ends</label><input id="commitment-end" name="end" type="time" required></div></div>
+        <div class="dialog-actions"><button type="submit" id="save-commitment">Add commitment</button><button type="button" class="secondary" id="cancel-commitment" hidden>Cancel edit</button></div>
+      </form>
+      <ul id="setup-commitments"></ul>
+      <p id="setup-feedback" role="status"></p><p id="setup-error" role="alert" hidden></p>
+    </dialog>
+</body>
+</html>

@@ -38,6 +38,13 @@ test('capacity counts only time inside planning hours', () => {
   assert.equal(capacity({ ...day, start: '08:00', end: '15:00', commitments: [school] }).ratio, 1);
 });
 
+test('capacity merges overlapping minutes instead of double-counting them', () => {
+  const day = { start: '08:00', end: '12:00', commitments: [
+    { start: '08:00', end: '10:00' }, { start: '09:00', end: '11:00' }, { start: '09:30', end: '10:30' }
+  ] };
+  assert.deepEqual(capacity(day), { booked: 180, total: 240, free: 60, ratio: .75 });
+});
+
 test('invalid dates, hours, colours, and overnight commitments do not save', () => {
   const store = createCalendarStore(memoryStorage());
   assert.throws(() => store.getDay('2026-02-30'));

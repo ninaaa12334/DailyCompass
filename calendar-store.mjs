@@ -1,6 +1,6 @@
 // Dates stay as YYYY-MM-DD strings; times are minutes since midnight.
 export const CALENDAR_KEY = 'day-compass.calendar.v1';
-export const COLORS = ['blue', 'sage', 'lavender', 'rose'];
+export const COLORS = ['theme', 'blue', 'sage', 'lavender', 'rose'];
 
 export function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -38,7 +38,15 @@ function validateDay(day) {
 export function capacity(day) {
   const start = minutes(day.start);
   const end = minutes(day.end);
-  const booked = day.commitments.reduce((sum, item) => sum + Math.max(0, Math.min(end, minutes(item.end)) - Math.max(start, minutes(item.start))), 0);
+  // Merge occupied intervals so future scheduled tasks cannot double-count minutes.
+  const intervals = day.commitments.map(item => [Math.max(start, minutes(item.start)), Math.min(end, minutes(item.end))])
+    .filter(([from, to]) => to > from).sort((a, b) => a[0] - b[0]);
+  let booked = 0;
+  let occupiedUntil = start;
+  for (const [from, to] of intervals) {
+    booked += Math.max(0, to - Math.max(from, occupiedUntil));
+    occupiedUntil = Math.max(occupiedUntil, to);
+  }
   const total = end - start;
   return { booked, total, free: total - booked, ratio: booked / total };
 }
@@ -51,7 +59,7 @@ export function createCalendarStore(storage) {
 
   function getDay(date) {
     validateDate(date);
-    return structuredClone(days[date] ?? { start: '08:00', end: '20:00', color: 'blue', commitments: [] });
+    return structuredClone(days[date] ?? { start: '08:00', end: '20:00', color: 'theme', commitments: [] });
   }
 
   function save(date, day) {

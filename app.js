@@ -1,6 +1,9 @@
-﻿import { createTaskStore } from './task-store.mjs';
+import { createTaskStore } from './task-store.mjs';
 
 import { initCalendar } from './calendar-ui.mjs';
+import { initDashboard } from './dashboard-summary.mjs';
+import { storage, isDemo } from './runtime.mjs';
+import { seedDemo } from './demo.mjs';
 
 const form = document.querySelector('#task-form');
 const titleInput = document.querySelector('#task-title');
@@ -20,21 +23,22 @@ function showError(message) {
 }
 
 try {
-  store = createTaskStore(window.localStorage);
+  if (isDemo) seedDemo(storage);
+  store = createTaskStore(storage);
 } catch {
   // Keep unreadable data intact rather than silently replacing it with an empty list.
   showError('Saved tasks could not be read. Nothing has been overwritten. Check browser storage permissions; if needed, ask for help recovering the saved data.');
   for (const control of form.elements) control.disabled = true;
 }
 
-function updateDate() {
-  const today = new Date();
-  document.querySelector('#today-weekday').textContent = today.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
-  document.querySelector('#today-day').textContent = today.getDate();
-  document.querySelector('#today-month').textContent = today.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+if (isDemo) {
+  const banner = document.querySelector('#planner-mode');
+  banner.textContent = 'Sample demo · Changes stay separate from your personal planner. ';
+  const link = document.createElement('a');
+  link.href = 'dashboard.html'; link.textContent = 'Open my planner';
+  banner.append(link);
+  document.querySelector('#task-help').textContent = 'Sample tasks save only in this demo tab’s session.';
 }
-updateDate();
-setInterval(updateDate, 60000);
 
 function resetEditor() {
   editingId = null;
@@ -62,6 +66,7 @@ function editTask(task) {
     form.elements.namedItem(field).value = task[field];
   }
   saveButton.textContent = 'Save changes';
+  document.querySelector('.task-options').open = true;
   cancelButton.hidden = false;
   status.textContent = 'Editing task. Save your changes or cancel.';
   titleInput.focus();
@@ -84,10 +89,16 @@ function render() {
     item.className = task.completed ? 'completed' : '';
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.dataset.taskId = task.id;
     checkbox.checked = task.completed;
     checkbox.setAttribute('aria-label', `Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`);
     checkbox.addEventListener('change', () => {
-      if (!mutate(() => store.toggle(task.id), task.completed ? 'Task reopened.' : 'Task completed.')) checkbox.checked = task.completed;
+      if (!mutate(() => store.toggle(task.id), task.completed ? 'Task reopened.' : 'Task completed.')) {
+        checkbox.checked = task.completed;
+      } else {
+        const replacement = [...list.querySelectorAll('input')].find(input => input.dataset.taskId === task.id);
+        (replacement ?? filter).focus();
+      }
     });
 
     const content = document.createElement('div');
@@ -122,6 +133,11 @@ function render() {
     list.append(item);
   }
 }
+
+form.addEventListener('invalid', event => {
+  const details = event.target.closest('details');
+  if (details) details.open = true;
+}, true);
 
 form.addEventListener('submit', event => {
   event.preventDefault();
@@ -159,4 +175,6 @@ cancelButton.addEventListener('click', () => {
 });
 filter.addEventListener('change', render);
 render();
-initCalendar(() => store ? store.list() : []);
+const getTasks = () => store ? store.list() : [];
+const calendar = initCalendar(getTasks);
+initDashboard(getTasks, calendar, () => Boolean(store));
