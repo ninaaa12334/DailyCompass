@@ -29,6 +29,32 @@
         <h2 id="intention-heading">Big days begin<br>with small steps.</h2>
         <p>Start with one task. You can take it from there.</p>
       </aside>
+      <section class="widget calendar-widget" aria-labelledby="calendar-heading">
+        <div class="section-heading">
+          <div><p class="widget-label">MAKE SOME ROOM</p><h2 id="calendar-heading">Your calendar</h2></div>
+          <button type="button" id="setup-day">Set up your day</button>
+        </div>
+        <div class="calendar-layout">
+          <div>
+            <div class="month-nav"><button type="button" class="secondary" id="previous-month" aria-label="Previous month">&larr;</button><h3 id="calendar-month"></h3><button type="button" class="secondary" id="next-month" aria-label="Next month">&rarr;</button></div>
+            <div class="weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+            <div class="calendar-days" id="calendar-days" aria-label="Choose a day"></div>
+            <p class="calendar-legend"><span aria-hidden="true">○ ◔ ●</span> Darker = more planning time booked. A dot = a task deadline.</p>
+            <button type="button" class="secondary" id="calendar-today">Back to today</button>
+          </div>
+          <div class="day-overview">
+            <p class="widget-label">YOUR SELECTED DAY</p><h3 id="selected-day"></h3>
+            <p id="day-capacity"></p>
+            <div class="capacity-track" aria-hidden="true"><span id="capacity-fill"></span></div>
+            <p id="day-hours"></p>
+            <ul id="day-commitments"></ul>
+            <p id="day-deadlines"></p>
+            <p class="calendar-note">Fixed commitments only for now. Task deadlines do not reserve time.</p>
+          </div>
+        </div>
+        <p id="calendar-status" role="status"></p>
+        <p id="calendar-error" role="alert" hidden></p>
+      </section>
       <section class="widget tasks-widget" aria-labelledby="tasks-heading">
         <div class="section-heading">
           <div><p class="widget-label">OFF YOUR MIND, ON YOUR LIST</p><h2 id="tasks-heading">Your little to-dos</h2></div>
@@ -60,5 +86,26 @@
       </div>
       <footer>Made for a calmer kind of productive.<span>Day Compass · First steps</span></footer>
     </main>
+    <dialog id="day-dialog" aria-labelledby="day-dialog-title">
+      <div class="dialog-heading"><div><p class="widget-label">A DAY THAT FITS YOU</p><h2 id="day-dialog-title">Set up your day</h2></div><button type="button" class="secondary" id="close-day-dialog" aria-label="Close day setup">Close</button></div>
+      <p id="setup-date-label"></p>
+      <form id="day-settings-form">
+        <div class="task-fields day-settings">
+          <div><label for="planning-start">Planning starts</label><input id="planning-start" name="start" type="time" required value="08:00"></div>
+          <div><label for="planning-end">Planning ends</label><input id="planning-end" name="end" type="time" required value="20:00"></div>
+          <div><label for="day-color">Widget colour</label><select id="day-color" name="color"><option value="blue">Ocean blue</option><option value="sage">Soft sage</option><option value="lavender">Lavender</option><option value="rose">Dusty rose</option></select></div>
+        </div>
+        <button type="submit">Save day settings</button>
+      </form>
+      <hr>
+      <h3>Fixed commitments</h3><p class="calendar-note">School, practice, appointments. Enter one day at a time; overnight activities need two entries.</p>
+      <form id="commitment-form">
+        <label for="commitment-title">What is happening?</label><input id="commitment-title" name="title" maxlength="120" required placeholder="For example, volleyball practice">
+        <div class="task-fields commitment-times"><div><label for="commitment-start">Starts</label><input id="commitment-start" name="start" type="time" required></div><div><label for="commitment-end">Ends</label><input id="commitment-end" name="end" type="time" required></div></div>
+        <div class="dialog-actions"><button type="submit" id="save-commitment">Add commitment</button><button type="button" class="secondary" id="cancel-commitment" hidden>Cancel edit</button></div>
+      </form>
+      <ul id="setup-commitments"></ul>
+      <p id="setup-feedback" role="status"></p><p id="setup-error" role="alert" hidden></p>
+    </dialog>
   </body>
 </html>

@@ -1,5 +1,7 @@
 ﻿import { createTaskStore } from './task-store.mjs';
 
+import { initCalendar } from './calendar-ui.mjs';
+
 const form = document.querySelector('#task-form');
 const titleInput = document.querySelector('#task-title');
 const list = document.querySelector('#task-list');
@@ -69,6 +71,7 @@ function editTask(task) {
 function render() {
   if (!store) return;
   const tasks = store.list();
+  document.dispatchEvent(new Event('tasks-changed'));
   const visible = tasks.filter(task => filter.value === 'all' || (filter.value === 'completed' ? task.completed : !task.completed));
   list.replaceChildren();
   count.textContent = tasks.length;
@@ -156,3 +159,4 @@ cancelButton.addEventListener('click', () => {
 });
 filter.addEventListener('change', render);
 render();
+initCalendar(() => store ? store.list() : []);

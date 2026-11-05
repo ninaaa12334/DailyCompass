@@ -95,3 +95,61 @@ li input[type="checkbox"] { flex: 0 0 1.3rem; width: 1.3rem; height: 1.3rem; pad
 @media (max-width: 360px) {
   .task-fields { grid-template-columns: 1fr; }
 }
+
+/* A small palette keeps the widget and calendar shades readable. */
+body, [data-color="blue"] { --accent: #304b6d; --accent-soft: #e6edf7; --accent-mid: #b3c6df; }
+[data-color="sage"] { --accent: #365a47; --accent-soft: #e7f0e6; --accent-mid: #afcbb4; }
+[data-color="lavender"] { --accent: #5b4879; --accent-soft: #efebf8; --accent-mid: #cec0e6; }
+[data-color="rose"] { --accent: #7c4355; --accent-soft: #f8eaf0; --accent-mid: #e4bac9; }
+button:not(.secondary):not(.calendar-day), .brand span { background: var(--accent); border-color: var(--accent); }
+button:not(.secondary):not(.calendar-day):hover { filter: brightness(.92); }
+.task-count { background: var(--accent-soft); color: var(--accent); }
+input[type="checkbox"] { accent-color: var(--accent); }
+.calendar-widget { grid-column: 1 / -1; }
+.calendar-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 2rem; }
+.month-nav { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: 1rem; }
+.month-nav h3 { font-size: 1rem; margin: 0; }
+.month-nav button { width: 2.75rem; min-height: 2.75rem; }
+.weekdays, .calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .3rem; }
+.weekdays { text-align: center; font-size: .7rem; color: #526278; margin-bottom: .5rem; }
+.calendar-day { position: relative; min-width: 0; min-height: 2.75rem; padding: .65rem .1rem; border: 1px solid transparent; border-radius: .8rem; font-size: .85rem; font-weight: 600; color: #27394e; background: #f2f5f9; }
+.calendar-day[data-load="1"] { background: var(--accent-soft); }
+.calendar-day[data-load="2"] { background: var(--accent-mid); }
+.calendar-day[data-load="3"] { background: var(--accent); color: #fff; }
+.calendar-day:hover { box-shadow: inset 0 0 0 1px currentColor; background: var(--accent-mid); color: #27394e; }
+.calendar-day[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.calendar-day[aria-current="date"] { text-decoration: underline; text-underline-offset: .2rem; }
+.calendar-day[data-due="true"]::after { content: ''; position: absolute; width: .25rem; height: .25rem; border-radius: 50%; background: currentColor; bottom: .2rem; left: calc(50% - .125rem); }
+.calendar-legend, .calendar-note, #day-hours, #day-deadlines, #calendar-status { font-size: .75rem; color: #526278; }
+.calendar-legend span { letter-spacing: .15em; }
+.day-overview { background: var(--accent-soft); border-radius: 1.5rem; padding: 1.4rem; min-width: 0; }
+.day-overview h3 { font-size: 1.2rem; margin: .6rem 0; }
+.day-overview li { font-size: .85rem; }
+#day-deadlines { overflow-wrap: anywhere; }
+#day-capacity { font-size: .85rem; }
+.capacity-track { height: .5rem; background: #fff; border-radius: 1rem; overflow: hidden; }
+#capacity-fill { display: block; height: 100%; background: var(--accent); }
+#calendar-error, #setup-error { color: #9b3025; font-size: .85rem; }
+#calendar-status:empty { display: none; }
+
+dialog { width: min(100% - 2rem, 38rem); max-height: calc(100dvh - 2rem); overflow-y: auto; border: 1px solid #fff; border-radius: 2rem; padding: 2rem; color: #27394e; background: #f8fafded; box-shadow: 0 24px 90px #233a5866; }
+dialog::backdrop { background: #233a5866; backdrop-filter: blur(6px); }
+.dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.dialog-heading button { width: auto; }
+.day-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 1rem; }
+.day-settings > div:last-child { grid-column: 1 / -1; }
+.commitment-times { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 1rem; }
+.dialog-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+hr { border: 0; border-top: 1px solid #c1ccda; margin: 1.8rem 0; }
+#setup-date-label, #setup-feedback { color: #526278; font-size: .85rem; }
+#setup-commitments li { font-size: .85rem; }
+@media (max-width: 700px) {
+  .calendar-layout { grid-template-columns: 1fr; gap: 1.5rem; }
+  .calendar-widget > .section-heading { flex-wrap: wrap; }
+}
+@media (max-width: 540px) {
+  .calendar-day { width: 100%; }
+  #calendar-today { width: auto; }
+  dialog { padding: 1.3rem; border-radius: 1.5rem; }
+  .day-settings, .commitment-times { grid-template-columns: 1fr; }
+}
