@@ -10,6 +10,8 @@ export function initCalendar(getTasks) {
   const commitmentForm = $('#commitment-form');
   let selected = dateKey(new Date());
   let view = window.matchMedia('(max-width: 580px)').matches ? 'day' : 'week';
+  const viewStorageKey = 'day-compass.calendar-view.v1';
+  const allowedViews = ['day', 'week', 'month'];
   let focusHour = 9;
   let editingId = null;
   let returnFocus = null;
@@ -24,6 +26,14 @@ export function initCalendar(getTasks) {
     $('#setup-day').disabled = true;
     document.querySelectorAll('.calendar-widget button').forEach(button => { button.disabled = true; });
     return;
+  }
+
+  // A saved preference wins over the phone/desktop default, if it is valid.
+  try {
+    const savedView = storage.getItem(viewStorageKey);
+    if (allowedViews.includes(savedView)) view = savedView;
+  } catch {
+    $('#calendar-status').textContent = 'Could not read your preferred view. Using the default for this screen.';
   }
 
   function action(callback, message) {
@@ -224,7 +234,17 @@ export function initCalendar(getTasks) {
       render();
     });
   }
-  document.querySelectorAll('[data-calendar-view]').forEach(button => button.addEventListener('click', () => { view = button.dataset.calendarView; render(); }));
+  document.querySelectorAll('[data-calendar-view]').forEach(button => button.addEventListener('click', () => {
+    view = button.dataset.calendarView;
+    render();
+    try {
+      storage.setItem(viewStorageKey, view);
+      $('#calendar-status').textContent = `${button.textContent} view saved for your next visit.`;
+    } catch {
+      // The switch still works even when browser storage is unavailable or full.
+      $('#calendar-status').textContent = 'View changed for now, but your preference could not be saved. Check browser storage permissions or available space.';
+    }
+  }));
   $('#calendar-today').addEventListener('click', () => { selected = dateKey(new Date()); render(); });
   document.addEventListener('tasks-changed', render);
   setInterval(() => { if (!document.hidden && view !== 'month') updateNowLines($('#week-grid')); }, 60000);

@@ -36,7 +36,7 @@ Progress is across the saved task list, not a claimed count of tasks completed t
 
 ### Calendar workspace update
 
-The calendar now has Day, Week, and Month views instead of a small date picker. Desktop starts in Week; narrow screens start in Day. Use Today and the arrows to navigate the current view. Week view can scroll horizontally on small screens; the timetable has its own vertical scroll area and shows all 24 hours, initially scrolled to the morning.
+The calendar now has Day, Week, and Month views instead of a small date picker. Your last choice using the view switch is saved and restored on future visits. On a first visit, desktop starts in Week and narrow screens start in Day. The demo saves its view separately for its tab session. Invalid saved values fall back to the screen default; if saving fails, the view still switches and a message explains that it could not be remembered. Use Today and the arrows to navigate the current view. Week view can scroll horizontally on small screens; the timetable has its own vertical scroll area and shows all 24 hours, initially scrolled to the morning.
 
 Events sit at their actual start times with height proportional to duration. Hatched time is outside the day's planning hours, and a line marks the current time today. Date numbers keep the busyness colours; today is underlined and the selected day is indicated separately. Incomplete task deadlines are shown in day headings or month cells. Month view includes event labels, with an option to see additional events in Day view.
 
@@ -106,6 +106,7 @@ Browser automation could not complete: the browser connector was unavailable and
 8. Use only Tab, Shift+Tab, Enter, Space, and Escape. Check dialog focus, closed task-details validation, calendar selection, and retained checkbox focus.
 9. Check at 360px, 768px, and 1280px widths: no clipped text, overlapping controls, or horizontal scrolling. Enable reduced motion and inspect hover behaviour.
 10. Switch Day, Week, and Month. Cross a month/year boundary, select Today, and verify the correct dates and stored activities.
+    Choose Month and reload: Month should reopen. Repeat with Day and Week, then check that changing the demo's view does not change your personal planner's preference.
 11. Click a 09:30 time slot, save an activity, then click its block to change time/date. Attempt a conflicting move and confirm the original remains. Reload and check the successful move persists.
 12. Tab to a time slot, use arrows and Enter to open the editor, then Escape to close. Confirm focus returns to the calendar. Week and Month may scroll within their own containers on narrow screens; the page itself should not overflow.
 
