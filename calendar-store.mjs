@@ -86,6 +86,25 @@ export function createCalendarStore(storage) {
       const day = getDay(date);
       day.commitments = day.commitments.filter(entry => entry.id !== id);
       save(date, day);
+    },
+    moveCommitment(from, to, item) {
+      const origin = getDay(from);
+      if (!origin.commitments.some(entry => entry.id === item.id)) throw new Error('This activity no longer exists.');
+      if (from === to) {
+        origin.commitments = origin.commitments.map(entry => entry.id === item.id ? { ...item } : entry);
+        save(from, origin);
+        return;
+      }
+      const target = getDay(to);
+      if (target.commitments.some(entry => entry.id === item.id)) throw new Error('This activity already exists on that date.');
+      origin.commitments = origin.commitments.filter(entry => entry.id !== item.id);
+      target.commitments.push({ ...item });
+      validateDay(origin);
+      validateDay(target);
+      // Moving is one write, so a conflict or storage failure cannot lose the original.
+      const next = { ...days, [from]: origin, [to]: target };
+      storage.setItem(CALENDAR_KEY, JSON.stringify(next));
+      days = next;
     }
   };
 }

@@ -74,3 +74,26 @@ test('local date keys and leap-day validation do not use UTC day boundaries', ()
   assert.doesNotThrow(() => store.getDay('2028-02-29'));
   assert.throws(() => store.getDay('2026-02-29'));
 });
+
+test('moving an activity preserves identity and persists as a single move', () => {
+  const storage = memoryStorage();
+  const store = createCalendarStore(storage);
+  store.saveCommitment(date, school);
+  store.moveCommitment(date, '2026-11-06', { ...school, start: '09:00', end: '15:30' });
+  const reloaded = createCalendarStore(storage);
+  assert.equal(reloaded.getDay(date).commitments.length, 0);
+  assert.deepEqual(reloaded.getDay('2026-11-06').commitments, [{ ...school, start: '09:00', end: '15:30' }]);
+});
+
+test('conflicting moves and failed storage writes leave the original activity intact', () => {
+  const storage = memoryStorage();
+  const store = createCalendarStore(storage);
+  store.saveCommitment(date, school);
+  store.saveCommitment('2026-11-06', { ...school, id: 'appointment' });
+  assert.throws(() => store.moveCommitment(date, '2026-11-06', school), /overlaps/);
+  assert.deepEqual(store.getDay(date).commitments, [school]);
+  storage.setItem = () => { throw new Error('Storage full'); };
+  assert.throws(() => store.moveCommitment(date, '2026-11-07', school));
+  assert.deepEqual(store.getDay(date).commitments, [school]);
+  assert.deepEqual(store.getDay('2026-11-07').commitments, []);
+});

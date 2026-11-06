@@ -21,10 +21,15 @@
       <section class="widget free-widget" aria-labelledby="free-heading"><p class="widget-label">SPACE IN YOUR DAY</p><h2 id="free-heading"><span id="free-minutes">—</span> <small>min free</small></h2><p class="muted" id="free-date">Within selected planning hours</p><p class="fine-print">Based on fixed commitments. Flexible tasks are not placed yet.</p></section>
       <section class="widget progress-widget" aria-labelledby="progress-heading"><p class="widget-label">ONE SMALL WIN AT A TIME</p><h2 id="progress-heading">Task progress</h2><div class="progress-line"><strong id="progress-value">—</strong><span class="muted">completed</span></div><progress id="task-progress" value="0" max="1" aria-label="Task completion"></progress><p class="fine-print">Across your task list</p></section>
       <section class="widget calendar-widget" aria-labelledby="calendar-heading">
-        <div class="section-heading"><div><p class="widget-label">THE BIGGER PICTURE</p><h2 id="calendar-heading">Your calendar</h2></div><button type="button" class="secondary" id="calendar-today">Today</button></div>
-        <div class="month-nav"><button type="button" class="secondary" id="previous-month" aria-label="Previous month">←</button><h3 id="calendar-month" aria-live="polite"></h3><button type="button" class="secondary" id="next-month" aria-label="Next month">→</button></div>
-        <div class="weekdays" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-        <div class="calendar-days" id="calendar-days" aria-label="Choose a day"></div>
+        <div class="section-heading"><div><p class="widget-label">MAKE SPACE FOR YOUR WEEK</p><h2 id="calendar-heading">Your calendar</h2></div><button type="button" id="calendar-add">+ Add activity</button></div>
+        <div class="calendar-toolbar">
+          <div class="period-controls"><button type="button" class="secondary" id="previous-period" aria-label="Previous week">←</button><button type="button" class="secondary" id="calendar-today">Today</button><button type="button" class="secondary" id="next-period" aria-label="Next week">→</button></div>
+          <h3 id="calendar-month" aria-live="polite"></h3>
+          <div class="calendar-view-switch" role="group" aria-label="Calendar view"><button type="button" class="secondary" data-calendar-view="day" aria-pressed="false">Day</button><button type="button" class="secondary" data-calendar-view="week" aria-pressed="true">Week</button><button type="button" class="secondary" data-calendar-view="month" aria-pressed="false">Month</button></div>
+        </div>
+        <p class="fine-print" id="calendar-instructions">Click a time to add an activity. Click an event to edit it. Use arrow keys to move between time slots.</p>
+        <div id="week-view" class="week-scroller" tabindex="0" role="region" aria-label="Scrollable calendar timetable"><div id="week-grid" class="week-grid"></div></div>
+        <div id="month-view" hidden><div class="weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div><div class="calendar-days" id="calendar-days" aria-label="Month calendar"></div></div>
         <div class="calendar-legend"><span><i class="legend-shades" aria-hidden="true"></i> Free → Busy</span><span>• Deadline</span><span><u>Underlined</u> Today</span><span>Outline: selected</span></div>
         <p id="calendar-status" role="status"></p><p id="calendar-error" role="alert" hidden></p>
       </section>
@@ -79,6 +84,7 @@
       <hr>
       <h3>Fixed commitments</h3><p class="calendar-note">School, practice, appointments. Enter one day at a time; overnight activities are not supported yet.</p>
       <form id="commitment-form">
+        <label for="commitment-date">Activity date</label><input id="commitment-date" name="date" type="date" required>
         <label for="commitment-title">What is happening?</label><input id="commitment-title" name="title" maxlength="120" required placeholder="For example, volleyball practice">
         <div class="task-fields commitment-times"><div><label for="commitment-start">Starts</label><input id="commitment-start" name="start" type="time" required></div><div><label for="commitment-end">Ends</label><input id="commitment-end" name="end" type="time" required></div></div>
         <div class="dialog-actions"><button type="submit" id="save-commitment">Add commitment</button><button type="button" class="secondary" id="cancel-commitment" hidden>Cancel edit</button></div>

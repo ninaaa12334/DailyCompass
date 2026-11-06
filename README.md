@@ -34,6 +34,18 @@ Progress is across the saved task list, not a claimed count of tasks completed t
 
 ## Existing features preserved
 
+### Calendar workspace update
+
+The calendar now has Day, Week, and Month views instead of a small date picker. Desktop starts in Week; narrow screens start in Day. Use Today and the arrows to navigate the current view. Week view can scroll horizontally on small screens; the timetable has its own vertical scroll area and shows all 24 hours, initially scrolled to the morning.
+
+Events sit at their actual start times with height proportional to duration. Hatched time is outside the day's planning hours, and a line marks the current time today. Date numbers keep the busyness colours; today is underlined and the selected day is indicated separately. Incomplete task deadlines are shown in day headings or month cells. Month view includes event labels, with an option to see additional events in Day view.
+
+Click an empty time slot to prefill a new activity (mouse clicks snap to 30 minutes), or click an event to edit it. The normal form supports exact minutes. Change Activity date to move an event; conflicts are checked before the source is removed, and the move is saved in one storage write. To edit times from the keyboard, Tab to a time slot and use arrow keys, Home/End, then Enter. The Add activity button remains a normal-form alternative. Short event blocks can clip their text; clicking them or selecting the date shows their full details.
+
+This milestone does not introduce drag-and-drop, recurrence, external calendar sync, or automatic task scheduling. Flexible tasks remain in the task list. Your landing page and theme selection are preserved.
+
+Calendar learning task: an event at 09:30 starts 570 minutes after midnight. Find `eventPosition()` in `calendar-view.mjs` and explain how its start and duration become the block's vertical position and height.
+
 Tasks support title, category, optional deadline, duration, and priority; editing, deletion, completion, reopening, and filtering all persist. Extra task fields are under Category, deadline & priority; editing opens them automatically.
 
 Select a date and use Add activity to open day setup. Save planning hours and a per-date busy colour, then add, edit, or remove fixed commitments. Commitments cannot overlap; adjacent events are allowed. Entries are for individual dates, without recurrence or overnight support.
@@ -58,6 +70,7 @@ This stage does not add automatic scheduling, natural-language parsing, AI, remi
 
 - `app.js` connects task forms to `task-store.mjs` and renders task rows with safe `textContent`.
 - `calendar-ui.mjs` connects the calendar and native day-setup dialog to `calendar-store.mjs`.
+- `calendar-view.mjs` calculates dates and event placement; `timetable-ui.mjs` renders the clock grid and its keyboard controls.
 - `dashboard-summary.mjs` reads the same saved data for current/next events, capacity, and progress.
 - `appearance.mjs` validates preferences and calculates colour contrast. `theme-ui.mjs` applies shared CSS custom properties and handles the appearance dialog.
 - `storage.mjs` and `runtime.mjs` choose real or isolated demo storage. `demo.mjs` seeds example tasks/commitments only into the demo.
@@ -74,6 +87,7 @@ node task-store.test.mjs
 node calendar-store.test.mjs
 node appearance.test.mjs
 node dashboard-summary.test.mjs
+node calendar-view.test.mjs
 ```
 
 Tests cover task persistence and failure handling, commitment conflicts, date boundaries, overlapping capacity, theme persistence, accent/text contrast of at least 4.5:1, demo isolation, and current/next event boundaries. Source syntax, HTML references, and local file delivery are checked separately.
@@ -91,6 +105,9 @@ Browser automation could not complete: the browser connector was unavailable and
 7. Add a task deadline on that date and complete it: verify the deadline dot updates. Check calendar selection does not change the global appearance.
 8. Use only Tab, Shift+Tab, Enter, Space, and Escape. Check dialog focus, closed task-details validation, calendar selection, and retained checkbox focus.
 9. Check at 360px, 768px, and 1280px widths: no clipped text, overlapping controls, or horizontal scrolling. Enable reduced motion and inspect hover behaviour.
+10. Switch Day, Week, and Month. Cross a month/year boundary, select Today, and verify the correct dates and stored activities.
+11. Click a 09:30 time slot, save an activity, then click its block to change time/date. Attempt a conflicting move and confirm the original remains. Reload and check the successful move persists.
+12. Tab to a time slot, use arrows and Enter to open the editor, then Escape to close. Confirm focus returns to the calendar. Week and Month may scroll within their own containers on narrow screens; the page itself should not overflow.
 
 Small learning exercise: change one theme's display label in `appearance.mjs`, then explain how CSS custom properties let all widgets change together. Compare `localStorage` with the demo's `sessionStorage` before the next stage.
 
