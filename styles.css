@@ -344,3 +344,77 @@ textarea { width: 100%; font: inherit; color: var(--text); background: var(--sur
 .week-corner { overflow-wrap: anywhere; padding: .2rem; }
 #hours-form input, #hours-form select { margin-bottom: .8rem; }
 @media (max-width: 580px) { #activity-form .task-fields, #planning-form .task-fields { grid-template-columns: 1fr; } }
+
+/* Phone calendars show readable days instead of shrinking seven time columns. */
+.calendar-header-actions { display: flex; align-items: center; gap: .5rem; }
+.calendar-timezone { font-size: .7rem; color: var(--muted); margin: -.3rem 0 .8rem; }
+.mobile-month-indicator { display: none; }
+.event-label { display: flex; flex-direction: column; gap: .25rem; width: 100%; }
+.mobile-week-days, .mobile-month-agenda { display: none; }
+@media (max-width: 580px) {
+  .calendar-widget .section-heading { align-items: center; flex-wrap: nowrap; }
+  .calendar-widget .section-heading .widget-label { display: none; }
+  .calendar-widget h2 { font-size: 1.2rem; }
+  .calendar-header-actions button { min-height: 2.75rem; font-size: .85rem; }
+  .calendar-add-label { display: none; }
+  #calendar-add { min-width: 2.75rem; padding: .25rem; font-size: 1.45rem; }
+  .calendar-toolbar { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem; gap: .65rem; }
+  .calendar-view-switch { grid-row: 1; grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; gap: .25rem; padding: .2rem; }
+  .calendar-view-switch button { min-height: 3rem; font-size: .85rem; }
+  .period-controls { display: contents; }
+  #previous-period { grid-row: 2; grid-column: 1; padding: 0; min-width: 2.75rem; }
+  #next-period { grid-row: 2; grid-column: 3; padding: 0; min-width: 2.75rem; }
+  .calendar-toolbar h3 { grid-row: 2; grid-column: 2; width: auto; text-align: center; font-size: .95rem; line-height: 1.4; }
+  #calendar-instructions { font-size: .75rem; line-height: 1.5; margin-bottom: .6rem; }
+  .calendar-planning-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-bottom: 1rem; }
+  .calendar-planning-actions button { padding: .6rem .4rem; min-height: 3rem; font-size: .8rem; line-height: 1.3; }
+  .mobile-week-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .15rem; margin: 0 0 .8rem; }
+  .mobile-week-day { min-width: 0; padding: .3rem 0; min-height: 4rem; display: flex; flex-direction: column; gap: .3rem; border: 2px solid transparent; border-radius: .75rem; color: var(--text); background: transparent; }
+  .mobile-week-day > span { font-size: .65rem; font-weight: 500; }
+  .mobile-week-day strong { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: .6rem; font-size: 1rem; font-weight: 600; }
+  .mobile-week-day[aria-pressed="true"] { border-color: var(--focus); background: var(--surface-alt); }
+  .mobile-week-day[aria-current="date"] strong { text-decoration: underline; text-underline-offset: .2rem; }
+  .mobile-week-day[data-color="blue"] { --busy: #304b6d; --busy-ink: #fff; }
+  .mobile-week-day[data-color="sage"] { --busy: #365a47; --busy-ink: #fff; }
+  .mobile-week-day[data-color="lavender"] { --busy: #5b4879; --busy-ink: #fff; }
+  .mobile-week-day[data-color="rose"] { --busy: #7c4355; --busy-ink: #fff; }
+  .mobile-week-day[data-load="1"] strong { background: color-mix(in srgb, var(--busy) 12%, var(--surface)); }
+  .mobile-week-day[data-load="2"] strong { background: color-mix(in srgb, var(--busy) 28%, var(--surface)); }
+  .mobile-week-day[data-load="3"] strong { background: var(--busy); color: var(--busy-ink); }
+  .week-scroller { height: clamp(20rem, 55dvh, 30rem); }
+  .week-grid[data-view="day"] { grid-template-columns: 2.9rem minmax(0, 1fr); }
+  .time-axis > div { font-size: .72rem; padding-right: .3rem; }
+  .week-corner { font-size: .65rem; }
+  .week-day-heading { font-size: .8rem; }
+  .week-day-heading small { font-size: .65rem; }
+  .week-event { display: flex; overflow: clip; padding: .5rem .6rem; }
+  .week-event strong { font-size: .9rem; }
+  .week-event small { font-size: .75rem; }
+  .week-event .event-label { position: sticky; top: 4.9rem; }
+  .week-event.short-event { padding: 0 .4rem; display: flex; }
+  .short-event .event-label { position: static; }
+  #month-view { max-height: none; overflow: visible; }
+  #month-view .weekdays { min-width: 0; position: static; padding: .6rem 0; font-size: .6rem; }
+  #calendar-days { min-width: 0; }
+  .month-cell { min-height: 4rem; padding: .2rem; gap: 0; }
+  .month-cell .calendar-day { width: 100%; min-height: 3.5rem; padding: .2rem 0; flex-direction: column; gap: .15rem; font-size: 1rem; border-radius: .6rem; }
+  .mobile-month-indicator { display: block; min-height: .65rem; font-size: .6rem; line-height: 1; letter-spacing: .1em; }
+  .month-cell .calendar-day[data-due="true"]::after { left: auto; right: .2rem; top: .2rem; bottom: auto; }
+  .month-cell .month-event, .month-cell .month-more, .month-cell .month-due { display: none; }
+  .mobile-month-agenda { display: block; border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; }
+  .mobile-month-agenda h3 { margin-bottom: 0; font-size: .95rem; }
+  #mobile-agenda-list { margin-top: .5rem; }
+  #mobile-agenda-list li { padding: .25rem 0; }
+  .mobile-agenda-entry { display: flex; align-items: flex-start; flex-direction: column; width: 100%; min-height: 3rem; gap: .25rem; padding: .7rem .6rem; border: 0; border-left: 3px solid var(--accent); border-radius: .4rem; background: var(--surface-alt); color: var(--text); text-align: left; }
+  .mobile-agenda-time { color: var(--muted); font-size: .75rem; font-weight: 450; }
+  .mobile-agenda-entry strong { font-size: .9rem; overflow-wrap: anywhere; }
+  .dashboard-page dialog input, .dashboard-page dialog select, .dashboard-page dialog textarea { font-size: 1rem; }
+}
+.deadline-symbol { font-style: normal; }
+@media (max-width: 580px) {
+  .month-cell .calendar-day[data-due="true"]::after { border-radius: 0; transform: rotate(45deg); }
+  .deadline-symbol { font-size: 0; }
+  .deadline-symbol::before { content: '\25C6'; font-size: .6rem; }
+}
+/* Keep the keyboard skip link truly clipped until it receives focus. */
+.skip-link:not(:focus) { clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; white-space: nowrap; padding: 0; }

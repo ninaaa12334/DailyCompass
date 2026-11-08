@@ -49,10 +49,12 @@ Data remains in this browser profile, not in an account. Clearing browser data r
 ## Stage 2: calendar and activities
 
 - Day: a 24-hour timeline with activity blocks at their actual times.
-- Week: seven dated columns, sticky headings, time labels, and scrolling within the calendar.
-- Month: six Monday-first weeks including leading/trailing dates, activity labels, deadline markers, and busyness shading.
+- Week: seven dated columns on desktop; on phones, a seven-day selector opens a full-width timeline for the selected day, without horizontal scrolling.
+- Month: six Monday-first weeks including leading/trailing dates, deadline markers, and busyness shading. On phones the grid fits the screen, activity dots replace cramped labels, and full activity names/times appear in a selected-day agenda below it. Desktop retains event labels.
 - Today, selected dates, deadline dots, and completed activities have distinct indicators; exact booked/free time appears in the selected-day panel.
 - Previous/next moves by the active view. Today uses the configured timezone. The selected view is saved. Narrow screens initially use Day.
+- Phone view buttons have 48-pixel height, navigation has separate touch targets, and event/time text is larger. Long event labels stay visible while scrolling. The timeline initially scrolls near the current time for today or near the first activity/planning hours for another date, and ordinary task updates do not reset that scroll position.
+- Resizing between phone and desktop changes the presentation while preserving the chosen Day/Week/Month preference. The phone Month view distinguishes activity dots from the diamond deadline marker; selected dates and today keep their separate outline/underline indicators.
 - Clicking a slot prefills its date and start/end time. Keyboard arrows, Home/End, and Enter provide a slot-entry alternative.
 - All Add activity buttons use one editor. The quick task form opens that editor as a flexible task.
 
@@ -115,6 +117,7 @@ Browser tests cover:
 - Recurrence exceptions, fixed/flexible planning, preview/cancel/apply, locks, replanning, overfull days, and saved unscheduled explanations.
 - Timezone persistence, notification denial, in-app reminder rescheduling/cancellation without duplicate receipts.
 - Mobile layout, dialog fitting, keyboard dismissal, and focus return. Desktop and mobile screenshots have also been visually inspected.
+- Phone calendar widths at 360, 390, and 430 pixels, touch day selection, screen-fitting month grids, selected-day agenda editing, long-event label visibility, and restoring seven desktop columns after resizing. These are isolated Chrome mobile emulations, not physical iPhone/Safari tests.
 
 ## Learning map
 

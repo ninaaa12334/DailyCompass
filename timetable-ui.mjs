@@ -10,7 +10,7 @@ export function renderTimetable(grid, options) {
   grid.dataset.view = dates.length === 1 ? 'day' : 'week';
   const corner = document.createElement('div');
   corner.className = 'week-corner';
-  corner.textContent = grid.dataset.timeZone;
+  corner.textContent = 'Time'; corner.title = grid.dataset.timeZone;
   grid.append(corner);
 
   for (const date of dates) {
@@ -94,7 +94,7 @@ export function renderTimetable(grid, options) {
       button.setAttribute('aria-label', `Edit ${item.title}, ${date}, ${item.start} to ${item.end}`);
       const title = document.createElement('strong'); title.textContent = item.title;
       const time = document.createElement('small'); time.textContent = `${item.start}–${item.end}`;
-      button.append(title, time);
+      const label = document.createElement('span'); label.className = 'event-label'; label.append(title, time); button.append(label);
       if (item.kind !== 'break') button.addEventListener('click', () => onEdit(date, item));
       column.append(button);
     }

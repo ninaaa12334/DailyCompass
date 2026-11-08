@@ -9,9 +9,10 @@ export function initCalendar(model, handlers) {
   const $ = selector => document.querySelector(selector);
   const now = () => zonedNow(new Date(), model.snapshot().settings.timeZone);
   let selected = now().date;
-  let view = window.matchMedia('(max-width: 580px)').matches ? 'day' : 'week';
+  const compactScreen = window.matchMedia('(max-width: 580px)');
+  let view = compactScreen.matches ? 'day' : 'week';
   try { const saved = storage.getItem('day-compass.calendar-view.v1'); if (['day', 'week', 'month'].includes(saved)) view = saved; } catch {}
-  let focusHour = 9, initialized = false;
+  let focusHour = 9, lastTimedKey = '';
   function choose(date) { selected = date; render(); handlers.onSelection?.(); }
   function open(date, item, start) { choose(date); if (item?.kind !== 'break') handlers.onActivity({ date, item, start }); }
   function renderMonth() {
@@ -24,7 +25,8 @@ export function initCalendar(model, handlers) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'calendar-day'; button.textContent = Number(date.slice(-2));
       Object.assign(button.dataset, { date, color: day.color, load: ratio === 0 ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3', due: due ? 'true' : 'false' });
       button.setAttribute('aria-pressed', String(date === selected));
-      button.setAttribute('aria-label', `${dateLabel(date)}, ${booked} minutes booked, ${due} deadlines. Select day.`);
+      button.setAttribute('aria-label', `${dateLabel(date)}, ${day.commitments.length} activities, ${booked} minutes booked, ${due} deadlines. Select day.`);
+      const markers = document.createElement('span'); markers.className = 'mobile-month-indicator'; markers.setAttribute('aria-hidden', 'true'); markers.textContent = day.commitments.length ? '•'.repeat(Math.min(3, day.commitments.length)) : ''; button.append(markers);
       if (date === now().date) button.setAttribute('aria-current', 'date');
       button.addEventListener('click', () => { choose(date); [...grid.querySelectorAll('.calendar-day')].find(node => node.dataset.date === date)?.focus(); }); cell.append(button);
       const events = [...day.commitments].sort((a, b) => minutes(a.start) - minutes(b.start));
@@ -39,20 +41,63 @@ export function initCalendar(model, handlers) {
       grid.append(cell);
     }
   }
+  function renderMobileWeek() {
+    const strip = $('#mobile-week-days'); strip.replaceChildren();
+    for (const date of weekDates(selected)) {
+      const day = model.getDay(date), stats = planningCapacity(day, model.snapshot().settings);
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'mobile-week-day';
+      Object.assign(button.dataset, { date, color: day.color, load: stats.ratio === 0 ? '0' : stats.ratio <= 1 / 3 ? '1' : stats.ratio <= 2 / 3 ? '2' : '3' });
+      button.setAttribute('aria-pressed', String(date === selected));
+      button.setAttribute('aria-label', `${dateLabel(date)}, ${day.commitments.length} activities, ${stats.free} minutes free. Show timeline.`);
+      if (date === now().date) button.setAttribute('aria-current', 'date');
+      const weekday = document.createElement('span'); weekday.textContent = dateLabel(date, { weekday: 'short', month: undefined, day: undefined });
+      const number = document.createElement('strong'); number.textContent = Number(date.slice(-2));
+      button.append(weekday, number);
+      button.addEventListener('click', () => { choose(date); [...strip.querySelectorAll('button')].find(node => node.dataset.date === date)?.focus(); }); strip.append(button);
+    }
+  }
+  function renderMobileAgenda() {
+    $('#mobile-agenda-heading').textContent = dateLabel(selected);
+    const list = $('#mobile-agenda-list'); list.replaceChildren();
+    const activities = model.getDay(selected).commitments.sort((a, b) => minutes(a.start) - minutes(b.start));
+    $('#mobile-agenda-empty').textContent = activities.length ? '' : 'A clear day. Tap + Add to plan something.';
+    for (const item of activities) {
+      const li = document.createElement('li');
+      const entry = document.createElement(item.kind === 'break' ? 'div' : 'button');
+      entry.className = `mobile-agenda-entry${item.completed ? ' completed' : ''}`;
+      if (item.kind !== 'break') { entry.type = 'button'; entry.setAttribute('aria-label', `Edit ${item.title}, ${item.start} to ${item.end}`); entry.addEventListener('click', () => open(selected, item)); }
+      const time = document.createElement('span'); time.className = 'mobile-agenda-time'; time.textContent = `${item.start}–${item.end}`;
+      const title = document.createElement('strong'); title.className = 'task-title'; title.textContent = item.title;
+      entry.append(time, title); li.append(entry); list.append(li);
+    }
+  }
   function render() {
+    const compact = compactScreen.matches;
     const dates = view === 'day' ? [selected] : weekDates(selected);
-    $('#calendar-month').textContent = view === 'month' ? dateLabel(selected, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' }) : view === 'day' ? dateLabel(selected, { year: 'numeric' }) : `${dateLabel(dates[0])} – ${dateLabel(dates[6], { year: 'numeric' })}`;
+    const shortDate = date => dateLabel(date, { weekday: undefined, year: undefined });
+    $('#calendar-month').textContent = view === 'month' ? dateLabel(selected, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' }) : view === 'day' ? dateLabel(selected, { year: compact ? undefined : 'numeric' }) : compact ? `${shortDate(dates[0])} – ${shortDate(dates[6])}` : `${dateLabel(dates[0])} – ${dateLabel(dates[6], { year: 'numeric' })}`;
     $('#previous-period').setAttribute('aria-label', `Previous ${view}`); $('#next-period').setAttribute('aria-label', `Next ${view}`);
     document.querySelectorAll('[data-calendar-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.calendarView === view)));
     $('#month-view').hidden = view !== 'month'; $('#week-view').hidden = view === 'month';
-    $('#calendar-instructions').textContent = view === 'month' ? 'Select a date for its agenda. Click an activity to edit it.' : 'Click a time to add an activity. Arrow keys move between slots. Hatched areas are outside planning hours. Swipe sideways in Week view.';
+    $('#mobile-week-days').hidden = !compact || view !== 'week';
+    $('#mobile-month-agenda').hidden = !compact || view !== 'month';
+    $('#calendar-timezone').textContent = `Times in ${model.snapshot().settings.timeZone}`;
+    $('#calendar-instructions').textContent = compact ? view === 'month' ? 'Tap a date to see its activities below. Dots mark activities.' : view === 'week' ? 'Choose a day above its timeline. Tap a time to add an activity.' : 'Tap a time to add, or an activity to edit.' : view === 'month' ? 'Select a date for its agenda. Click an activity to edit it.' : 'Click a time to add an activity. Arrow keys move between slots. Hatched areas are outside planning hours.';
+    if (compact && view === 'week') renderMobileWeek();
+    if (compact && view === 'month') renderMobileAgenda();
     if (view === 'month') renderMonth();
     else {
-      renderTimetable($('#week-grid'), { dates, selected, focusHour, timeZone: model.snapshot().settings.timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.snapshot().settings),
+      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, timeZone: model.snapshot().settings.timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.snapshot().settings),
         onSelect: date => choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
         onNavigate: (date, hour) => { focusHour = hour; choose(date); [...document.querySelectorAll('.time-slot')].find(node => node.dataset.date === date && Number(node.dataset.hour) === hour)?.focus(); }
       });
-      if (!initialized) { $('#week-view').scrollTop = 420; initialized = true; }
+      // Reposition only when the date/view changes, never on an ordinary task update.
+      const timedKey = `${selected}|${view}|${compact}`;
+      if (timedKey !== lastTimedKey) {
+        const first = model.getDay(selected).commitments.sort((a, b) => minutes(a.start) - minutes(b.start))[0];
+        const target = selected === now().date ? Math.max(0, now().minute - 60) : first ? Math.max(0, minutes(first.start) - 30) : minutes(model.getDay(selected).start);
+        $('#week-view').scrollTop = target; lastTimedKey = timedKey;
+      }
     }
     const day = model.getDay(selected), stats = planningCapacity(day, model.snapshot().settings);
     $('#selected-day').textContent = dateLabel(selected, { year: 'numeric' });
@@ -71,6 +116,7 @@ export function initCalendar(model, handlers) {
     $('#day-deadlines').textContent = due.length ? `Due or overdue: ${due.map(task => `${task.title} (${task.deadline})`).join(', ')}` : 'No incomplete deadlines on or before this date.';
   }
   for (const id of ['#calendar-add', '#setup-day']) $(id).addEventListener('click', () => open(selected));
+  $('#mobile-agenda-add').addEventListener('click', () => open(selected));
   $('#edit-day-hours').addEventListener('click', () => handlers.onHours(selected));
   document.querySelectorAll('[data-calendar-view]').forEach(button => button.addEventListener('click', () => { view = button.dataset.calendarView; render(); try { storage.setItem('day-compass.calendar-view.v1', view); } catch { $('#calendar-status').textContent = 'View changed but the preference could not be saved.'; } }));
   for (const [id, direction] of [['#previous-period', -1], ['#next-period', 1]]) $(id).addEventListener('click', () => {
@@ -79,6 +125,7 @@ export function initCalendar(model, handlers) {
     render(); handlers.onSelection?.();
   });
   $('#calendar-today').addEventListener('click', () => choose(now().date));
+  compactScreen.addEventListener('change', () => { lastTimedKey = ''; render(); });
   setInterval(() => { if (!document.hidden && view !== 'month') updateNowLines($('#week-grid')); }, 60000);
   render();
   return { getSelectedDate: () => selected, selectDate: choose, refresh: render };
