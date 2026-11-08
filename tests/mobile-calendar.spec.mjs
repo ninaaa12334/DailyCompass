@@ -14,11 +14,11 @@ for (const width of [360, 390, 430]) {
   test(`phone calendar fits Day, Week, and Month at ${width}px`, async ({ page }) => {
     await ready(page, width);
     for (const view of ['Day', 'Week', 'Month']) {
-      await page.getByRole('button', { name: view, exact: true }).tap();
+      await page.getByRole('group', { name: 'Calendar view' }).getByRole('button', { name: view, exact: true }).tap();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       const viewport = page.locator(view === 'Month' ? '#month-view' : '#week-view');
       expect(await viewport.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
-      const switchButton = page.getByRole('button', { name: view, exact: true });
+      const switchButton = page.getByRole('group', { name: 'Calendar view' }).getByRole('button', { name: view, exact: true });
       expect((await switchButton.boundingBox()).height).toBeGreaterThanOrEqual(44);
       if (view === 'Week') {
         await expect(page.locator('.mobile-week-day')).toHaveCount(7);
@@ -31,7 +31,7 @@ for (const width of [360, 390, 430]) {
 
 test('mobile week day selection preserves Week preference and returns to seven columns on desktop', async ({ page }) => {
   await ready(page);
-  await page.getByRole('button', { name: 'Week', exact: true }).tap();
+  await page.getByRole('group', { name: 'Calendar view' }).getByRole('button', { name: 'Week', exact: true }).tap();
   await page.locator('.mobile-week-day[data-date="2026-11-06"]').tap();
   await expect(page.locator('#selected-day')).toContainText('Nov 6');
   await expect(page.locator('.time-day-column')).toHaveAttribute('data-date', '2026-11-06');
@@ -42,12 +42,12 @@ test('mobile week day selection preserves Week preference and returns to seven c
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect(page.locator('.time-day-column')).toHaveCount(7);
   await expect(page.locator('#mobile-week-days')).toBeHidden();
-  await expect(page.getByRole('button', { name: 'Week', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('group', { name: 'Calendar view' }).getByRole('button', { name: 'Week', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('mobile month agenda reads full activity names and opens the shared editor for the selected date', async ({ page }) => {
   await ready(page);
-  await page.getByRole('button', { name: 'Month', exact: true }).tap();
+  await page.getByRole('group', { name: 'Calendar view' }).getByRole('button', { name: 'Month', exact: true }).tap();
   await expect(page.locator('#mobile-agenda-list')).toContainText('School');
   await page.locator('#mobile-agenda-list').getByRole('button', { name: /Edit School/ }).tap();
   await expect(page.locator('#activity-start')).toHaveValue('08:00');

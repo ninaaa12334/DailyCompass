@@ -4,7 +4,7 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your planner · Day Compass</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#73866d"><link rel="apple-touch-icon" href="compass-icon.svg">
+  <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#6554cf"><link rel="apple-touch-icon" href="compass-icon.svg">
   <script src="theme-ui.mjs" type="module"></script><script src="bootstrap.js" defer></script>
 </head>
 <body class="dashboard-page">
@@ -16,14 +16,19 @@
   </nav>
   <main id="planner" tabindex="-1">
     <div class="local-banner" id="planner-mode">Local planner · Saved in this browser</div>
-    <header class="dashboard-heading"><div><p class="eyebrow" id="dashboard-date">A LITTLE DIRECTION FOR YOUR DAY</p><h1>A day that feels like you.</h1><p class="muted">Make room for the things that matter.</p></div><a class="button secondary" href="#task-title">+ Add a task</a></header>
+    <header class="dashboard-heading"><div><p class="eyebrow" id="dashboard-date">A LITTLE DIRECTION FOR YOUR DAY</p><h1>Make today yours.</h1><p class="muted">A little focus. A little breathing room.</p></div><a class="button secondary" href="#task-title">+ Add a task</a></header>
     <p id="startup-status" role="status">Loading your saved planner...</p>
     <section id="startup-error" class="widget" role="alert" hidden><h2>Let us get your planner working</h2><p>Retry without deleting your data. If the problem continues, download a backup for recovery.</p><details><summary>Error details</summary><pre id="startup-detail"></pre></details><button type="button" id="retry-startup">Retry</button><button type="button" class="secondary" id="export-backup">Download saved data</button></section>
     <div class="planner-actions"><button type="button" class="secondary" id="open-planning-settings">Planning settings</button><button type="button" class="secondary" id="undo-action" disabled>Undo last change</button><span id="planner-feedback" role="status"></span></div>
     <div class="dashboard-grid">
+      <section class="widget progress-widget" aria-labelledby="progress-heading">
+        <div class="productivity-heading"><div><p class="widget-label">YOUR LITTLE WINS</p><h2 id="progress-heading">Productivity</h2></div><span class="sparkle-icon" aria-hidden="true">&#10022;</span></div>
+        <div class="productivity-switch" role="group" aria-label="Productivity period"><button type="button" data-productivity-period="day" aria-pressed="true">Day</button><button type="button" data-productivity-period="week" aria-pressed="false">Week</button><button type="button" data-productivity-period="month" aria-pressed="false">Month</button></div>
+        <div class="productivity-content"><div class="productivity-ring" id="task-progress" role="progressbar" aria-label="Task completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="productivity-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="var(--ring-start)"/><stop offset="100%" stop-color="var(--ring-end)"/></linearGradient></defs><circle class="ring-track" cx="60" cy="60" r="49"/><circle id="productivity-arc" cx="60" cy="60" r="49" pathLength="100" stroke-dasharray="0 100"/></svg><div class="ring-center"><strong id="productivity-percent">0%</strong><span>complete</span></div></div><div class="productivity-copy"><strong id="progress-value">A fresh start</strong><p id="productivity-message">Add a task to get going.</p><p id="progress-scope" class="fine-print"></p></div></div>
+        <p class="productivity-definition">Tasks dated, due or scheduled in this period. Each task counts once.</p>
+      </section>
       <section class="widget now-widget" aria-labelledby="now-heading"><p class="widget-label">RIGHT NOW</p><h2 id="now-heading">Loading your day…</h2><p id="now-detail" class="muted"></p><div class="next-row"><span class="status-dot" aria-hidden="true"></span><p id="next-activity">Reading saved activities.</p></div></section>
       <section class="widget free-widget" aria-labelledby="free-heading"><p class="widget-label">SPACE IN YOUR DAY</p><h2 id="free-heading"><span id="free-minutes">—</span> <small>min free</small></h2><p class="muted" id="free-date">Within selected planning hours</p><p class="fine-print">Fixed events, scheduled tasks, and breaks inside planning hours.</p></section>
-      <section class="widget progress-widget" aria-labelledby="progress-heading"><p class="widget-label">ONE SMALL WIN AT A TIME</p><h2 id="progress-heading">Task progress</h2><div class="progress-line"><strong id="progress-value">—</strong><span class="muted">completed</span></div><progress id="task-progress" value="0" max="1" aria-label="Task completion"></progress><p class="fine-print"><span id="progress-scope">Tasks scheduled or due on the selected date</span></p></section>
       <section class="widget calendar-widget" aria-labelledby="calendar-heading">
         <div class="section-heading"><div><p class="widget-label">MAKE SPACE FOR YOUR WEEK</p><h2 id="calendar-heading">Your calendar</h2></div><div class="calendar-header-actions"><button type="button" class="secondary" id="calendar-today">Today</button><button type="button" id="calendar-add" aria-label="Add activity"><span aria-hidden="true">+</span><span class="calendar-add-label">Add activity</span></button></div></div>
         <div class="calendar-toolbar">

@@ -10,6 +10,7 @@ import { timeLabel } from './calendar-view.mjs';
 import { loadAccount } from './account-client.mjs';
 import { initAssistant } from './assistant-ui.mjs';
 import { wallToInstant } from './zoned-time.mjs';
+import { initProductivity } from './productivity.mjs';
 
 export async function startApp() {
   const $ = selector => document.querySelector(selector);
@@ -17,7 +18,7 @@ export async function startApp() {
   if (isDemo) seedDemo(storage);
   const model = createPlannerStore(storage);
   const form = $('#activity-form');
-  let calendar, assistant, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
+  let calendar, assistant, productivity, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
   const displayedNotifications = new Map();
   const now = () => zonedNow(new Date(), model.snapshot().settings.timeZone);
   const field = name => form.elements.namedItem(name);
@@ -107,11 +108,7 @@ export async function startApp() {
     $('#now-detail').textContent = current ? `Until ${current.end}` : 'No activity scheduled right now.';
     $('#next-activity').textContent = next ? `Next: ${next.title} at ${next.start}${nextDate !== currentTime.date ? ` on ${dateLabel(nextDate)}` : ''}` : 'No upcoming activities scheduled.';
     $('#free-minutes').textContent = planningCapacity(day, model.snapshot().settings).free; $('#free-date').textContent = `${model.snapshot().settings.setupConfirmed ? 'Unbooked' : 'Estimate — finish availability setup'} on ${dateLabel(date)}`;
-    const placedIds = new Set(day.commitments.filter(item => item.kind === 'task').map(item => item.taskId));
-    const tasks = model.getTasks().filter(task => task.date === date || task.deadline === date || placedIds.has(task.id));
-    const done = tasks.filter(task => task.completed).length;
-    $('#progress-value').textContent = `${done} / ${tasks.length}`; $('#task-progress').max = tasks.length || 1; $('#task-progress').value = done;
-    $('#progress-scope').textContent = `Tasks dated, due, or scheduled on ${dateLabel(date)}`;
+    productivity?.render();
     $('#undo-action').disabled = !model.snapshot().undo;
     const unplaced = $('#day-unscheduled'); unplaced.replaceChildren();
     for (const item of model.snapshot().unscheduled?.[date] || []) if (model.getTasks().some(task => task.id === item.taskId && !task.completed)) {
@@ -196,6 +193,7 @@ export async function startApp() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderSummary(); tickReminders(); } });
   window.addEventListener('storage', event => { if (event.key === PLANNER_KEY && !isDemo) attempt(() => model.reload()); });
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }
+  productivity = initProductivity({ model, storage, selectedDate: calendar.getSelectedDate });
   assistant = initAssistant({ model, account, calendar, openActivity, now });
   renderTasks(); renderSummary(); tickReminders();
 }

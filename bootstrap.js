@@ -5,6 +5,7 @@
   let ready = false;
   const timeout = setTimeout(() => fail(new Error('Planner files took too long to load. Check the local server address, then Retry.')), 10000);
   function fail(error) {
+    document.body.dataset.plannerReady = 'false';
     clearTimeout(timeout);
     panel.hidden = false;
     status.textContent = 'Your planner could not finish loading. Your saved data has not been reset.';
@@ -31,6 +32,6 @@
   window.addEventListener('error', event => { if (!ready) fail(event.error || new Error(event.message || 'A planner file could not be loaded.')); });
   window.addEventListener('unhandledrejection', event => { if (!ready) fail(event.reason); });
   import('./app.js').then(async module => {
-    await module.startApp(); ready = true; clearTimeout(timeout); panel.hidden = true; status.textContent = 'Planner ready.';
+    await module.startApp(); ready = true; document.body.dataset.plannerReady = 'true'; clearTimeout(timeout); panel.hidden = true; status.textContent = 'Planner ready.';
   }).catch(fail);
 })();

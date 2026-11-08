@@ -19,19 +19,17 @@ for (const width of [360, 390, 430]) test(`assistant tabs, setup, and welcome fi
   }
   await page.goto('/index.html'); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
-test('setup routines persist, kept-free periods can be released, and quick entry opens confirmation', async ({ page }) => {
+test('setup routines persist and kept-free periods can be released', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-11-08T08:00:00Z') }); await ready(page); await setup(page);
   await expect(page.locator('#day-commitments')).toContainText('Meal break');
   const before = await page.locator('#availability-summary').textContent();
   await page.locator('#opportunity-list').getByRole('button', { name: 'Keep it free' }).first().click();
   await expect(page.locator('#opportunity-list')).toContainText('intentionally kept free');
   await page.getByRole('button', { name: 'Release kept-free period' }).click(); await expect(page.locator('#availability-summary')).toHaveText(before);
-  await page.locator('#quick-text').fill('Maths revision Friday at 4pm for 45 minutes'); await page.locator('#quick-entry').getByRole('button').click();
-  await expect(page.locator('#activity-date')).toHaveValue('2026-11-13'); await expect(page.locator('#activity-start')).toHaveValue('16:00'); await expect(page.locator('#activity-end')).toHaveValue('16:45');
-  await page.keyboard.press('Escape'); await page.reload(); await expect(page.locator('#availability-summary')).toContainText('minutes free');
+  await page.reload(); await expect(page.locator('#availability-summary')).toContainText('minutes free');
 });
 test('real account sign-in persists private planner, imports local data explicitly, and sign-out restores local mode', async ({ page }) => {
-  await ready(page); await page.locator('#quick-text').fill('My local task today at 4pm for 45 minutes'); await page.locator('#quick-entry').getByRole('button').click(); await page.locator('#save-activity').click();
+  await ready(page); await page.locator('#calendar-add').click(); await page.locator('#activity-title').fill('My local task'); await page.locator('#activity-start').fill('16:00'); await page.locator('#activity-end').fill('16:45'); await page.locator('#save-activity').click();
   await page.locator('[data-panel=settings]').click(); const username = `qa_${Date.now()}`;
   await page.locator('#account-name').fill(username); await page.locator('#account-password').fill('this-is-a-test-password'); await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.locator('#planner-mode')).toContainText(username); await expect(page.locator('#day-commitments')).not.toContainText('My local task');

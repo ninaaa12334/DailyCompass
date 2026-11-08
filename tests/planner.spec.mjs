@@ -30,7 +30,7 @@ test('first visit resolves loading, all views navigate, slot creation and keyboa
   await ready(page);
   await expect(page.locator('#now-heading')).toHaveText('A little breathing room');
   await expect(page.locator('.time-day-column')).toHaveCount(7);
-  await page.getByRole('button', { name: 'Day', exact: true }).click();
+  await page.getByRole('group', { name: 'Calendar view' }).getByRole('button', { name: 'Day', exact: true }).click();
   await expect(page.locator('.time-day-column')).toHaveCount(1);
   const slot = page.locator('.time-slot[data-hour="9"]');
   await slot.focus(); await page.keyboard.press('ArrowRight');
@@ -39,7 +39,7 @@ test('first visit resolves loading, all views navigate, slot creation and keyboa
   await expect(page.locator('#activity-date')).toHaveValue('2026-11-09');
   await expect(page.locator('#activity-start')).toHaveValue('09:00');
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Month', exact: true }).click();
+  await page.getByRole('group', { name: 'Calendar view' }).getByRole('button', { name: 'Month', exact: true }).click();
   await expect(page.locator('.month-cell')).toHaveCount(42);
   await page.locator('#next-period').click(); await page.locator('#next-period').click();
   await expect(page.locator('#calendar-month')).toContainText('January 2027');
@@ -48,7 +48,7 @@ test('first visit resolves loading, all views navigate, slot creation and keyboa
   await expect(page.locator('#selected-day')).toContainText('Dec 31');
   await page.locator('#calendar-today').click();
   await expect(page.locator('#selected-day')).toContainText('Nov 8');
-  await page.reload(); await expect(page.getByRole('button', { name: 'Month', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.reload(); await expect(page.getByRole('group', { name: 'Calendar view' }).getByRole('button', { name: 'Month', exact: true })).toHaveAttribute('aria-pressed', 'true');
   expect(errors).toEqual([]);
 });
 
@@ -114,7 +114,7 @@ test('recurrence creates dated instances and one-occurrence editing leaves the s
 
 test('reminders update after moves and cancel on completion without duplicate alerts', async ({ page }) => {
   await ready(page); await add(page, 'Meeting', 'fixed', { start: '09:10', end: '09:40' });
-  await page.locator('#open-planning-settings').click(); await page.locator('[name="remindersEnabled"]').check(); await page.locator('#planning-form button[type="submit"]').click();
+  await page.locator('[data-panel=settings]').click(); await page.locator('#open-planning-settings').click(); await page.locator('[name="remindersEnabled"]').check(); await page.locator('#planning-form button[type="submit"]').click(); await page.locator('[data-panel=day]').click();
   await page.clock.runFor(15000); await expect(page.locator('#reminder-alert')).toContainText('Meeting');
   expect(Object.keys((await saved(page)).reminderLog)).toHaveLength(1);
   await page.locator('.week-event').filter({ hasText: 'Meeting' }).click(); await page.locator('#activity-start').fill('09:20'); await page.locator('#activity-end').fill('09:50'); await page.locator('#save-activity').click();
@@ -154,11 +154,11 @@ test('configured timezone persists and notification denial keeps in-app reminder
     Object.defineProperty(window, 'Notification', { value: class { static permission = 'denied'; static async requestPermission() { return 'denied'; } }, configurable: true });
   });
   await ready(page); await add(page, 'Morning', 'fixed', { start: '08:00', end: '09:00' });
-  await page.locator('#open-planning-settings').click();
+  await page.locator('[data-panel=settings]').click(); await page.locator('#open-planning-settings').click();
   await page.locator('#planning-zone').fill('UTC');
   await page.locator('#enable-notifications').click();
   await expect(page.locator('#notification-status')).toContainText('In-app reminders remain available');
-  await page.locator('#planning-form button[type="submit"]').click();
+  await page.locator('#planning-form button[type="submit"]').click(); await page.locator('[data-panel=day]').click();
   await expect(page.locator('#now-heading')).toHaveText('Morning');
   await page.reload(); await expect(page.locator('#dashboard-date')).toContainText('UTC');
   await expect(page.locator('#now-heading')).toHaveText('Morning');

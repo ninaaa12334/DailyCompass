@@ -4,7 +4,6 @@ import { storage, clearAccountCache } from './runtime.mjs';
 import { addDays, weekDates } from './calendar-view.mjs';
 import { dateLabel } from './clock.mjs';
 import { minutes } from './calendar-store.mjs';
-import { parseQuickEntry } from './quick-entry.mjs';
 import { PLANNER_KEY } from './planner-store.mjs';
 
 const template = `
@@ -29,6 +28,7 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   $('.planner-actions').after(tabs, syncStatus);
   const grid = $('.dashboard-grid'), reminders = $('.reminders-widget'), panel = host.querySelector('#ai-panel'), settingsPanel = host.querySelector('#settings-panel');
   $('footer').before(...host.children);
+  $('#setup-open').after($('#open-planning-settings'));
   const sync = connectAccount(model, account, syncStatus);
   if (account.user) { $('#planner-mode').textContent = `Private account · ${account.user.name}`; $('#task-help').textContent = 'Saved privately on this server and synced to signed-in devices.'; }
   function tab(name) { grid.hidden = reminders.hidden = name !== 'day'; panel.hidden = name !== 'ai'; settingsPanel.hidden = name !== 'settings'; tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.panel === name))); if (name === 'ai') { const form = $('#ai-form'); form.elements.date.value ||= calendar.getSelectedDate(); form.elements.start.value ||= model.getDay(calendar.getSelectedDate()).start; form.elements.end.value ||= model.getDay(calendar.getSelectedDate()).end; } if (name === 'settings') refreshConnections(); }
@@ -37,10 +37,8 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   const guard = (id, fn) => async event => { const target = event?.currentTarget; try { if (target?.tagName === 'BUTTON') target.disabled = true; $(id).textContent = 'Working…'; await fn(event); } catch (error) { $(id).textContent = error.message; } finally { if (target?.tagName === 'BUTTON') target.disabled = false; } };
   const requireAccount = () => { if (!account.user) throw new Error('Sign in to a private account in Settings first. Your local planner remains separate.'); };
   const refreshDocument = async () => sync.replace(await api('planner'));
-  const availabilityCard = node('section', undefined, 'widget opportunities-widget'); availabilityCard.innerHTML = '<div class="section-heading"><div><p class="widget-label">ROOM TO BREATHE</p><h2>Free-time opportunities</h2></div><button type="button" class="secondary" id="availability-open">Set up my week</button></div><p id="availability-summary"></p><ul id="opportunity-list"></ul><details><summary>Your week at a glance</summary><ul id="week-availability"></ul></details><h3>Due soon</h3><ul id="due-soon"></ul>';
-  grid.insertBefore(availabilityCard, $('.calendar-widget'));
-  const quick = node('section', undefined, 'widget quick-widget'); quick.innerHTML = '<h2>One little plan</h2><form id="quick-entry"><label for="quick-text">Write an activity</label><input id="quick-text" name="text" maxlength="250" required placeholder="Maths revision Friday at 4pm for 45 minutes"><button>Review activity</button><p class="fine-print">Uses your planner timezone. Weekdays mean the next matching day, including today. You confirm the date and time before saving.</p><p id="quick-error" role="status"></p></form>'; availabilityCard.after(quick);
-  $('#quick-entry').addEventListener('submit', event => { event.preventDefault(); try { openActivity(parseQuickEntry($('#quick-text').value, now().date)); $('#quick-error').textContent = 'Check the interpreted date and time in the activity form.'; } catch (error) { $('#quick-error').textContent = error.message; } });
+  const availabilityCard = node('section', undefined, 'widget opportunities-widget'); availabilityCard.innerHTML = '<div class="section-heading"><div><p class="widget-label">ROOM TO BREATHE</p><h2>A little breathing room</h2></div><button type="button" class="secondary" id="availability-open">Set up my week</button></div><p id="availability-summary"></p><ul id="opportunity-list"></ul><details class="opportunity-details"><summary>Your week & upcoming deadlines</summary><ul id="week-availability"></ul><h3>Due soon</h3><ul id="due-soon"></ul></details>';
+  grid.append(availabilityCard);
   function routineRow(value = {}) {
     const row = node('fieldset', undefined, 'routine-row'); row.dataset.id = value.id || crypto.randomUUID();
     const legend = node('legend', 'Weekly routine'); row.append(legend);
@@ -69,7 +67,7 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
     $('#availability-summary').textContent = s.setupConfirmed ? `${dateLabel(date)}: ${result.free} minutes free, ${result.flexible} minutes reserved for flexible activities${date === now().date ? ' in the remaining day' : ''}.` : 'Set sleep, school/work, meals and travel first. The calendar’s default hours are only a starting estimate.';
     $('#availability-open').textContent = s.setupConfirmed ? 'Edit my week' : 'Set up my week';
     const list = $('#opportunity-list'); list.replaceChildren();
-    if (s.setupConfirmed) for (const gap of result.gaps.slice(0, 3)) {
+    if (s.setupConfirmed) for (const gap of result.gaps.slice(0, 1)) {
       const li = node('li', undefined, 'opportunity'); li.append(node('strong', `${dateLabel(date)} · ${gap.start}–${gap.end}`), node('p', `${gap.minutes} minutes open. What would you like to do?`));
       const actions = node('div', undefined, 'assistant-actions');
       actions.append(button('Add something', () => openActivity({ date, start: minutes(gap.start), end: Math.min(minutes(gap.end), minutes(gap.start) + 60) })), button('Suggest an activity', () => { const idea = activitySuggestion(model.getTasks(), gap, s); const p = li.querySelector('p'); p.textContent = `${idea.title}. ${idea.reason}`; }), button('Plan with AI', () => { tab('ai'); const f = $('#ai-form'); f.elements.date.value = date; f.elements.start.value = gap.start; f.elements.end.value = gap.end; $('#ai-prompt').focus(); }), button('Keep it free', () => model.saveSettings({ keptFree: [...(s.keptFree || []), { date, start: gap.start, end: gap.end }] }))); li.append(actions); list.append(li);

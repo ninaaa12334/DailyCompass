@@ -1,5 +1,6 @@
 export const APPEARANCE_KEY = 'day-compass.appearance.v1';
 export const PRESETS = {
+  aurora: { label: 'Aurora', accent: '#6554cf', busy: '#6554cf', background: '#f4f4fb', tint: '#e9e4ff' },
   sage: { label: 'Sage & cream', accent: '#365d4d', busy: '#365d4d', background: '#f4f5ef', tint: '#e6eddf' },
   lavender: { label: 'Lavender', accent: '#624a82', busy: '#624a82', background: '#f5f2f8', tint: '#eae2f3' },
   ocean: { label: 'Ocean blue', accent: '#2d567c', busy: '#2d567c', background: '#f0f5f9', tint: '#dfebf4' },
@@ -8,7 +9,7 @@ export const PRESETS = {
   midnight: { label: 'Midnight', accent: '#b5cdbf', busy: '#b5cdbf', background: '#141e23', tint: '#263b35' },
   system: { label: 'Follow system' }
 };
-export const DEFAULT_APPEARANCE = { preset: 'sage', customAccent: false, accent: '#365d4d', customBusy: false, busy: '#365d4d' };
+export const DEFAULT_APPEARANCE = { preset: 'aurora', customAccent: false, accent: '#6554cf', customBusy: false, busy: '#6554cf' };
 const validHex = value => typeof value === 'string' && /^#[\da-f]{6}$/i.test(value);
 
 export function validateAppearance(value) {

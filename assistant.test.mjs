@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { availability, routineEvents, clockChangeIntervals } from './availability.mjs';
 import { wallTimeCandidates, wallToInstant } from './zoned-time.mjs';
-import { parseQuickEntry } from './quick-entry.mjs';
 import { createApplication } from './server/app.mjs';
 import { memoryModel, validateProposal, acceptProposal, proposeAI } from './server/plans.mjs';
 import { expandGoogleEvent } from './server/google.mjs';
@@ -61,10 +60,6 @@ test('AI replan preserves started, locked and completed tasks and removes only f
   assert.equal(state.plans['2026-11-08'][0].start, '15:00'); assert.equal(result.plans['2026-11-08'][0].start, '16:00');
   state.plans['2026-11-08'][0].locked = true;
   assert.throws(() => acceptProposal(state, '2026-11-08', [{ taskId: task.id, title: task.title, start: '16:00', end: '16:30' }], { replan: true }, at), /unavailable/);
-});
-test('quick entry uses the selected calendar day and confirms ambiguous formats', () => {
-  assert.deepEqual(parseQuickEntry('Maths revision Friday at 4pm for 45 minutes', '2026-11-08'), { title: 'Maths revision', date: '2026-11-13', start: 960, end: 1005 });
-  assert.throws(() => parseQuickEntry('Maths Friday at 4 for 45 minutes', '2026-11-08'), /am or pm/);
 });
 
 async function server(t, config = {}, fetcher) {

@@ -1,0 +1,40 @@
+import { addDays, weekDates } from './calendar-view.mjs';
+import { dateLabel } from './clock.mjs';
+
+// Count each task once, even if it is both due and scheduled in the period.
+// This is task completion, not a measure of time worked or personal worth.
+export function taskProductivity(state, date, period = 'day') {
+  let start = date, end = date;
+  if (period === 'week') [start, , , , , , end] = weekDates(date);
+  if (period === 'month') {
+    start = `${date.slice(0, 7)}-01`;
+    const next = new Date(`${start}T12:00:00Z`); next.setUTCMonth(next.getUTCMonth() + 1);
+    end = addDays(next.toISOString().slice(0, 10), -1);
+  }
+  const inRange = value => value && value >= start && value <= end;
+  const scheduled = new Set(Object.entries(state.plans).filter(([day]) => inRange(day)).flatMap(([, entries]) => entries.filter(e => e.kind === 'task').map(e => e.taskId)));
+  const tasks = state.tasks.filter(t => inRange(t.date) || inRange(t.deadline) || scheduled.has(t.id));
+  const done = tasks.filter(t => t.completed).length;
+  return { start, end, total: tasks.length, done, percent: tasks.length ? Math.round(done / tasks.length * 100) : 0 };
+}
+
+export function initProductivity({ model, storage, selectedDate }) {
+  const $ = selector => document.querySelector(selector);
+  let period = 'day';
+  try { const saved = storage.getItem('day-compass.productivity-period.v1'); if (['day', 'week', 'month'].includes(saved)) period = saved; } catch {}
+  function render() {
+    const date = selectedDate(), result = taskProductivity(model.snapshot(), date, period);
+    const ring = $('#task-progress');
+    ring.setAttribute('aria-valuenow', result.percent);
+    ring.setAttribute('aria-valuetext', result.total ? `${result.done} of ${result.total} tasks complete, ${result.percent}%` : 'No tasks in this period');
+    $('#productivity-arc').setAttribute('stroke-dasharray', `${result.percent} 100`);
+    $('#productivity-arc').style.opacity = result.percent ? '1' : '0';
+    $('#productivity-percent').textContent = `${result.percent}%`;
+    $('#progress-value').textContent = result.total ? `${result.done} of ${result.total} tasks complete` : 'A fresh start';
+    $('#productivity-message').textContent = !result.total ? 'Add a task to get going.' : result.done === result.total ? 'You made room. You made progress.' : result.done ? 'Every little step counts.' : 'Your first small win is waiting.';
+    $('#progress-scope').textContent = period === 'month' ? dateLabel(date, { weekday: undefined, day: undefined, month: 'long', year: 'numeric' }) : period === 'week' ? `${dateLabel(result.start)} – ${dateLabel(result.end)}` : dateLabel(date, { year: 'numeric' });
+    document.querySelectorAll('[data-productivity-period]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.productivityPeriod === period)));
+  }
+  document.querySelectorAll('[data-productivity-period]').forEach(b => b.addEventListener('click', () => { period = b.dataset.productivityPeriod; render(); try { storage.setItem('day-compass.productivity-period.v1', period); } catch { /* The current view still works without persistence. */ } }));
+  return { render };
+}

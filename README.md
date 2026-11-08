@@ -1,6 +1,6 @@
 # Day Compass
 
-A calm personal planner with floating cards, a phone agenda and optional private server accounts. The existing colours, themes and welcome page are preserved.
+A calm personal planner with floating cards, a phone agenda and optional private server accounts. The dashboard uses soft lilac, peach and blue cards with a circular task-completion widget. Existing saved themes remain available.
 
 ## Run locally
 
@@ -17,11 +17,11 @@ The Node server serves the frontend, authenticated API, SQLite database and back
 
 ## Available now
 
+- Circular Day/Week/Month productivity view, based on completed tasks dated, due or scheduled in the selected calendar period. Each task counts once; an empty period shows 0% and a fresh-start message. This is task completion, not time worked.
 - Existing tasks/deadlines, completion, fixed events, finite daily/weekly recurrence, occurrence/series edits, deterministic plan previews, locks and undo.
 - Phone Day view with compact date selector, readable agenda and timeline. Phone Week uses a full-width daily timetable; desktop Week keeps seven columns. Month fits the screen with selected-day activities below. Saved view choices remain.
 - Availability setup: timezone, sleep, planning hours, school/work/meal/other weekly routines, travel buffers, interests and minimum useful gap. No school or meal schedule is assumed; routines are intentionally entered.
 - Free-time totals, flexible reservations, largest gaps by weekday, due-soon work, explained suggestions and explicit add/AI/keep-free actions. Kept-free periods can be released and are respected by scheduling.
-- Quick entry: `Maths revision Friday at 4pm for 45 minutes` opens an editable confirmation form. Supports today, tomorrow, weekday names and ISO dates with explicit time/duration. Weekdays include today when matching. Ambiguous hours ask for am/pm. This is a deliberately small parser.
 - Real private accounts with salted scrypt password hashes, random HttpOnly/SameSite session cookies (Secure on HTTPS), origin checks and user-scoped database queries.
 - Account changes sync after edits and poll other-device changes every 15 seconds. Versions reject stale writes. Export unsynced changes before reloading after a conflict. Offline edits retry from the current tab; new signed-in sessions require the server. This is not a fully offline PWA.
 - Local, demo and account planners are separate. Signing in starts a separate server planner. An empty account can explicitly copy the saved v2 local planner. The original browser data stays intact. Account cache is tab-scoped; sign-out clears it and returns to local mode. Accounts can be deleted. Password recovery/email verification are not implemented.
@@ -91,7 +91,7 @@ npm.cmd run test:browser
 
 Unit/API tests use in-memory SQLite and real local HTTP authentication. Coverage includes user isolation, origin checks, version conflicts, migration, recurrence/undo, scheduling/overlap/buffers, DST, AI validation/approval, OAuth state/encryption, Google import replacement/deletion, Gmail review/deduplication and push cancellation/deduplication. Provider responses and push sends are explicitly mocked. **No live Google connection, paid AI request or physical device delivery has been verified.**
 
-Browser tests use isolated installed Chrome on port 8081, never your normal profile. They cover existing workflows plus setup, quick entry, actual account creation/import/logout, disconnected states, mocked AI approval and layouts at 360/390/430px. Screenshots are ignored. Phone emulation does not replace real Safari/device testing.
+Browser tests use isolated installed Chrome on port 8081, never your normal profile. They cover existing workflows plus setup, actual account creation/import/logout, disconnected states, mocked AI approval and layouts at 360/390/430px. Screenshots are ignored. Phone emulation does not replace real Safari/device testing.
 
 The frontend remains HTML/CSS/JavaScript modules. `availability.mjs` merges busy intervals, `scheduler.mjs` fits tasks, `planner-store.mjs` validates state, `assistant-ui.mjs` manages setup/reviews, and `account-client.mjs` syncs versioned snapshots. `server/` owns accounts, SQLite, secrets and workers.
 
