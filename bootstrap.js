@@ -22,6 +22,7 @@
       const source = demo ? sessionStorage : localStorage;
       const backup = {};
       for (const key of ['day-compass.planner.v2', 'day-compass.tasks.v1', 'day-compass.calendar.v1', 'day-compass.appearance.v1', 'day-compass.calendar-view.v1']) backup[key] = source.getItem(`${demo ? 'demo.' : ''}${key}`);
+      if (!demo) for (const key of Object.keys(sessionStorage)) if (key.startsWith('account.')) backup[key] = sessionStorage.getItem(key);
       const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
       const link = document.createElement('a'); link.href = url; link.download = 'day-compass-backup.json'; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -29,7 +30,7 @@
   });
   window.addEventListener('error', event => { if (!ready) fail(event.error || new Error(event.message || 'A planner file could not be loaded.')); });
   window.addEventListener('unhandledrejection', event => { if (!ready) fail(event.reason); });
-  import('./app.js').then(module => {
-    module.startApp(); ready = true; clearTimeout(timeout); panel.hidden = true; status.textContent = 'Planner ready. Changes save in this browser.';
+  import('./app.js').then(async module => {
+    await module.startApp(); ready = true; clearTimeout(timeout); panel.hidden = true; status.textContent = 'Planner ready.';
   }).catch(fail);
 })();

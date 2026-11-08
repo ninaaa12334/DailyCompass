@@ -13,6 +13,7 @@ function validateDate(date) {
 }
 
 export function minutes(time) {
+  if (time === '24:00') return 1440;
   if (typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Choose a valid time.');
   const [hours, mins] = time.split(':').map(Number);
   return hours * 60 + mins;

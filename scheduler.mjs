@@ -1,5 +1,7 @@
 import { minutes } from './calendar-store.mjs';
 import { timeLabel } from './calendar-view.mjs';
+import { reservedIntervals, availability } from './availability.mjs';
+import { wallToInstant } from './zoned-time.mjs';
 
 export function mergeIntervals(intervals) {
   const result = [];
@@ -21,7 +23,8 @@ export function planningCapacity(day, settings) {
   const activities = day.commitments.map(item => [minutes(item.start), minutes(item.end)]);
   const booked = length(activities), occupied = length([...activities, ...sleepIntervals(settings)]);
   const blockedSleep = occupied - booked, total = end - start;
-  return { booked, total, blockedSleep, free: total - occupied, ratio: total === blockedSleep ? 0 : booked / (total - blockedSleep) };
+  const usable = availability(day, settings);
+  return { booked, total, blockedSleep, free: usable.free, flexible: usable.flexible, ratio: total === blockedSleep ? 0 : Math.min(1, (total - blockedSleep - usable.free) / (total - blockedSleep)) };
 }
 export function generatePlan({ date, day, tasks, existing = [], otherPlans = {}, settings, now }) {
   const lower = Math.max(minutes(day.start), date === now.date ? Math.ceil(now.minute / 5) * 5 : 0);
@@ -42,7 +45,7 @@ export function generatePlan({ date, day, tasks, existing = [], otherPlans = {},
     const a = minutes(item.start), b = minutes(item.end);
     if (a < minutes(day.start) || b > upper || sleep.some(([x, y]) => a < y && b > x)) result.warnings.push(`Preserved activity ${item.title || item.id} is outside planning hours or overlaps sleep. Adjust it before applying a new plan.`);
   }
-  const occupied = mergeIntervals([...day.commitments, ...preserved].map(item => [minutes(item.start), minutes(item.end)]).concat(sleep));
+  const occupied = reservedIntervals({ ...day, date, commitments: [...day.commitments, ...preserved] }, settings);
   const gaps = [];
   let cursor = lower;
   for (const [start, end] of occupied) {
@@ -64,9 +67,11 @@ export function generatePlan({ date, day, tasks, existing = [], otherPlans = {},
       continue;
     }
     const start = gap[0], end = start + remaining;
+    try { wallToInstant(date, timeLabel(start), settings.timeZone, task.dstChoice); wallToInstant(date, timeLabel(end), settings.timeZone, task.dstChoice); }
+    catch (error) { result.unscheduled.push({ taskId: task.id, title: task.title, reason: error.message + ' Edit the task to choose a daylight-saving occurrence, or use other planning hours.' }); continue; }
     const reason = `${task.deadline ? (task.deadline < date ? `Overdue since ${task.deadline}` : `Due ${task.deadline}`) : 'No deadline'}; ${task.priority.toLowerCase()} priority; earliest slot that fits ${remaining} remaining minutes.`;
     result.reasons[task.id] = reason;
-    result.entries.push({ id: `plan-${date}-${task.id}-${start}`, taskId: task.id, title: task.title, start: timeLabel(start), end: timeLabel(end), completed: false, locked: task.locked, kind: 'task', reason });
+    result.entries.push({ id: `plan-${date}-${task.id}-${start}`, taskId: task.id, title: task.title, start: timeLabel(start), end: timeLabel(end), dstChoice: task.dstChoice, completed: false, locked: task.locked, kind: 'task', reason });
     gap[0] = end;
     if (settings.breakMinutes && gap[1] - gap[0] >= settings.breakMinutes) {
       result.entries.push({ id: `break-${date}-${task.id}-${end}`, taskId: task.id, title: 'Break', start: timeLabel(end), end: timeLabel(end + settings.breakMinutes), kind: 'break', completed: false, locked: false });

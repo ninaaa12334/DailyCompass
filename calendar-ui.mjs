@@ -79,12 +79,12 @@ export function initCalendar(model, handlers) {
     $('#previous-period').setAttribute('aria-label', `Previous ${view}`); $('#next-period').setAttribute('aria-label', `Next ${view}`);
     document.querySelectorAll('[data-calendar-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.calendarView === view)));
     $('#month-view').hidden = view !== 'month'; $('#week-view').hidden = view === 'month';
-    $('#mobile-week-days').hidden = !compact || view !== 'week';
-    $('#mobile-month-agenda').hidden = !compact || view !== 'month';
+    $('#mobile-week-days').hidden = !compact || view === 'month';
+    $('#mobile-month-agenda').hidden = !compact || view === 'week';
     $('#calendar-timezone').textContent = `Times in ${model.snapshot().settings.timeZone}`;
     $('#calendar-instructions').textContent = compact ? view === 'month' ? 'Tap a date to see its activities below. Dots mark activities.' : view === 'week' ? 'Choose a day above its timeline. Tap a time to add an activity.' : 'Tap a time to add, or an activity to edit.' : view === 'month' ? 'Select a date for its agenda. Click an activity to edit it.' : 'Click a time to add an activity. Arrow keys move between slots. Hatched areas are outside planning hours.';
-    if (compact && view === 'week') renderMobileWeek();
-    if (compact && view === 'month') renderMobileAgenda();
+    if (compact && view !== 'month') renderMobileWeek();
+    if (compact && view !== 'week') { renderMobileAgenda(); if (view === 'day') $('#week-view').before($('#mobile-month-agenda')); else $('#month-view').after($('#mobile-month-agenda')); }
     if (view === 'month') renderMonth();
     else {
       renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, timeZone: model.snapshot().settings.timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.snapshot().settings),

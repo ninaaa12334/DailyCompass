@@ -1,6 +1,9 @@
 import { minutes } from './calendar-store.mjs';
 import { addDays } from './calendar-view.mjs';
 import { dayNumber, validDate } from './clock.mjs';
+import { routineEvents } from './availability.mjs';
+import { wallToInstant } from './zoned-time.mjs';
+import { importedDays } from './imported-time.mjs';
 
 export const PLANNER_KEY = 'day-compass.planner.v2';
 export const CATEGORIES = ['Study', 'Exercise', 'Chores', 'Personal projects', 'Social', 'Work', 'Appointments'];
@@ -23,9 +26,16 @@ function validateActivity(item) {
   ensure(['none', 'daily', 'weekly'].includes(item.repeat), 'Choose a supported recurrence.');
   ensure(item.reminder === 'default' || item.reminder === 'off' || (Number.isInteger(item.reminder) && item.reminder >= 0 && item.reminder <= 1440), 'Reminder minutes must be between 0 and 1440.');
 }
-function validate(state) {
+export function validatePlanner(state) {
   ensure(state?.version === 2 && Number.isInteger(state.revision) && state.revision >= 0 && Array.isArray(state.tasks) && [state.days, state.plans, state.settings, state.reminderLog].every(value => value && typeof value === 'object' && !Array.isArray(value)), 'Saved planner data has an unsupported structure. Original data has been preserved.');
   new Intl.DateTimeFormat('en', { timeZone: state.settings.timeZone }).format();
+  const settings = state.settings;
+  for (const key of ['setupConfirmed', 'historyEnabled', 'backgroundReminders', 'googleSyncEnabled', 'googleAutoExport']) if (settings[key] !== undefined) ensure(typeof settings[key] === 'boolean', `Invalid ${key}.`);
+  for (const [key, max] of [['travelMinutes', 180], ['minimumGap', 240]]) if (settings[key] !== undefined) ensure(Number.isInteger(settings[key]) && settings[key] >= (key === 'minimumGap' ? 5 : 0) && settings[key] <= max, `Invalid ${key}.`);
+  if (settings.interests !== undefined) ensure(typeof settings.interests === 'string' && settings.interests.length <= 500, 'Interests must be under 500 characters.');
+  if (settings.routines !== undefined) { ensure(Array.isArray(settings.routines) && settings.routines.length <= 100, 'Too many routines.'); for (const r of settings.routines) { ensure(typeof r.id === 'string' && typeof r.title === 'string' && r.title.length > 0 && r.title.length <= 120 && Array.isArray(r.weekdays) && r.weekdays.every(n => Number.isInteger(n) && n >= 0 && n <= 6), 'Invalid routine.'); interval(r); } }
+  if (settings.keptFree !== undefined) { ensure(Array.isArray(settings.keptFree) && settings.keptFree.length <= 1000, 'Invalid kept-free periods.'); for (const g of settings.keptFree) { ensure(validDate(g.date), 'Invalid kept-free date.'); interval(g); } }
+  if (state.imports !== undefined) { ensure(Array.isArray(state.imports) && state.imports.length <= 10000, 'Too many imported events.'); for (const e of state.imports) { ensure(validDate(e.date) && typeof e.title === 'string' && typeof e.id === 'string', 'Invalid imported event.'); interval(e); } }
   for (const key of ['planningStart', 'planningEnd', 'sleepStart', 'sleepEnd', 'quietStart', 'quietEnd']) minutes(state.settings[key]);
   ensure(minutes(state.settings.planningStart) < minutes(state.settings.planningEnd), 'Planning must end after it starts.');
   ensure(Number.isInteger(state.settings.breakMinutes) && state.settings.breakMinutes >= 0 && state.settings.breakMinutes <= 120, 'Breaks must be 0–120 minutes.');
@@ -62,6 +72,7 @@ function validate(state) {
     for (const item of entries) { ensure(minutes(item.start) >= end, `Activities overlap on ${date}. Adjust the time or replan the day.`); end = minutes(item.end); }
   }
 }
+const validate = validatePlanner;
 
 export function createPlannerStore(storage) {
   const saved = storage.getItem(PLANNER_KEY);
@@ -82,6 +93,7 @@ export function createPlannerStore(storage) {
     validate(state); // Legacy keys are never deleted or modified by migration.
   }
   const subscribers = new Set();
+  let importCache, importSource, importZone;
   function notify() { for (const callback of subscribers) callback(); }
   function commit(change) {
     const next = clone(state); change(next); validate(next);
@@ -106,15 +118,18 @@ export function createPlannerStore(storage) {
     getTasks: () => clone(state.tasks),
     getDay(date) {
       ensure(validDate(date), 'Choose a valid date.');
-      const day = clone(state.days[date] || { start: state.settings.planningStart, end: state.settings.planningEnd, color: 'theme', commitments: [] });
+      const day = clone(state.days[date] || { start: state.settings.planningStart, end: state.settings.planningEnd, color: 'theme', commitments: [] }); day.date = date;
       const planned = (state.plans[date] || []).map(entry => {
         const task = entry.kind === 'task' ? state.tasks.find(task => task.id === entry.taskId) : null;
         return { ...entry, ...(task ? { title: task.title, category: task.category, priority: task.priority, notes: task.notes, reminder: task.reminder, completed: task.completed || entry.completed } : {}), date };
       });
-      day.commitments = [...day.commitments.map(item => ({ ...item, date })), ...planned];
+      if (importSource !== state.imports || importZone !== state.settings.timeZone || !importCache) { importCache = importedDays(state.imports || [], state.settings.timeZone); importSource = state.imports; importZone = state.settings.timeZone; }
+      day.commitments = [...day.commitments.map(item => ({ ...item, date })), ...planned, ...routineEvents(date, state.settings), ...(importCache[date] || []).map(e => ({ ...e, kind: 'fixed', sourceImport: true, reminder: 'off' }))];
       return day;
     },
     saveSettings(settings) { commit(next => { next.settings = { ...next.settings, ...settings }; }); },
+    setImports(events) { commit(next => { next.imports = clone(events); }); },
+    replaceSnapshot(value) { validate(value); storage.setItem(PLANNER_KEY, JSON.stringify(value)); state = clone(value); notify(); },
     setHours(date, settings) { commit(next => { Object.assign(ensureDay(next, date), settings); }); },
     saveActivity(input, original = null, scope = 'one') {
       commit(next => {
@@ -150,6 +165,7 @@ export function createPlannerStore(storage) {
             }
           } else {
             const day = ensureDay(next, occurrence.date);
+            wallToInstant(occurrence.date, item.start, next.settings.timeZone, item.dstChoice); wallToInstant(occurrence.date, item.end, next.settings.timeZone, item.dstChoice);
             ensure(!day.commitments.some(event => event.title.trim().toLowerCase() === item.title.trim().toLowerCase() && event.start === item.start && event.end === item.end), 'An activity with this title and time already exists.');
             day.commitments.push(normalizeEvent(item));
           }

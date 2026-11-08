@@ -1,3 +1,10 @@
 <IfModule mod_mime.c>
   AddType application/javascript .mjs
 </IfModule>
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(?:data|server|node_modules|tests|scripts|\.git|\.npm-cache)(?:/|$) - [F,L]
+</IfModule>
+<FilesMatch "(^\.|\.(sqlite|sqlite-wal|sqlite-shm|key)$)">
+  Require all denied
+</FilesMatch>

@@ -411,6 +411,45 @@ textarea { width: 100%; font: inherit; color: var(--text); background: var(--sur
   .dashboard-page dialog input, .dashboard-page dialog select, .dashboard-page dialog textarea { font-size: 1rem; }
 }
 .deadline-symbol { font-style: normal; }
+.assistant-tabs { display: flex; gap: .4rem; margin: 1.2rem 0; padding: .4rem; background: var(--surface); border: 1px solid var(--border); border-radius: 1.2rem; width: fit-content; }
+.assistant-tabs button { min-height: 48px; background: transparent; color: var(--text); }
+.assistant-tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.assistant-panel { margin: 1rem 0 2rem; }
+.assistant-panel form, #availability-form { display: grid; gap: .8rem; }
+.assistant-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .8rem; }
+.assistant-fields label, .assistant-panel label, #availability-form label { display: flex; flex-direction: column; gap: .35rem; }
+.assistant-panel label:has(input[type="checkbox"]), #availability-form label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; min-height: 44px; }
+.assistant-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: .8rem 0; }
+.assistant-actions button { min-height: 44px; }
+.opportunities-widget, .quick-widget { grid-column: 1 / -1; }
+.opportunity { padding: 1rem 0; border-bottom: 1px solid var(--border); }
+.opportunity p { margin: .4rem 0; }
+.settings-block { padding: 1.5rem 0; border-top: 1px solid var(--border); margin-top: 1.5rem; }
+.routine-row, .mail-review, #ai-proposals fieldset { min-width: 0; border: 1px solid var(--border); border-radius: 1rem; padding: 1rem; margin: 1rem 0; }
+.routine-days { display: flex; flex-wrap: wrap; gap: .4rem; }
+.routine-days label { font-size: .8rem; padding: .25rem; }
+#availability-dialog { width: min(680px, calc(100vw - 24px)); }
+#sync-status, #connection-message, #account-message, #push-status { overflow-wrap: anywhere; }
+.assistant-panel input, .assistant-panel select, .assistant-panel textarea, #availability-form input { max-width: 100%; min-width: 0; width: 100%; font: inherit; }
+.assistant-panel textarea { resize: vertical; min-height: 7rem; padding: .8rem; color: var(--text); background: var(--surface-alt); border: 1px solid var(--border); border-radius: .7rem; }
+.assistant-panel input[type="checkbox"], #availability-form input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; }
+#ai-proposals { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 1rem; }
+.assistant-panel [hidden], .dashboard-grid[hidden], .reminders-widget[hidden] { display: none !important; }
+@media (max-width: 580px) {
+  body.dashboard-page { padding-bottom: calc(85px + env(safe-area-inset-bottom)); }
+  .assistant-tabs { position: fixed; bottom: .6rem; bottom: calc(.6rem + env(safe-area-inset-bottom)); left: .65rem; right: .65rem; z-index: 30; width: auto; justify-content: stretch; box-shadow: 0 6px 30px #0002; backdrop-filter: blur(20px); }
+  .assistant-tabs button { flex: 1; padding: .5rem .25rem; font-size: .85rem; }
+  .assistant-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .assistant-actions button { padding: .6rem; font-size: .85rem; }
+  .assistant-panel { padding: 1.1rem; }
+  .opportunities-widget .section-heading { flex-wrap: wrap; gap: .8rem; }
+  .assistant-panel input, .assistant-panel select, .assistant-panel textarea, #availability-form input { font-size: 16px; min-height: 44px; }
+  .routine-days input[type="checkbox"] { min-height: 20px !important; }
+  .nav-actions { gap: .4rem; flex-wrap: wrap; }
+  .nav-actions a { min-height: 44px; display: inline-flex; align-items: center; }
+  .assistant-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .assistant-fields label { font-size: .85rem; overflow-wrap: anywhere; }
+}
 @media (max-width: 580px) {
   .month-cell .calendar-day[data-due="true"]::after { border-radius: 0; transform: rotate(45deg); }
   .deadline-symbol { font-size: 0; }

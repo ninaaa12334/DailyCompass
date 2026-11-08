@@ -1,140 +1,100 @@
 # Day Compass
 
-A local personal planner built with HTML, CSS, and JavaScript modules. The colourful welcome page and floating-card design are preserved. No account, paid AI service, or backend is required to use this version.
+A calm personal planner with floating cards, a phone agenda and optional private server accounts. The existing colours, themes and welcome page are preserved.
 
-## Run
+## Run locally
 
-If the existing preview is running, open http://127.0.0.1:8080/dashboard.html and refresh. Keep the same address and browser to retain access to your saved local data.
-
-For a fresh local server:
-
-```sh
-npm.cmd start
-```
-
-On Windows PowerShell, the `.cmd` form avoids the npm PowerShell-script policy issue. On other systems, use `npm` instead. This uses Node's built-in HTTP server; app dependencies are not required. Default address: http://127.0.0.1:8080. If a Python server already owns that port, keep using it or stop that terminal first. Do not change ports unnecessarily: browser storage is separate for each origin, including the port.
-
-The Python alternative remains:
-
-```sh
-python -m http.server 8080 --bind 127.0.0.1
-```
-
-Use a web-server URL rather than double-clicking the HTML file. The Node server serves modules with the correct JavaScript MIME type and disables caching during development. `.htaccess` also declares the `.mjs` MIME type for compatible Apache setups; Apache itself must be running if you choose that route.
-
-- `index.html`: welcome and honest local-account explanation.
-- `dashboard.html`: personal planner using this browser's local storage.
-- `dashboard.html?demo=1`: isolated sample planner in session storage, with separate appearance and view preferences.
-
-## Loading investigation and fix
-
-The supplied attachment contained written symptoms, not a screenshot. The old app loaded correctly in a clean isolated Chrome context, so the exact original environment/data trigger could not be reproduced. Server checks confirmed that the active Python preview serves JavaScript modules correctly; the Apache URL did not respond during investigation.
-
-The confirmed startup weakness was that static module failures or initialization exceptions left the HTML's loading placeholders on screen, with no recovery UI. `bootstrap.js` is now a small classic-script entry point that dynamically imports and starts the app, catches failures, and times out stalled module requests after ten seconds. It resolves to a ready state or an error with Retry, details, and a local saved-data download. It does not reset storage to hide an error.
-
-A separate browser test caught an actual rescheduling defect: an activity moved to another date, but the calendar stayed on the original week. Saving now selects and displays the activity's date.
-
-If a particular saved dataset still fails, use the visible error details and download a backup for recovery. Do not delete local storage just to clear a loading message.
-
-## Stage 1: shared data and safe persistence
-
-`planner-store.mjs` is the shared source for tasks, fixed events, schedules, settings, completion, locks, reminder receipts, and one-level undo. Every change validates a copy, saves it, then updates the UI. A failed write leaves the previous state intact.
-
-Older task and calendar keys are read and normalised in memory. Known missing optional fields get safe defaults. The new planner writes to `day-compass.planner.v2`; the original `.tasks.v1` and `.calendar.v1` keys are never deleted or overwritten by migration. Invalid data is preserved and reported. The legacy data modules and their tests remain for compatibility.
-
-Appearance and the Day/Week/Month view are independent UI preferences. The sample demo uses a prefixed session-storage adapter and does not overwrite your personal data.
-
-Data remains in this browser profile, not in an account. Clearing browser data removes it, and another person using this same profile can open it. Storage events refresh other open tabs, but simultaneous editing is still last-write-wins; prefer one editing tab. Cross-device sync needs a backend database, real authentication, server-side authorization, and a migration/sync design. None is simulated here.
-
-## Stage 2: calendar and activities
-
-- Day: a 24-hour timeline with activity blocks at their actual times.
-- Week: seven dated columns on desktop; on phones, a seven-day selector opens a full-width timeline for the selected day, without horizontal scrolling.
-- Month: six Monday-first weeks including leading/trailing dates, deadline markers, and busyness shading. On phones the grid fits the screen, activity dots replace cramped labels, and full activity names/times appear in a selected-day agenda below it. Desktop retains event labels.
-- Today, selected dates, deadline dots, and completed activities have distinct indicators; exact booked/free time appears in the selected-day panel.
-- Previous/next moves by the active view. Today uses the configured timezone. The selected view is saved. Narrow screens initially use Day.
-- Phone view buttons have 48-pixel height, navigation has separate touch targets, and event/time text is larger. Long event labels stay visible while scrolling. The timeline initially scrolls near the current time for today or near the first activity/planning hours for another date, and ordinary task updates do not reset that scroll position.
-- Resizing between phone and desktop changes the presentation while preserving the chosen Day/Week/Month preference. The phone Month view distinguishes activity dots from the diamond deadline marker; selected dates and today keep their separate outline/underline indicators.
-- Clicking a slot prefills its date and start/end time. Keyboard arrows, Home/End, and Enter provide a slot-entry alternative.
-- All Add activity buttons use one editor. The quick task form opens that editor as a flexible task.
-
-The editor supports title, category, fixed/flexible type, date, fixed start/end, flexible estimated duration/deadline, priority, notes, reminder override, and finite daily/weekly recurrence. It also supports editing, completion/reopening, and deletion. Changes can be undone using Undo last change. Simultaneous duplicate clicks are guarded; duplicate fixed events and overlaps produce errors.
-
-For recurring activities, choose This occurrence only or Entire series when editing/deleting. One-occurrence edits detach an exception. Recurrences are materialised through a required end date within one year. Their frequency stays as created; create a new series to change frequency. Overnight events and drag-and-drop are not implemented.
-
-## Stage 3: understandable scheduling
-
-Generate my day and Replan remaining day both open a preview before changing the saved schedule. The preview lists proposed times, previous times when an activity moves, recommendation reasons, and tasks that cannot fit. Apply is explicit; Cancel leaves the stored plan unchanged. A changed planner revision invalidates an old preview. Undo restores the previous plan.
-
-Rules in `scheduler.mjs`:
-
-1. Start inside planning hours and, for today, round the current time up to the next five-minute boundary. Never create a new plan in the past.
-2. Reserve fixed events, sleep, completed placements, manually locked work, and already-started/past placements. Keep breaks attached to preserved work.
-3. Sort eligible unfinished tasks by earliest deadline, then priority, then title for deterministic ties.
-4. Place `estimated duration - minutes already worked` into the first uninterrupted gap that fits. Do not assume work was done simply because time passed.
-5. Reserve the configured break after each newly placed task where the gap permits. Do not duplicate a task already scheduled on another current/future day.
-6. Keep tasks that do not fit in the task list and save the last plan's unscheduled reasons alongside the selected day. Offer another date, different hours, or an updated remaining duration instead of placing work outside the window.
-
-Completed and locked placements stay fixed. A conflict with sleep or a preserved placement is shown rather than silently moving it. Fixed-event conflicts with existing schedules are rejected. For a flexible task that should move to another day, open its scheduled block, unlock if needed, choose Remove task from this day, then select the new date and preview a new plan. The task itself is retained. Fixed events can change dates directly in the editor.
-
-Planning settings include timezone, default planning hours, sleep hours, break length, reminder defaults, and quiet hours. Existing per-day hours remain specific to that date; use Edit day hours to change them. Equal sleep or quiet start/end disables that particular blocked interval.
-
-## Stage 4: real dashboard calculations
-
-Current and next activities include fixed events, scheduled tasks, and breaks. Next also searches later saved dates. The selected-day timeline reads the same shared records. Progress explicitly counts tasks dated, due, or scheduled on the selected date, rather than claiming an unspecified daily total.
-
-Booked time clips activities to the selected planning window and merges overlaps. Sleep-only blocked minutes are excluded from free time. Calendar busyness uses the same capacity calculation, including scheduled work and breaks. Date-only deadlines stay as date strings; timezone-aware current-time calculations use `Intl.DateTimeFormat`, without converting deadlines through UTC.
-
-## Stage 5: honest reminders
-
-Upcoming reminders are derived from the current activities, not separate stale timers. Moving an activity changes its reminder key; deletion/completion removes its pending reminder and closes any notification created by this page for it. Default timing can be overridden per activity or switched off.
-
-Global alerts are off initially. Enable them in Planning settings. Quiet hours suppress delivery. Notification permission is requested only when the user clicks the explained Enable browser notifications button. If permission is denied or notifications are unavailable, the in-app list and alerts remain available. See [MDN's notification permission guidance](https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API/Using_the_Notifications_API).
-
-Open-page checks run every 15 seconds and on return to the page. Persistent receipts prevent repeated alerts for the same activity/date/start/lead. A browser lock serialises checks across supported same-origin tabs; without that API cross-tab delivery is best effort. Receipt storage failures are shown and suppress delivery rather than pretending deduplication succeeded.
-
-These are **open-page reminders only**. A suspended browser, sleeping computer, closed page, or nonexistent local time during a daylight-saving transition can delay or prevent delivery. No push service, background notification scheduler, email delivery, or reliable closed-app alarm is implemented. OS notification delivery was not tested; the automated permission-denial test uses a mock, while in-app timing/rescheduling is exercised with an isolated browser clock.
-
-## Verification
-
-App use needs no installed packages. For development tests only, install the free Playwright tooling:
+Use **Node.js 24.15 or newer**:
 
 ```sh
 npm.cmd ci
+npm.cmd start
+```
+
+Open http://127.0.0.1:8080/dashboard.html and keep the terminal running. Stop with Ctrl+C. Use the same address to keep access to the same browser-local data: localhost and 127.0.0.1 are separate origins. On a phone, 127.0.0.1 points to the phone, not this computer. Cross-device access requires a properly hosted HTTPS backend. No hosting or paid subscription has been provisioned.
+
+The Node server serves the frontend, authenticated API, SQLite database and background workers. Static hosting cannot provide accounts, AI, OAuth or background reminders. Development binds only to loopback. Use Node rather than exposing the repository through Apache; additional Apache rules also block private directories.
+
+## Available now
+
+- Existing tasks/deadlines, completion, fixed events, finite daily/weekly recurrence, occurrence/series edits, deterministic plan previews, locks and undo.
+- Phone Day view with compact date selector, readable agenda and timeline. Phone Week uses a full-width daily timetable; desktop Week keeps seven columns. Month fits the screen with selected-day activities below. Saved view choices remain.
+- Availability setup: timezone, sleep, planning hours, school/work/meal/other weekly routines, travel buffers, interests and minimum useful gap. No school or meal schedule is assumed; routines are intentionally entered.
+- Free-time totals, flexible reservations, largest gaps by weekday, due-soon work, explained suggestions and explicit add/AI/keep-free actions. Kept-free periods can be released and are respected by scheduling.
+- Quick entry: `Maths revision Friday at 4pm for 45 minutes` opens an editable confirmation form. Supports today, tomorrow, weekday names and ISO dates with explicit time/duration. Weekdays include today when matching. Ambiguous hours ask for am/pm. This is a deliberately small parser.
+- Real private accounts with salted scrypt password hashes, random HttpOnly/SameSite session cookies (Secure on HTTPS), origin checks and user-scoped database queries.
+- Account changes sync after edits and poll other-device changes every 15 seconds. Versions reject stale writes. Export unsynced changes before reloading after a conflict. Offline edits retry from the current tab; new signed-in sessions require the server. This is not a fully offline PWA.
+- Local, demo and account planners are separate. Signing in starts a separate server planner. An empty account can explicitly copy the saved v2 local planner. The original browser data stays intact. Account cache is tab-scoped; sign-out clears it and returns to local mode. Accounts can be deleted. Password recovery/email verification are not implemented.
+
+## External setup
+
+Copy `.env.example` to `.env` and restart after changes. Existing environment variables take precedence. Never put secrets in browser code. `.env`, `data/`, database/encryption keys and package caches are ignored by Git and blocked by the Node static handler. Securely back up both the database and encryption key.
+
+### Plan with AI
+
+Set `OPENAI_API_KEY` and `OPENAI_MODEL` privately. Choose a model supporting Responses structured outputs. **API usage may cost money**. No request is sent until you click Propose/regenerate; no paid service is enabled in this checkout.
+
+The separate AI tab takes a date/range, request/goals, energy and planning style. It sends task details, computed gaps, interests, the request and optional recorded history. Notes and email bodies are excluded. Requests use `store: false`. See [official OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses).
+
+The server independently checks proposals against sleep, commitments, buffers, kept-free periods, selected hours, task durations and duplicates. Invalid proposals save nothing. Suggestions reference existing task IDs or become new flexible tasks after approval; AI cannot create fixed commitments. Edit titles/times, uncheck activities, regenerate, reject or approve. Replanning explicitly replaces only future unfinished unlocked slots in the selected range. Started, completed and locked blocks remain. AI planning handles one selected day/range per request; it does not automatically plan a whole week.
+
+Personalization is opt-in. Explicit task completions and date postponements are recorded, capped at 1,000 entries per account. View, delete/reset or disable history in Settings. Interests, energy and style provide context when history is sparse. Time spent on a subject is never treated as proof of difficulty.
+
+### Google Calendar and Gmail
+
+1. Create a Google Cloud project and enable **Google Calendar API** and **Gmail API**.
+2. Configure the OAuth consent screen; add your Google account as a test user while in Testing.
+3. Create an OAuth **Web application** client. Register the exact redirect `http://127.0.0.1:8080/api/google/callback`, or your deployed HTTPS origin plus `/api/google/callback`.
+4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and matching `APP_ORIGIN`; restart.
+5. Sign in to Day Compass and connect each service separately in Settings.
+
+Calendar import asks for `calendar.calendarlist.readonly` and `calendar.events.readonly`. Choose calendars and import. A full paginated rolling sync covers the previous 7 and next 90 days, expands recurring occurrences, updates changed events and removes deleted/cancelled imports. Free/transparent events are skipped; all-day/overnight events split at local midnight. Stable calendar/event/date IDs prevent repeated import duplicates. Overlapping busy imports are merged for availability. Selecting calendars enables five-minute server polling, which can be disabled. Failed fetches preserve previous imports. Status, last success and errors are visible. Imported timed events retain their source instants and reproject immediately when timezone changes; the next sync refreshes the rolling import window.
+
+Export is optional and requests `calendar.app.created`, limited to calendars this app creates. The activity editor has explicit export. An opt-in switch mirrors approved app activities, including future edits/deletions, on the next sync. Only the app-created Day Compass calendar is changed, within the rolling future window. Imported events are edited in Google, not here. App exports are excluded from re-import. Partial remote failures are reported; local state remains the source of truth.
+
+Gmail uses `gmail.readonly` to search/read candidate messages. This is a **restricted Google scope**; a public launch may require verification/security assessment depending on deployment and applicable exceptions. Review [Google Gmail scope requirements](https://developers.google.com/workspace/gmail/api/auth/scopes).
+
+A scan reads up to 20 recent matching messages from the last 30 days. It conservatively extracts plain-text ISO-date/24-hour-time clues and location lines. Uncertain fields stay blank for confirmation. HTML-only bodies and attachments are not parsed. Email is untrusted data, never rendered as HTML or followed as instructions, and never sent to AI. Bodies are discarded; accepted events retain a source message ID and optional location. Reviewed IDs prevent replay. Existing events and overlapping Google imports block duplicate additions. Nothing is automatically added and no mail is sent. Trusted-sender automatic rules and broad natural-language extraction are not implemented.
+
+OAuth uses session-bound one-use state, PKCE and server-side exchange. Tokens are AES-256-GCM encrypted at rest. Disconnect revokes access and removes credentials; Google may revoke a combined grant, requiring the other service to reconnect. See [Google server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server) and [Calendar events API](https://developers.google.com/workspace/calendar/api/v3/reference/events/list).
+
+### Background reminders
+
+Generate keys once:
+
+```sh
+node scripts/generate-push-keys.mjs
+```
+
+Copy output into private `.env`, replace the contact address and restart. Keep the same pair for existing subscriptions. Sign in, read the explanation in Settings and enable background reminders. Permission is requested only on that click. Event-specific timing and Planning settings defaults support 10, 30 and 1,440 minutes before. Open-page popups are suppressed in account background mode to avoid duplicates.
+
+The worker checks every 15 seconds while the **server stays running**, even when the page closes. It derives jobs from saved occurrences for the next 31 days, reconciles edits/deletion/completion/timezone changes, and persists delivery fingerprints. Notification center shows pending, cancelled, missed, quiet, failed and push-service-accepted states. Payloads hide activity titles; tapping opens the authenticated event. Subscriptions are user-scoped and restricted to supported push domains. Sign-out currently disables all that account's subscriptions; other devices must re-enable them.
+
+A push-service acceptance is **not proof of device delivery**. Jobs are claimed before sending to avoid duplicate attempts after a crash; an interrupted send may be lost rather than retried. Browser/device/network conditions can delay or suppress delivery. This is not a guaranteed alarm. Email reminders are not configured. In-app upcoming reminders remain available, and open-page alerts can be enabled separately.
+
+On supported iPhone/iPad versions, install to the Home Screen and open from that icon before requesting Web Push permission. Deployment requires HTTPS; localhost is allowed for development. See [official WebKit Web Push guidance](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/). Physical iPhone delivery has not been tested.
+
+## Time handling and deployment boundaries
+
+Dates stay `YYYY-MM-DD`; local activity times stay `HH:MM` in the selected IANA timezone. Changing timezone keeps intentionally entered wall times. Timed Google imports reproject their stored absolute instants immediately; all-day dates remain all-day dates. Current-time lines, scheduling, reminders and AI context use the selected zone. Imported all-day endings support `24:00`.
+
+DST gaps are rejected. Automatic free-time suggestions conservatively reserve repeated or nonexistent clock-change hours; they never advertise those hours as free. Modern quarter-hour-aligned IANA transitions are handled; unusual historical transitions are outside this planner?s intended range. Repeated times require the earlier/later choice in the activity editor or AI review. A recurrence containing an invalid/ambiguous occurrence is rejected until clarified. Routine templates reserve wall-time ranges and have reminders off; background jobs never guess ambiguous instants. Per-event travel timezones are not supported.
+
+Before public deployment, arrange HTTPS, protected persistent disk outside public web roots, backups, process supervision, monitored workers and account recovery. Never expose personal schedules through public JSON. No hosting deployment was performed. No TRMNL device integration is claimed; its future monochrome layout stays separate.
+
+## Verification and learning
+
+```sh
 npm.cmd test
 npm.cmd run test:browser
 ```
 
-The browser suite uses installed Google Chrome in a new isolated profile and its own local server at port 8081. It never reads your normal browser's storage or login session. Screenshots and test output are ignored by Git. [Playwright documentation](https://playwright.dev/docs/library).
+Unit/API tests use in-memory SQLite and real local HTTP authentication. Coverage includes user isolation, origin checks, version conflicts, migration, recurrence/undo, scheduling/overlap/buffers, DST, AI validation/approval, OAuth state/encryption, Google import replacement/deletion, Gmail review/deduplication and push cancellation/deduplication. Provider responses and push sends are explicitly mocked. **No live Google connection, paid AI request or physical device delivery has been verified.**
 
-Model tests cover safe migration, preserved original keys, conflicts, recurrence/one-occurrence edits, validation, persistence failures, schedule gaps, sleep, past dates, remaining duration, breaks, locks/completion, stale previews, undo, capacity, timezone boundaries, reminder cancellation/rescheduling/deduplication, themes, and demo isolation.
+Browser tests use isolated installed Chrome on port 8081, never your normal profile. They cover existing workflows plus setup, quick entry, actual account creation/import/logout, disconnected states, mocked AI approval and layouts at 360/390/430px. Screenshots are ignored. Phone emulation does not replace real Safari/device testing.
 
-Browser tests cover:
+The frontend remains HTML/CSS/JavaScript modules. `availability.mjs` merges busy intervals, `scheduler.mjs` fits tasks, `planner-store.mjs` validates state, `assistant-ui.mjs` manages setup/reviews, and `account-client.mjs` syncs versioned snapshots. `server/` owns accounts, SQLite, secrets and workers.
 
-- First visit and existing data, plus failed/stalled module loading and corrupt saved-data recovery.
-- All three views, month/year boundaries, Today, date selection, and keyboard slot entry.
-- Adding, editing, rescheduling, completing, deleting, undoing, and refreshing activities.
-- Recurrence exceptions, fixed/flexible planning, preview/cancel/apply, locks, replanning, overfull days, and saved unscheduled explanations.
-- Timezone persistence, notification denial, in-app reminder rescheduling/cancellation without duplicate receipts.
-- Mobile layout, dialog fitting, keyboard dismissal, and focus return. Desktop and mobile screenshots have also been visually inspected.
-- Phone calendar widths at 360, 390, and 430 pixels, touch day selection, screen-fitting month grids, selected-day agenda editing, long-event label visibility, and restoring seven desktop columns after resizing. These are isolated Chrome mobile emulations, not physical iPhone/Safari tests.
+Small exercise: plan 08:00-18:00 with school 08:00-15:00 and a 15-minute travel buffer. Predict the first afternoon gap, then find its calculation in `availability.mjs`. Understand and test this stage before extending integrations.
 
-## Learning map
-
-- `bootstrap.js`: loading, error reporting, retry, and backup export.
-- `app.js`: forms, shared-store actions, dashboard widgets, plan previews, and reminder delivery.
-- `planner-store.mjs`: validated transactions, migration, recurrence occurrences, persistence, and undo.
-- `scheduler.mjs`: pure scheduling rules and capacity calculations.
-- `calendar-ui.mjs`, `timetable-ui.mjs`, `calendar-view.mjs`: view navigation, DOM rendering, date arithmetic, and time-to-position mapping.
-- `clock.mjs`, `reminders.mjs`: timezone-aware clock and pure reminder calculations.
-- `appearance.mjs`, `theme-ui.mjs`, `runtime.mjs`, `storage.mjs`: saved appearance and real/demo storage selection.
-
-Small exercise: create a 45-minute task with 15 minutes already worked. Before generating a plan, predict how long its scheduled block will be. Then find the subtraction in `scheduler.mjs` and explain why planning in the past is blocked.
-
-## Remaining project boundaries
-
-There is no backend, real signup/login, friend sharing, external calendar sync, Gmail connection, AI service, or working TRMNL integration. Gmail remains the chosen later email provider. A future TRMNL layout should stay monochrome and separate from the colourful web themes, with server-side credentials and protected schedule access. The inspected project had no device integration to preserve, and no device testing is claimed.
-
-Verify current official TRMNL documentation and the full TRMNT challenge rules before choosing an integration or buying hardware/licences. The full challenge Get Started page was not available in the earlier research.
-
-The implementation, tests, and README were generated with AI assistance. Keep that attribution accurate, understand and test the code, and make your own small changes. Hack Club programs differ in AI-use, originality, and time-tracking rules. Verify the chosen program's current requirements; never fabricate coding hours or submit AI-written text as a personal work journal.
+Code, tests and documentation were produced with AI assistance. Keep that attribution accurate. Verify the specific Hack Club/TRMNT program's current AI/originality/time rules before submitting; never fabricate coding hours or present generated text as your own work log.

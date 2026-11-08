@@ -7,13 +7,17 @@ import { upcomingReminders, isQuiet } from './reminders.mjs';
 import { storage, isDemo } from './runtime.mjs';
 import { seedDemo } from './demo.mjs';
 import { timeLabel } from './calendar-view.mjs';
+import { loadAccount } from './account-client.mjs';
+import { initAssistant } from './assistant-ui.mjs';
+import { wallToInstant } from './zoned-time.mjs';
 
-export function startApp() {
+export async function startApp() {
   const $ = selector => document.querySelector(selector);
+  const account = await loadAccount();
   if (isDemo) seedDemo(storage);
   const model = createPlannerStore(storage);
   const form = $('#activity-form');
-  let calendar, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
+  let calendar, assistant, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
   const displayedNotifications = new Map();
   const now = () => zonedNow(new Date(), model.snapshot().settings.timeZone);
   const field = name => form.elements.namedItem(name);
@@ -32,7 +36,9 @@ export function startApp() {
     field('repeatUntil').required = field('repeat').value !== 'none' && !original;
     field('repeatUntil').disabled = Boolean(original) || field('repeat').value === 'none';
   }
-  function openActivity({ date = calendar.getSelectedDate(), item = null, start, title = '', kind = 'fixed' } = {}) {
+  function openActivity({ date = calendar.getSelectedDate(), item = null, start, end, title = '', kind = 'fixed' } = {}) {
+    if (item?.sourceRoutine) { assistant.openSetup(); return; }
+    if (item?.sourceImport) { feedback('Imported Google event. Edit it in Google Calendar, then sync in Settings.'); return; }
     form.reset(); original = null; placement = null;
     let source = item;
     if (item?.kind === 'task') {
@@ -44,9 +50,10 @@ export function startApp() {
       }
       kind = 'task';
     } else if (item) kind = 'fixed';
-    const data = source ? { ...source, date: source.date || date, kind } : { kind, title, date, category: 'Study', priority: 'Medium', start: timeLabel(start ?? 9 * 60), end: timeLabel(Math.min(1439, (start ?? 9 * 60) + 60)), duration: 30, spent: 0, deadline: '', notes: '', repeat: 'none', repeatUntil: '', reminder: 'default' };
+    const data = source ? { ...source, date: source.date || date, kind } : { kind, title, date, category: 'Study', priority: 'Medium', start: timeLabel(start ?? 9 * 60), end: timeLabel(end ?? Math.min(1439, (start ?? 9 * 60) + 60)), duration: 30, spent: 0, deadline: '', notes: '', repeat: 'none', repeatUntil: '', reminder: 'default', dstChoice: '' };
     if (source) original = { id: source.id, kind, date: source.date || date };
     for (const name of ['kind', 'title', 'date', 'category', 'priority', 'start', 'end', 'duration', 'spent', 'deadline', 'notes', 'repeat', 'repeatUntil', 'reminder']) if (data[name] !== undefined) field(name).value = data[name];
+    field('dstChoice').value = data.dstChoice || '';
     field('kind').disabled = Boolean(original); field('repeat').disabled = Boolean(original);
     $('#series-controls').hidden = !source?.seriesId;
     $('#activity-heading').textContent = original ? 'Edit activity' : 'Add activity';
@@ -99,7 +106,7 @@ export function startApp() {
     $('#now-heading').textContent = current?.title || 'A little breathing room';
     $('#now-detail').textContent = current ? `Until ${current.end}` : 'No activity scheduled right now.';
     $('#next-activity').textContent = next ? `Next: ${next.title} at ${next.start}${nextDate !== currentTime.date ? ` on ${dateLabel(nextDate)}` : ''}` : 'No upcoming activities scheduled.';
-    $('#free-minutes').textContent = planningCapacity(day, model.snapshot().settings).free; $('#free-date').textContent = `Unbooked on ${dateLabel(date)}`;
+    $('#free-minutes').textContent = planningCapacity(day, model.snapshot().settings).free; $('#free-date').textContent = `${model.snapshot().settings.setupConfirmed ? 'Unbooked' : 'Estimate — finish availability setup'} on ${dateLabel(date)}`;
     const placedIds = new Set(day.commitments.filter(item => item.kind === 'task').map(item => item.taskId));
     const tasks = model.getTasks().filter(task => task.date === date || task.deadline === date || placedIds.has(task.id));
     const done = tasks.filter(task => task.completed).length;
@@ -112,6 +119,7 @@ export function startApp() {
       const row = document.createElement('li'); row.textContent = `Last plan left ${title} unscheduled: ${item.reason} Generate a fresh preview after changing the day or task.`; unplaced.append(row);
     }
     renderReminders();
+    assistant?.render();
   }
   function renderReminders() {
     const list = $('#reminder-list'); list.replaceChildren();
@@ -153,7 +161,8 @@ export function startApp() {
     for (const name of ['kind', 'title', 'category', 'priority', 'date', 'start', 'end', 'deadline', 'notes', 'repeat', 'repeatUntil', 'reminder']) data[name] = field(name).value;
     data.title = data.title.trim(); data.duration = Number(field('duration').value); data.spent = Number(field('spent').value); data.id = original?.id || crypto.randomUUID(); data.locked = false;
     if (!['default', 'off'].includes(data.reminder)) data.reminder = Number(data.reminder);
-    if (attempt(() => model.saveActivity(data, original, field('scope').value), '#activity-error')) { calendar.selectDate(data.date); $('#activity-dialog').close(); feedback(data.kind === 'task' ? 'Task saved. Generate or replan your day to preview where it fits.' : 'Activity saved. Undo is available.'); }
+    data.dstChoice = field('dstChoice').value;
+    if (attempt(() => { if (data.kind === 'fixed') { wallToInstant(data.date, data.start, model.snapshot().settings.timeZone, data.dstChoice); wallToInstant(data.date, data.end, model.snapshot().settings.timeZone, data.dstChoice); } model.saveActivity(data, original, field('scope').value); }, '#activity-error')) { calendar.selectDate(data.date); $('#activity-dialog').close(); feedback(data.kind === 'task' ? 'Task saved. Generate or replan your day to preview where it fits.' : 'Activity saved. Undo is available.'); }
     saving = false; $('#save-activity').disabled = false;
   });
   $('#complete-activity').addEventListener('click', () => { if (attempt(() => model.toggle(original.kind, original.id, original.date), '#activity-error')) $('#activity-dialog').close(); });
@@ -165,13 +174,13 @@ export function startApp() {
   $('#undo-action').addEventListener('click', () => { if (attempt(() => model.undo())) feedback('Last change undone.'); });
   for (const id of ['#generate-day', '#replan-day']) $(id).addEventListener('click', previewPlan);
   $('#apply-plan').addEventListener('click', () => { if (attempt(() => model.applyPlan(preview.date, preview.proposed, preview.revision), '#plan-error')) { $('#plan-dialog').close(); feedback('Plan applied. Undo is available.'); } });
-  $('#open-planning-settings').addEventListener('click', () => { const settings = model.snapshot().settings; for (const [name, value] of Object.entries(settings)) { const input = $('#planning-form').elements.namedItem(name); if (typeof value === 'boolean') input.checked = value; else input.value = value; } $('#planning-error').hidden = true; $('#planning-dialog').showModal(); });
+  $('#open-planning-settings').addEventListener('click', () => { const settings = model.snapshot().settings; for (const [name, value] of Object.entries(settings)) { const input = $('#planning-form').elements.namedItem(name); if (!input) continue; if (typeof value === 'boolean') input.checked = value; else input.value = value; } $('#planning-error').hidden = true; $('#planning-dialog').showModal(); });
   $('#planning-form').addEventListener('submit', event => { event.preventDefault(); const settings = Object.fromEntries(new FormData(event.target)); for (const name of ['breakMinutes', 'reminderMinutes']) settings[name] = Number(settings[name]); settings.remindersEnabled = event.target.elements.namedItem('remindersEnabled').checked; if (attempt(() => model.saveSettings(settings), '#planning-error')) { $('#planning-dialog').close(); feedback('Preferences saved. Existing per-day hours remain; use Edit day hours to change them.'); } });
   $('#hours-form').addEventListener('submit', event => { event.preventDefault(); if (attempt(() => model.setHours(calendar.getSelectedDate(), Object.fromEntries(new FormData(event.target))), '#hours-error')) $('#hours-dialog').close(); });
   $('#enable-notifications').addEventListener('click', async () => { if (!('Notification' in window)) { $('#notification-status').textContent = 'Browser notifications are unavailable here. In-app reminders still work.'; return; } const permission = await Notification.requestPermission(); $('#notification-status').textContent = permission === 'granted' ? 'Permission granted. Enable reminders and save preferences to receive open-page alerts.' : 'Notifications not enabled. In-app reminders remain available.'; });
   async function tickReminders() {
     const settings = model.snapshot().settings, time = now();
-    if (!settings.remindersEnabled || isQuiet(time.minute, settings)) return;
+    if (!settings.remindersEnabled || (account.user && settings.backgroundReminders) || isQuiet(time.minute, settings)) return;
     const stamp = dayNumber(time.date) * 1440 + time.minute;
     const send = () => { for (const reminder of upcomingReminders(model, time).filter(item => item.due <= stamp && item.startStamp >= stamp)) {
       if (!model.claimReminder(reminder.key)) continue;
@@ -187,5 +196,6 @@ export function startApp() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderSummary(); tickReminders(); } });
   window.addEventListener('storage', event => { if (event.key === PLANNER_KEY && !isDemo) attempt(() => model.reload()); });
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }
+  assistant = initAssistant({ model, account, calendar, openActivity, now });
   renderTasks(); renderSummary(); tickReminders();
 }
