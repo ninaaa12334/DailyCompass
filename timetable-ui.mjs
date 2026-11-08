@@ -1,19 +1,21 @@
 import { addDays, eventPosition, timeLabel } from './calendar-view.mjs';
-import { minutes, dateKey, capacity } from './calendar-store.mjs';
+import { minutes, capacity } from './calendar-store.mjs';
+import { zonedNow } from './clock.mjs';
 
 export function renderTimetable(grid, options) {
   const { dates, selected, focusHour, getDay, getTasks, onSelect, onAdd, onEdit, onNavigate } = options;
   const tasks = getTasks();
+  grid.dataset.timeZone = options.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   grid.replaceChildren();
   grid.dataset.view = dates.length === 1 ? 'day' : 'week';
   const corner = document.createElement('div');
   corner.className = 'week-corner';
-  corner.textContent = 'Local time';
+  corner.textContent = grid.dataset.timeZone;
   grid.append(corner);
 
   for (const date of dates) {
     const day = getDay(date);
-    const { ratio, booked } = capacity(day);
+    const { ratio, booked } = options.getCapacity ? options.getCapacity(day) : capacity(day);
     const header = document.createElement('button');
     header.type = 'button';
     header.className = 'week-day-heading';
@@ -21,7 +23,7 @@ export function renderTimetable(grid, options) {
     header.dataset.color = day.color;
     header.dataset.load = ratio === 0 ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3';
     header.setAttribute('aria-pressed', String(date === selected));
-    if (date === dateKey(new Date())) header.setAttribute('aria-current', 'date');
+    if (date === zonedNow(new Date(), grid.dataset.timeZone).date) header.setAttribute('aria-current', 'date');
     const label = document.createElement('span');
     label.textContent = new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' });
     const number = document.createElement('strong');
@@ -83,9 +85,9 @@ export function renderTimetable(grid, options) {
 
     for (const item of day.commitments) {
       const position = eventPosition(item);
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `week-event${position.height < 40 ? ' short-event' : ''}`;
+      const button = document.createElement(item.kind === 'break' ? 'div' : 'button');
+      if (item.kind !== 'break') button.type = 'button';
+      button.className = `week-event${position.height < 40 ? ' short-event' : ''}${item.completed ? ' completed' : ''}`;
       button.dataset.eventId = item.id;
       button.style.top = `${position.top}px`; button.style.height = `${position.height}px`;
       button.title = `${item.title} · ${item.start}–${item.end}`;
@@ -93,7 +95,7 @@ export function renderTimetable(grid, options) {
       const title = document.createElement('strong'); title.textContent = item.title;
       const time = document.createElement('small'); time.textContent = `${item.start}–${item.end}`;
       button.append(title, time);
-      button.addEventListener('click', () => onEdit(date, item));
+      if (item.kind !== 'break') button.addEventListener('click', () => onEdit(date, item));
       column.append(button);
     }
     const nowLine = document.createElement('div');
@@ -106,10 +108,10 @@ export function renderTimetable(grid, options) {
 }
 
 export function updateNowLines(grid) {
-  const now = new Date();
+  const now = zonedNow(new Date(), grid.dataset.timeZone);
   for (const column of grid.querySelectorAll('.time-day-column')) {
     const line = column.querySelector('.now-line');
-    line.hidden = column.dataset.date !== dateKey(now);
-    line.style.top = `${now.getHours() * 60 + now.getMinutes()}px`;
+    line.hidden = column.dataset.date !== now.date;
+    line.style.top = `${now.minute}px`;
   }
 }

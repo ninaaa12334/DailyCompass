@@ -1,133 +1,137 @@
-﻿# Day Compass
+# Day Compass
 
-A personal planner built in manageable learning stages, using HTML, CSS, and JavaScript modules. No packages or paid services are required.
+A local personal planner built with HTML, CSS, and JavaScript modules. The colourful welcome page and floating-card design are preserved. No account, paid AI service, or backend is required to use this version.
 
-## Run locally
+## Run
+
+If the existing preview is running, open http://127.0.0.1:8080/dashboard.html and refresh. Keep the same address and browser to retain access to your saved local data.
+
+For a fresh local server:
+
+```sh
+npm.cmd start
+```
+
+On Windows PowerShell, the `.cmd` form avoids the npm PowerShell-script policy issue. On other systems, use `npm` instead. This uses Node's built-in HTTP server; app dependencies are not required. Default address: http://127.0.0.1:8080. If a Python server already owns that port, keep using it or stop that terminal first. Do not change ports unnecessarily: browser storage is separate for each origin, including the port.
+
+The Python alternative remains:
 
 ```sh
 python -m http.server 8080 --bind 127.0.0.1
 ```
 
-Keep that terminal running and visit http://127.0.0.1:8080/index.html.
+Use a web-server URL rather than double-clicking the HTML file. The Node server serves modules with the correct JavaScript MIME type and disables caching during development. `.htaccess` also declares the `.mjs` MIME type for compatible Apache setups; Apache itself must be running if you choose that route.
 
-- `index.html`: dedicated welcome page with Start planning, demo, and an honest account-status explanation.
-- `dashboard.html`: your existing local planner and saved data, now in a compact widget layout.
-- `dashboard.html?demo=1`: editable sample data stored separately in this tab's session storage.
+- `index.html`: welcome and honest local-account explanation.
+- `dashboard.html`: personal planner using this browser's local storage.
+- `dashboard.html?demo=1`: isolated sample planner in session storage, with separate appearance and view preferences.
 
-Use the same browser and address as before. Storage belongs to an origin, including its port: localhost and 127.0.0.1 have separate data. Opening the HTML directly will not load JavaScript modules correctly. WordPress is not required despite the local folder location.
+## Loading investigation and fix
 
-## Stage 1: welcome, dashboard, and themes
+The supplied attachment contained written symptoms, not a screenshot. The old app loaded correctly in a clean isolated Chrome context, so the exact original environment/data trigger could not be reproduced. Server checks confirmed that the active Python preview serves JavaScript modules correctly; the Apache URL did not respond during investigation.
 
-Implemented:
+The confirmed startup weakness was that static module failures or initialization exceptions left the HTML's loading placeholders on screen, with no recovery UI. `bootstrap.js` is now a small classic-script entry point that dynamically imports and starts the app, catches failures, and times out stalled module requests after ten seconds. It resolves to a ready state or an error with Retry, details, and a local saved-data download. It does not reset storage to hide an error.
 
-- The welcome headline and supporting text from the redesign brief, an illustrative floating-card preview, and a short three-step explanation.
-- Working navigation, a Start planning account-status dialog, and a separate editable demo. Log in explains that real authentication is not available; it never asks for or accepts a password.
-- Smaller widgets for current/next fixed events, unbooked minutes, task progress, calendar, selected-day timeline, and task management. Current/next refresh on page visibility and every minute.
-- Sage and cream, lavender, ocean, rose, peach, midnight, and system appearance options.
-- Custom accent and calendar busyness colours. Black or white text is chosen automatically for filled accents and heavily booked dates. Theme changes save only on Save; closing the popup cancels unsaved choices.
-- Persistent appearance across the welcome page and dashboard. Demo appearance is isolated too.
-- Distinct calendar indicators for busyness, today (underline), selected date (outline), and incomplete deadlines (dot), plus exact booked/unbooked minutes.
-- A default Use my theme busyness colour for new dates. Existing saved date-specific colours remain supported and do not change your global theme.
-- Reduced-motion support, visible keyboard focus, native dialog focus handling, and responsive layouts.
+A separate browser test caught an actual rescheduling defect: an activity moved to another date, but the calendar stayed on the original week. Saving now selects and displays the activity's date.
 
-Progress is across the saved task list, not a claimed count of tasks completed today. Current/next and unbooked time currently use fixed commitments only. Task durations do not reserve calendar time yet. The preview on the welcome page is labelled example data.
+If a particular saved dataset still fails, use the visible error details and download a backup for recovery. Do not delete local storage just to clear a loading message.
 
-## Existing features preserved
+## Stage 1: shared data and safe persistence
 
-### Calendar workspace update
+`planner-store.mjs` is the shared source for tasks, fixed events, schedules, settings, completion, locks, reminder receipts, and one-level undo. Every change validates a copy, saves it, then updates the UI. A failed write leaves the previous state intact.
 
-The calendar now has Day, Week, and Month views instead of a small date picker. Your last choice using the view switch is saved and restored on future visits. On a first visit, desktop starts in Week and narrow screens start in Day. The demo saves its view separately for its tab session. Invalid saved values fall back to the screen default; if saving fails, the view still switches and a message explains that it could not be remembered. Use Today and the arrows to navigate the current view. Week view can scroll horizontally on small screens; the timetable has its own vertical scroll area and shows all 24 hours, initially scrolled to the morning.
+Older task and calendar keys are read and normalised in memory. Known missing optional fields get safe defaults. The new planner writes to `day-compass.planner.v2`; the original `.tasks.v1` and `.calendar.v1` keys are never deleted or overwritten by migration. Invalid data is preserved and reported. The legacy data modules and their tests remain for compatibility.
 
-Events sit at their actual start times with height proportional to duration. Hatched time is outside the day's planning hours, and a line marks the current time today. Date numbers keep the busyness colours; today is underlined and the selected day is indicated separately. Incomplete task deadlines are shown in day headings or month cells. Month view includes event labels, with an option to see additional events in Day view.
+Appearance and the Day/Week/Month view are independent UI preferences. The sample demo uses a prefixed session-storage adapter and does not overwrite your personal data.
 
-Click an empty time slot to prefill a new activity (mouse clicks snap to 30 minutes), or click an event to edit it. The normal form supports exact minutes. Change Activity date to move an event; conflicts are checked before the source is removed, and the move is saved in one storage write. To edit times from the keyboard, Tab to a time slot and use arrow keys, Home/End, then Enter. The Add activity button remains a normal-form alternative. Short event blocks can clip their text; clicking them or selecting the date shows their full details.
+Data remains in this browser profile, not in an account. Clearing browser data removes it, and another person using this same profile can open it. Storage events refresh other open tabs, but simultaneous editing is still last-write-wins; prefer one editing tab. Cross-device sync needs a backend database, real authentication, server-side authorization, and a migration/sync design. None is simulated here.
 
-This milestone does not introduce drag-and-drop, recurrence, external calendar sync, or automatic task scheduling. Flexible tasks remain in the task list. Your landing page and theme selection are preserved.
+## Stage 2: calendar and activities
 
-Calendar learning task: an event at 09:30 starts 570 minutes after midnight. Find `eventPosition()` in `calendar-view.mjs` and explain how its start and duration become the block's vertical position and height.
+- Day: a 24-hour timeline with activity blocks at their actual times.
+- Week: seven dated columns, sticky headings, time labels, and scrolling within the calendar.
+- Month: six Monday-first weeks including leading/trailing dates, activity labels, deadline markers, and busyness shading.
+- Today, selected dates, deadline dots, and completed activities have distinct indicators; exact booked/free time appears in the selected-day panel.
+- Previous/next moves by the active view. Today uses the configured timezone. The selected view is saved. Narrow screens initially use Day.
+- Clicking a slot prefills its date and start/end time. Keyboard arrows, Home/End, and Enter provide a slot-entry alternative.
+- All Add activity buttons use one editor. The quick task form opens that editor as a flexible task.
 
-Tasks support title, category, optional deadline, duration, and priority; editing, deletion, completion, reopening, and filtering all persist. Extra task fields are under Category, deadline & priority; editing opens them automatically.
+The editor supports title, category, fixed/flexible type, date, fixed start/end, flexible estimated duration/deadline, priority, notes, reminder override, and finite daily/weekly recurrence. It also supports editing, completion/reopening, and deletion. Changes can be undone using Undo last change. Simultaneous duplicate clicks are guarded; duplicate fixed events and overlaps produce errors.
 
-Select a date and use Add activity to open day setup. Save planning hours and a per-date busy colour, then add, edit, or remove fixed commitments. Commitments cannot overlap; adjacent events are allowed. Entries are for individual dates, without recurrence or overnight support.
+For recurring activities, choose This occurrence only or Entire series when editing/deleting. One-occurrence edits detach an exception. Recurrences are materialised through a required end date within one year. Their frequency stays as created; create a new series to change frequency. Overnight events and drag-and-drop are not implemented.
 
-Calendar capacity clips activities to planning hours and merges overlapping intervals before counting minutes. The shades are empty, up to one third, up to two thirds, and more than two thirds booked. The calculation is ready to receive scheduled tasks later, but no scheduler has been implemented.
+## Stage 3: understandable scheduling
 
-Your tasks, calendar, and preferences remain in browser storage. They are not uploaded by this app or synced across devices. Anyone using this browser profile can open the local planner; this is not an authenticated account. Clearing browser data removes saved information. Use one tab for editing for now: simultaneous edits are not coordinated.
+Generate my day and Replan remaining day both open a preview before changing the saved schedule. The preview lists proposed times, previous times when an activity moves, recommendation reasons, and tasks that cannot fit. Apply is explicit; Cancel leaves the stored plan unchanged. A changed planner revision invalidates an old preview. Undo restores the previous plan.
 
-## Implementation order
+Rules in `scheduler.mjs`:
 
-1. Welcome, compact dashboard, and saved appearance (this stage).
-2. Local personalisation: name, timezone, planning and sleep hours, break preferences. Preferences can be edited later. Real signup/login needs a backend and authentication setup.
-3. Scheduling: fixed events first, then tasks by deadline and priority; breaks, sleep, no past placements, visible unscheduled reasons, and preserved completed/locked work. Preview moves before applying and support undo.
-4. Activity recurrence, notes, category colours, and reminder preferences.
-5. In-app reminders, then optional browser notifications after explaining and requesting permission. Verify permission denial, quiet hours, duplicate prevention, and rescheduling. No closed-app alarms are implemented or guaranteed.
-6. Secure Gmail-to-task capture after backend and Google authorization setup. Use selected emails and reviewable drafts; keep credentials out of browser code. Gmail is the chosen provider, but nothing is connected now.
-7. Separate monochrome TRMNL integration and later optional friend invitations with acceptance and revocable availability sharing.
+1. Start inside planning hours and, for today, round the current time up to the next five-minute boundary. Never create a new plan in the past.
+2. Reserve fixed events, sleep, completed placements, manually locked work, and already-started/past placements. Keep breaks attached to preserved work.
+3. Sort eligible unfinished tasks by earliest deadline, then priority, then title for deterministic ties.
+4. Place `estimated duration - minutes already worked` into the first uninterrupted gap that fits. Do not assume work was done simply because time passed.
+5. Reserve the configured break after each newly placed task where the gap permits. Do not duplicate a task already scheduled on another current/future day.
+6. Keep tasks that do not fit in the task list and save the last plan's unscheduled reasons alongside the selected day. Offer another date, different hours, or an updated remaining duration instead of placing work outside the window.
 
-This stage does not add automatic scheduling, natural-language parsing, AI, reminders, sleep settings, recurring activities, accounts, Gmail access, or a device integration. Those controls are not presented as working features.
+Completed and locked placements stay fixed. A conflict with sleep or a preserved placement is shown rather than silently moving it. Fixed-event conflicts with existing schedules are rejected. For a flexible task that should move to another day, open its scheduled block, unlock if needed, choose Remove task from this day, then select the new date and preview a new plan. The task itself is retained. Fixed events can change dates directly in the editor.
 
-## Understand the code
+Planning settings include timezone, default planning hours, sleep hours, break length, reminder defaults, and quiet hours. Existing per-day hours remain specific to that date; use Edit day hours to change them. Equal sleep or quiet start/end disables that particular blocked interval.
 
-- `app.js` connects task forms to `task-store.mjs` and renders task rows with safe `textContent`.
-- `calendar-ui.mjs` connects the calendar and native day-setup dialog to `calendar-store.mjs`.
-- `calendar-view.mjs` calculates dates and event placement; `timetable-ui.mjs` renders the clock grid and its keyboard controls.
-- `dashboard-summary.mjs` reads the same saved data for current/next events, capacity, and progress.
-- `appearance.mjs` validates preferences and calculates colour contrast. `theme-ui.mjs` applies shared CSS custom properties and handles the appearance dialog.
-- `storage.mjs` and `runtime.mjs` choose real or isolated demo storage. `demo.mjs` seeds example tasks/commitments only into the demo.
-- `welcome.mjs` handles the local-access explanation. `styles.css` defines the shared design tokens, layout, and responsive rules.
+## Stage 4: real dashboard calculations
 
-Data modules are separate from UI modules so we can test behaviour without a browser. Saving happens before updating in-memory state: failed writes show an error and do not pretend to succeed. Unreadable saved tasks/calendar data is preserved rather than silently overwritten. The user may explicitly replace unreadable appearance preferences by saving a new theme.
+Current and next activities include fixed events, scheduled tasks, and breaks. Next also searches later saved dates. The selected-day timeline reads the same shared records. Progress explicitly counts tasks dated, due, or scheduled on the selected date, rather than claiming an unspecified daily total.
+
+Booked time clips activities to the selected planning window and merges overlaps. Sleep-only blocked minutes are excluded from free time. Calendar busyness uses the same capacity calculation, including scheduled work and breaks. Date-only deadlines stay as date strings; timezone-aware current-time calculations use `Intl.DateTimeFormat`, without converting deadlines through UTC.
+
+## Stage 5: honest reminders
+
+Upcoming reminders are derived from the current activities, not separate stale timers. Moving an activity changes its reminder key; deletion/completion removes its pending reminder and closes any notification created by this page for it. Default timing can be overridden per activity or switched off.
+
+Global alerts are off initially. Enable them in Planning settings. Quiet hours suppress delivery. Notification permission is requested only when the user clicks the explained Enable browser notifications button. If permission is denied or notifications are unavailable, the in-app list and alerts remain available. See [MDN's notification permission guidance](https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API/Using_the_Notifications_API).
+
+Open-page checks run every 15 seconds and on return to the page. Persistent receipts prevent repeated alerts for the same activity/date/start/lead. A browser lock serialises checks across supported same-origin tabs; without that API cross-tab delivery is best effort. Receipt storage failures are shown and suppress delivery rather than pretending deduplication succeeded.
+
+These are **open-page reminders only**. A suspended browser, sleeping computer, closed page, or nonexistent local time during a daylight-saving transition can delay or prevent delivery. No push service, background notification scheduler, email delivery, or reliable closed-app alarm is implemented. OS notification delivery was not tested; the automated permission-denial test uses a mock, while in-app timing/rescheduling is exercised with an isolated browser clock.
 
 ## Verification
 
-Run:
+App use needs no installed packages. For development tests only, install the free Playwright tooling:
 
 ```sh
-node task-store.test.mjs
-node calendar-store.test.mjs
-node appearance.test.mjs
-node dashboard-summary.test.mjs
-node calendar-view.test.mjs
+npm.cmd ci
+npm.cmd test
+npm.cmd run test:browser
 ```
 
-Tests cover task persistence and failure handling, commitment conflicts, date boundaries, overlapping capacity, theme persistence, accent/text contrast of at least 4.5:1, demo isolation, and current/next event boundaries. Source syntax, HTML references, and local file delivery are checked separately.
+The browser suite uses installed Google Chrome in a new isolated profile and its own local server at port 8081. It never reads your normal browser's storage or login session. Screenshots and test output are ignored by Git. [Playwright documentation](https://playwright.dev/docs/library).
 
-Browser automation could not complete: the browser connector was unavailable and desktop app access timed out. Mobile/desktop rendering, actual keyboard behaviour, and live interactions still need manual verification; source and model checks do not prove those pass.
+Model tests cover safe migration, preserved original keys, conflicts, recurrence/one-occurrence edits, validation, persistence failures, schedule gaps, sleep, past dates, remaining duration, breaks, locks/completion, stale previews, undo, capacity, timezone boundaries, reminder cancellation/rescheduling/deduplication, themes, and demo isolation.
 
-### Manual acceptance checks
+Browser tests cover:
 
-1. Open the welcome page: verify the exact headline and both calls to action. Log in and Start planning should explain local mode, not simulate authentication.
-2. Open your local planner and confirm previous tasks/commitments remain. Add, edit, complete, cancel an edit, delete a task, then reload.
-3. Enter the sample demo, edit a sample task and theme, then return to your planner: personal data and appearance should be unchanged.
-4. Save each theme and reload. Select Follow system and change your OS appearance manually. Try bright yellow and white custom accents: button text should remain readable.
-5. Pick a date, set 08:00-16:00 planning hours, then add School from 08:00-15:00. Expect 420 booked minutes and 60 unbooked minutes. Try an overlap and confirm it is rejected.
-6. Edit School to end at 12:00: expect 240 booked and 240 unbooked minutes and a lighter calendar shade. Reload and check persistence.
-7. Add a task deadline on that date and complete it: verify the deadline dot updates. Check calendar selection does not change the global appearance.
-8. Use only Tab, Shift+Tab, Enter, Space, and Escape. Check dialog focus, closed task-details validation, calendar selection, and retained checkbox focus.
-9. Check at 360px, 768px, and 1280px widths: no clipped text, overlapping controls, or horizontal scrolling. Enable reduced motion and inspect hover behaviour.
-10. Switch Day, Week, and Month. Cross a month/year boundary, select Today, and verify the correct dates and stored activities.
-    Choose Month and reload: Month should reopen. Repeat with Day and Week, then check that changing the demo's view does not change your personal planner's preference.
-11. Click a 09:30 time slot, save an activity, then click its block to change time/date. Attempt a conflicting move and confirm the original remains. Reload and check the successful move persists.
-12. Tab to a time slot, use arrows and Enter to open the editor, then Escape to close. Confirm focus returns to the calendar. Week and Month may scroll within their own containers on narrow screens; the page itself should not overflow.
+- First visit and existing data, plus failed/stalled module loading and corrupt saved-data recovery.
+- All three views, month/year boundaries, Today, date selection, and keyboard slot entry.
+- Adding, editing, rescheduling, completing, deleting, undoing, and refreshing activities.
+- Recurrence exceptions, fixed/flexible planning, preview/cancel/apply, locks, replanning, overfull days, and saved unscheduled explanations.
+- Timezone persistence, notification denial, in-app reminder rescheduling/cancellation without duplicate receipts.
+- Mobile layout, dialog fitting, keyboard dismissal, and focus return. Desktop and mobile screenshots have also been visually inspected.
 
-Small learning exercise: change one theme's display label in `appearance.mjs`, then explain how CSS custom properties let all widgets change together. Compare `localStorage` with the demo's `sessionStorage` before the next stage.
+## Learning map
 
-Scheduling-full-day and reminder-rescheduling checks remain pending until those features exist.
+- `bootstrap.js`: loading, error reporting, retry, and backup export.
+- `app.js`: forms, shared-store actions, dashboard widgets, plan previews, and reminder delivery.
+- `planner-store.mjs`: validated transactions, migration, recurrence occurrences, persistence, and undo.
+- `scheduler.mjs`: pure scheduling rules and capacity calculations.
+- `calendar-ui.mjs`, `timetable-ui.mjs`, `calendar-view.mjs`: view navigation, DOM rendering, date arithmetic, and time-to-position mapping.
+- `clock.mjs`, `reminders.mjs`: timezone-aware clock and pure reminder calculations.
+- `appearance.mjs`, `theme-ui.mjs`, `runtime.mjs`, `storage.mjs`: saved appearance and real/demo storage selection.
 
-## TRMNL status
+Small exercise: create a 45-minute task with 15 minutes already worked. Before generating a plan, predict how long its scheduled block will be. Then find the subtraction in `scheduler.mjs` and explain why planning in the past is blocked.
 
-No TRMNL functionality existed in the inspected code. This redesign does not remove a working integration or claim a browser preview is a device test. A future monochrome layout must remain separate from the web themes.
+## Remaining project boundaries
 
-Official references reviewed on 4 November 2026:
+There is no backend, real signup/login, friend sharing, external calendar sync, Gmail connection, AI service, or working TRMNL integration. Gmail remains the chosen later email provider. A future TRMNL layout should stay monochrome and separate from the colourful web themes, with server-side credentials and protected schedule access. The inspected project had no device integration to preserve, and no device testing is claimed.
 
-- [Private plugins](https://help.trmnl.com/en/articles/9510536-private-plugins): Developer add-on or BYOD licence setup.
-- [Plugin strategies](https://help.trmnl.com/en/articles/17434705-plugin-strategies): polling/webhook choices and refresh limitations.
-- [TRMNT challenge](https://trmnt.hackclub.com/): the detailed Get Started page could not be fetched, so full submission rules remain unverified.
+Verify current official TRMNL documentation and the full TRMNT challenge rules before choosing an integration or buying hardware/licences. The full challenge Get Started page was not available in the earlier research.
 
-Verify the current challenge rules before choosing the integration or purchasing hardware/licences. Keep API credentials server-side and schedules off unprotected public endpoints.
-
-## Learning and AI assistance
-
-The scaffold, design, task/calendar implementation, theme/demo modules, tests, and README were generated with AI assistance. Keep this attribution accurate. The learner should test and explain changes and make their own small modifications before moving on.
-
-Hack Club programs have different AI-use, originality, and time-tracking rules. Verify TRMNT's current requirements before submitting. Track only genuine eligible work using the required tools; never fabricate hours, claim generated work as your own, or submit AI-written text as a personal journal.
+The implementation, tests, and README were generated with AI assistance. Keep that attribution accurate, understand and test the code, and make your own small changes. Hack Club programs differ in AI-use, originality, and time-tracking rules. Verify the chosen program's current requirements; never fabricate coding hours or submit AI-written text as a personal work journal.

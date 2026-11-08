@@ -4,7 +4,7 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your planner · Day Compass</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="theme-ui.mjs" type="module"></script><script src="app.js" type="module"></script>
+  <script src="theme-ui.mjs" type="module"></script><script src="bootstrap.js" defer></script>
 </head>
 <body class="dashboard-page">
   <noscript><p class="local-banner">Please enable JavaScript to load and edit your saved local planner.</p></noscript>
@@ -16,10 +16,13 @@
   <main id="planner" tabindex="-1">
     <div class="local-banner" id="planner-mode">Local planner · Saved in this browser</div>
     <header class="dashboard-heading"><div><p class="eyebrow" id="dashboard-date">A LITTLE DIRECTION FOR YOUR DAY</p><h1>A day that feels like you.</h1><p class="muted">Make room for the things that matter.</p></div><a class="button secondary" href="#task-title">+ Add a task</a></header>
+    <p id="startup-status" role="status">Loading your saved planner...</p>
+    <section id="startup-error" class="widget" role="alert" hidden><h2>Let us get your planner working</h2><p>Retry without deleting your data. If the problem continues, download a backup for recovery.</p><details><summary>Error details</summary><pre id="startup-detail"></pre></details><button type="button" id="retry-startup">Retry</button><button type="button" class="secondary" id="export-backup">Download saved data</button></section>
+    <div class="planner-actions"><button type="button" class="secondary" id="open-planning-settings">Planning settings</button><button type="button" class="secondary" id="undo-action" disabled>Undo last change</button><span id="planner-feedback" role="status"></span></div>
     <div class="dashboard-grid">
-      <section class="widget now-widget" aria-labelledby="now-heading"><p class="widget-label">RIGHT NOW · FIXED EVENTS</p><h2 id="now-heading">Loading your day…</h2><p id="now-detail" class="muted"></p><div class="next-row"><span class="status-dot" aria-hidden="true"></span><p id="next-activity">Reading saved commitments.</p></div></section>
-      <section class="widget free-widget" aria-labelledby="free-heading"><p class="widget-label">SPACE IN YOUR DAY</p><h2 id="free-heading"><span id="free-minutes">—</span> <small>min free</small></h2><p class="muted" id="free-date">Within selected planning hours</p><p class="fine-print">Based on fixed commitments. Flexible tasks are not placed yet.</p></section>
-      <section class="widget progress-widget" aria-labelledby="progress-heading"><p class="widget-label">ONE SMALL WIN AT A TIME</p><h2 id="progress-heading">Task progress</h2><div class="progress-line"><strong id="progress-value">—</strong><span class="muted">completed</span></div><progress id="task-progress" value="0" max="1" aria-label="Task completion"></progress><p class="fine-print">Across your task list</p></section>
+      <section class="widget now-widget" aria-labelledby="now-heading"><p class="widget-label">RIGHT NOW</p><h2 id="now-heading">Loading your day…</h2><p id="now-detail" class="muted"></p><div class="next-row"><span class="status-dot" aria-hidden="true"></span><p id="next-activity">Reading saved activities.</p></div></section>
+      <section class="widget free-widget" aria-labelledby="free-heading"><p class="widget-label">SPACE IN YOUR DAY</p><h2 id="free-heading"><span id="free-minutes">—</span> <small>min free</small></h2><p class="muted" id="free-date">Within selected planning hours</p><p class="fine-print">Fixed events, scheduled tasks, and breaks inside planning hours.</p></section>
+      <section class="widget progress-widget" aria-labelledby="progress-heading"><p class="widget-label">ONE SMALL WIN AT A TIME</p><h2 id="progress-heading">Task progress</h2><div class="progress-line"><strong id="progress-value">—</strong><span class="muted">completed</span></div><progress id="task-progress" value="0" max="1" aria-label="Task completion"></progress><p class="fine-print"><span id="progress-scope">Tasks scheduled or due on the selected date</span></p></section>
       <section class="widget calendar-widget" aria-labelledby="calendar-heading">
         <div class="section-heading"><div><p class="widget-label">MAKE SPACE FOR YOUR WEEK</p><h2 id="calendar-heading">Your calendar</h2></div><button type="button" id="calendar-add">+ Add activity</button></div>
         <div class="calendar-toolbar">
@@ -28,16 +31,16 @@
           <div class="calendar-view-switch" role="group" aria-label="Calendar view"><button type="button" class="secondary" data-calendar-view="day" aria-pressed="false">Day</button><button type="button" class="secondary" data-calendar-view="week" aria-pressed="true">Week</button><button type="button" class="secondary" data-calendar-view="month" aria-pressed="false">Month</button></div>
         </div>
         <p class="fine-print" id="calendar-instructions">Click a time to add an activity. Click an event to edit it. Use arrow keys to move between time slots.</p>
-        <div id="week-view" class="week-scroller" tabindex="0" role="region" aria-label="Scrollable calendar timetable"><div id="week-grid" class="week-grid"></div></div>
+        <div class="planner-actions"><button type="button" id="generate-day">Generate my day</button><button type="button" class="secondary" id="replan-day">Replan remaining day</button></div><div id="week-view" class="week-scroller" tabindex="0" role="region" aria-label="Scrollable calendar timetable"><div id="week-grid" class="week-grid"></div></div>
         <div id="month-view" hidden><div class="weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div><div class="calendar-days" id="calendar-days" aria-label="Month calendar"></div></div>
         <div class="calendar-legend"><span><i class="legend-shades" aria-hidden="true"></i> Free → Busy</span><span>• Deadline</span><span><u>Underlined</u> Today</span><span>Outline: selected</span></div>
         <p id="calendar-status" role="status"></p><p id="calendar-error" role="alert" hidden></p>
       </section>
       <section class="widget timeline-widget" aria-labelledby="selected-day">
         <div class="section-heading"><div><p class="widget-label">YOUR DAY, AT A GLANCE</p><h2 id="selected-day">Selected day</h2></div><button type="button" id="setup-day">+ Add activity</button></div>
-        <p id="day-hours" class="muted"></p><p id="day-capacity"></p><div class="capacity-track" aria-hidden="true"><span id="capacity-fill"></span></div>
-        <ul id="day-commitments" class="timeline-list"></ul><p id="day-deadlines" class="fine-print"></p>
-        <p class="calendar-note">Fixed commitments only. Add flexible work in Tasks & deadlines below.</p>
+        <p id="day-hours" class="muted"></p><button type="button" class="secondary" id="edit-day-hours">Edit day hours</button><p id="day-capacity"></p><div class="capacity-track" aria-hidden="true"><span id="capacity-fill"></span></div>
+        <ul id="day-commitments" class="timeline-list"></ul><p id="day-deadlines" class="fine-print"></p><ul id="day-unscheduled" aria-label="Unscheduled work"></ul>
+        <p class="calendar-note">Fixed events and scheduled tasks. Use Generate my day to place flexible work.</p>
       </section>
 <section class="widget tasks-widget" aria-labelledby="tasks-heading">
         <div class="section-heading">
@@ -51,15 +54,6 @@
               placeholder="Maybe a little algebra practice…" aria-describedby="task-help">
             <button type="submit" id="save-task">Add task</button>
           </div>
-          <details class="task-options"><summary>Category, deadline & priority</summary><div class="task-fields">
-            <div><label for="task-category">Category</label><select id="task-category" name="category">
-              <option>Study</option><option>Exercise</option><option>Chores</option><option>Personal projects</option><option>Social</option>
-            </select></div>
-            <div><label for="task-deadline">Deadline (optional)</label><input id="task-deadline" name="deadline" type="date"></div>
-            <div><label for="task-duration">Minutes</label><input id="task-duration" name="duration" type="number" min="1" max="1440" step="1" value="30" required></div>
-            <div><label for="task-priority">Priority</label><select id="task-priority" name="priority"><option>Low</option><option selected>Medium</option><option>High</option></select></div>
-          </div>
-          </details><button type="button" class="secondary" id="cancel-edit" hidden>Cancel edit</button>
           <p id="task-help">Saved in this browser. Your list stays here after refresh.</p>
           <p id="storage-error" role="alert" hidden></p>
         </form>
@@ -68,29 +62,29 @@
         <ul id="task-list"></ul>
       </section>
     </div>
-    <footer><span>A calmer kind of productive.</span><a href="index.html">Back to welcome</a></footer>
+    <section class="widget reminders-widget"><h2>Upcoming reminders</h2><p id="reminder-mode" class="fine-print"></p><p class="fine-print">Open-page reminders only. Times use your configured timezone.</p><p id="reminder-alert" role="status"></p><ul id="reminder-list"></ul></section><footer><span>A calmer kind of productive.</span><a href="index.html">Back to welcome</a></footer>
   </main>
-<dialog id="day-dialog" aria-labelledby="day-dialog-title">
-      <div class="dialog-heading"><div><p class="widget-label">A DAY THAT FITS YOU</p><h2 id="day-dialog-title">Set up your day</h2></div><button type="button" class="secondary" id="close-day-dialog" aria-label="Close day setup">Close</button></div>
-      <p id="setup-date-label"></p>
-      <form id="day-settings-form">
-        <div class="task-fields day-settings">
-          <div><label for="planning-start">Planning starts</label><input id="planning-start" name="start" type="time" required value="08:00"></div>
-          <div><label for="planning-end">Planning ends</label><input id="planning-end" name="end" type="time" required value="20:00"></div>
-          <div><label for="day-color">This date's busy colour</label><select id="day-color" name="color"><option value="theme">Use my theme</option><option value="blue">Ocean blue</option><option value="sage">Soft sage</option><option value="lavender">Lavender</option><option value="rose">Dusty rose</option></select></div>
-        </div>
-        <button type="submit">Save day settings</button>
-      </form>
-      <hr>
-      <h3>Fixed commitments</h3><p class="calendar-note">School, practice, appointments. Enter one day at a time; overnight activities are not supported yet.</p>
-      <form id="commitment-form">
-        <label for="commitment-date">Activity date</label><input id="commitment-date" name="date" type="date" required>
-        <label for="commitment-title">What is happening?</label><input id="commitment-title" name="title" maxlength="120" required placeholder="For example, volleyball practice">
-        <div class="task-fields commitment-times"><div><label for="commitment-start">Starts</label><input id="commitment-start" name="start" type="time" required></div><div><label for="commitment-end">Ends</label><input id="commitment-end" name="end" type="time" required></div></div>
-        <div class="dialog-actions"><button type="submit" id="save-commitment">Add commitment</button><button type="button" class="secondary" id="cancel-commitment" hidden>Cancel edit</button></div>
-      </form>
-      <ul id="setup-commitments"></ul>
-      <p id="setup-feedback" role="status"></p><p id="setup-error" role="alert" hidden></p>
-    </dialog>
-</body>
-</html>
+<dialog id="activity-dialog" aria-labelledby="activity-heading">
+  <div class="dialog-heading"><h2 id="activity-heading">Add activity</h2><button type="button" class="secondary" data-close-dialog>Close</button></div>
+  <form id="activity-form">
+    <label for="activity-kind">Activity type</label><select id="activity-kind" name="kind"><option value="fixed">Fixed event</option><option value="task">Flexible task</option></select>
+    <label for="activity-title">Title</label><input id="activity-title" name="title" maxlength="120" required>
+    <div class="task-fields"><div><label for="activity-category">Category</label><select id="activity-category" name="category"><option>Study</option><option>Exercise</option><option>Chores</option><option>Personal projects</option><option>Social</option><option>Work</option><option>Appointments</option></select></div><div><label for="activity-priority">Priority</label><select id="activity-priority" name="priority"><option>High</option><option selected>Medium</option><option>Low</option></select></div></div>
+    <label for="activity-date">Date (earliest planning date for a flexible task)</label><input id="activity-date" name="date" type="date" required>
+    <fieldset id="fixed-fields"><legend>Fixed time</legend><div class="task-fields"><div><label for="activity-start">Start</label><input id="activity-start" name="start" type="time"></div><div><label for="activity-end">End</label><input id="activity-end" name="end" type="time"></div></div></fieldset>
+    <fieldset id="flexible-fields" hidden><legend>Flexible work</legend><div class="task-fields"><div><label for="activity-duration">Estimated minutes</label><input id="activity-duration" name="duration" type="number" min="1" max="1440" value="30"></div><div><label for="activity-spent">Minutes already worked</label><input id="activity-spent" name="spent" type="number" min="0" value="0"></div><div><label for="activity-deadline">Deadline (optional)</label><input id="activity-deadline" name="deadline" type="date"></div></div></fieldset>
+    <label for="activity-notes">Notes</label><textarea id="activity-notes" name="notes" maxlength="5000" rows="3"></textarea>
+    <div class="task-fields"><div><label for="activity-repeat">Repeat</label><select id="activity-repeat" name="repeat"><option value="none">Does not repeat</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></div><div><label for="activity-until">Repeat until</label><input id="activity-until" name="repeatUntil" type="date"></div><div><label for="activity-reminder">Reminder</label><select id="activity-reminder" name="reminder"><option value="default">Use default</option><option value="off">Off</option><option value="0">At start</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option></select></div></div>
+    <div id="series-controls" hidden><label for="activity-scope">Apply edits/deletion to</label><select id="activity-scope" name="scope"><option value="one">This occurrence only</option><option value="series">Entire series</option></select><p class="fine-print">Series frequency stays as created. Create a new series to change its frequency.</p></div>
+    <p id="activity-error" role="alert" hidden></p><p id="activity-status" role="status"></p>
+    <div class="dialog-actions"><button type="submit" id="save-activity">Save activity</button><button type="button" class="secondary" id="complete-activity" hidden>Complete</button><button type="button" class="secondary" id="lock-activity" hidden>Lock scheduled time</button><button type="button" class="secondary" id="unplan-activity" hidden>Remove task from this day</button><button type="button" class="secondary" id="delete-activity" hidden>Delete</button></div>
+  </form>
+</dialog>
+<dialog id="planning-dialog" aria-labelledby="planning-heading"><div class="dialog-heading"><h2 id="planning-heading">Planning preferences</h2><button type="button" class="secondary" data-close-dialog>Close</button></div><form id="planning-form">
+  <label for="planning-zone">Timezone (IANA name)</label><input id="planning-zone" name="timeZone" required list="timezone-options"><datalist id="timezone-options"><option>Europe/Budapest</option><option>Europe/London</option><option>America/New_York</option><option>Asia/Tokyo</option><option>UTC</option></datalist>
+  <div class="task-fields"><div><label for="default-start">Default planning start</label><input id="default-start" name="planningStart" type="time" required></div><div><label for="default-end">Default planning end</label><input id="default-end" name="planningEnd" type="time" required></div><div><label for="sleep-start">Sleep starts</label><input id="sleep-start" name="sleepStart" type="time" required></div><div><label for="sleep-end">Sleep ends</label><input id="sleep-end" name="sleepEnd" type="time" required></div><div><label for="break-minutes">Break minutes after a task</label><input id="break-minutes" name="breakMinutes" type="number" min="0" max="120" required></div><div><label for="reminder-default">Default reminder minutes</label><input id="reminder-default" name="reminderMinutes" type="number" min="0" max="1440" required></div><div><label for="quiet-start">Quiet hours start</label><input id="quiet-start" name="quietStart" type="time" required></div><div><label for="quiet-end">Quiet hours end</label><input id="quiet-end" name="quietEnd" type="time" required></div></div>
+  <label><input name="remindersEnabled" type="checkbox"> Enable open-page reminders</label><p class="fine-print">Reminders run while this page is open. Browser suspension can delay them; no reliable closed-app alarms are provided. In-app reminders remain available if notification permission is denied.</p><button type="button" class="secondary" id="enable-notifications">Enable browser notifications</button><p id="notification-status" role="status"></p><p id="planning-error" role="alert" hidden></p><button type="submit">Save preferences</button>
+</form></dialog>
+<dialog id="hours-dialog" aria-labelledby="hours-heading"><div class="dialog-heading"><h2 id="hours-heading">Selected-day hours</h2><button type="button" class="secondary" data-close-dialog>Close</button></div><form id="hours-form"><label for="day-start">Planning start</label><input id="day-start" name="start" type="time" required><label for="day-end">Planning end</label><input id="day-end" name="end" type="time" required><label for="day-color">Busy colour</label><select id="day-color" name="color"><option value="theme">Use theme</option><option value="blue">Ocean</option><option value="sage">Sage</option><option value="lavender">Lavender</option><option value="rose">Rose</option></select><p id="hours-error" role="alert" hidden></p><button type="submit">Save day hours</button></form></dialog>
+<dialog id="plan-dialog" aria-labelledby="plan-heading"><div class="dialog-heading"><h2 id="plan-heading">Review your proposed day</h2><button type="button" class="secondary" data-close-dialog>Cancel</button></div><p>Existing activities may move only after you apply this preview. Completed work and locked times stay in place.</p><div id="plan-preview"></div><p id="plan-error" role="alert" hidden></p><button type="button" id="apply-plan">Apply this plan</button></dialog>
+</body></html>

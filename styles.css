@@ -328,3 +328,19 @@ legend { font-size: .8rem; font-weight: 650; margin-bottom: .6rem; }
 .week-day-heading[data-load="1"] strong { background: color-mix(in srgb, var(--busy) 12%, var(--surface)); }
 .week-day-heading[data-load="2"] strong { background: color-mix(in srgb, var(--busy) 28%, var(--surface)); }
 .week-day-heading[data-load="3"] strong { background: var(--busy); color: var(--busy-ink); }
+textarea { width: 100%; font: inherit; color: var(--text); background: var(--surface-alt); border: 1px solid var(--border); border-radius: .7rem; padding: .7rem; resize: vertical; }
+.planner-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .8rem 0; }
+#planner-feedback, #startup-status { font-size: .8rem; color: var(--muted); }
+#startup-error { margin: 1rem 0; }
+#startup-detail { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; }
+#activity-form > label, #planning-form > label { margin-top: .8rem; }
+#activity-form .task-fields, #planning-form .task-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#activity-error, #planning-error, #hours-error, #plan-error { color: var(--error); font-size: .85rem; }
+#activity-status { font-size: .8rem; color: var(--muted); }
+#plan-preview p { font-size: .85rem; border-top: 1px solid var(--border); padding-top: .65rem; }
+.week-event.completed strong, .month-event.completed { text-decoration: line-through; }
+.reminders-widget { margin-top: 1rem; }
+#reminder-list { max-height: 14rem; overflow-y: auto; }
+.week-corner { overflow-wrap: anywhere; padding: .2rem; }
+#hours-form input, #hours-form select { margin-bottom: .8rem; }
+@media (max-width: 580px) { #activity-form .task-fields, #planning-form .task-fields { grid-template-columns: 1fr; } }

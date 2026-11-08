@@ -1,253 +1,85 @@
-﻿import { createCalendarStore, dateKey, capacity, minutes } from './calendar-store.mjs';
+﻿import { capacity, minutes } from './calendar-store.mjs';
 import { storage } from './runtime.mjs';
-import { addDays, weekDates, monthDates, timeLabel } from './calendar-view.mjs';
+import { addDays, weekDates, monthDates } from './calendar-view.mjs';
 import { renderTimetable, updateNowLines } from './timetable-ui.mjs';
+import { zonedNow, dateLabel } from './clock.mjs';
+import { planningCapacity } from './scheduler.mjs';
 
-export function initCalendar(getTasks) {
+export function initCalendar(model, handlers) {
   const $ = selector => document.querySelector(selector);
-  const dialog = $('#day-dialog');
-  const settings = $('#day-settings-form');
-  const commitmentForm = $('#commitment-form');
-  let selected = dateKey(new Date());
+  const now = () => zonedNow(new Date(), model.snapshot().settings.timeZone);
+  let selected = now().date;
   let view = window.matchMedia('(max-width: 580px)').matches ? 'day' : 'week';
-  const viewStorageKey = 'day-compass.calendar-view.v1';
-  const allowedViews = ['day', 'week', 'month'];
-  let focusHour = 9;
-  let editingId = null;
-  let returnFocus = null;
-  let scrollInitialized = false;
-  let store;
-  const formatDate = date => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-
-  try { store = createCalendarStore(storage); }
-  catch {
-    $('#calendar-error').hidden = false;
-    $('#calendar-error').textContent = 'Your saved calendar could not be read. Nothing has been overwritten. Check browser storage permissions or ask for help recovering the saved data.';
-    $('#setup-day').disabled = true;
-    document.querySelectorAll('.calendar-widget button').forEach(button => { button.disabled = true; });
-    return;
-  }
-
-  // A saved preference wins over the phone/desktop default, if it is valid.
-  try {
-    const savedView = storage.getItem(viewStorageKey);
-    if (allowedViews.includes(savedView)) view = savedView;
-  } catch {
-    $('#calendar-status').textContent = 'Could not read your preferred view. Using the default for this screen.';
-  }
-
-  function action(callback, message) {
-    try {
-      callback();
-      $('#setup-error').hidden = true;
-      $('#setup-feedback').textContent = message;
-      $('#calendar-status').textContent = message;
-      render();
-      renderCommitments($('#setup-commitments'), true);
-      return true;
-    } catch (error) {
-      $('#setup-error').hidden = false;
-      $('#setup-error').textContent = error instanceof Error && error.name === 'Error' ? error.message : 'Could not save. Check browser storage permissions or available space.';
-      return false;
-    }
-  }
-
-  function resetCommitment() {
-    editingId = null;
-    commitmentForm.reset();
-    $('#commitment-date').value = selected;
-    $('#save-commitment').textContent = 'Add commitment';
-    $('#cancel-commitment').hidden = true;
-  }
-
-  function editCommitment(item) {
-    editingId = item.id;
-    for (const field of ['title', 'start', 'end']) commitmentForm.elements.namedItem(field).value = item[field];
-    $('#commitment-date').value = selected;
-    $('#save-commitment').textContent = 'Save commitment';
-    $('#cancel-commitment').hidden = false;
-    $('#commitment-title').focus();
-  }
-
-  function loadSettings() {
-    const day = store.getDay(selected);
-    $('#setup-date-label').textContent = formatDate(selected);
-    for (const field of ['start', 'end', 'color']) settings.elements.namedItem(field).value = day[field];
-  }
-
-  function openDay(date = selected, options = {}) {
-    selected = date;
-    if (options.start !== undefined) focusHour = Math.floor(options.start / 60);
-    returnFocus = options.item ? { id: options.item.id } : options.start !== undefined ? { date, hour: focusHour } : null;
-    render();
-    loadSettings();
-    resetCommitment();
-    if (options.start !== undefined) {
-      $('#commitment-start').value = timeLabel(options.start);
-      $('#commitment-end').value = timeLabel(Math.min(1439, options.start + 60));
-    }
-    $('#setup-error').hidden = true;
-    $('#setup-feedback').textContent = 'Use Save day settings or Add commitment to save. Activity dates can be changed below.';
-    renderCommitments($('#setup-commitments'), true);
-    dialog.showModal();
-    if (options.item) editCommitment(options.item);
-    else $('#commitment-title').focus();
-  }
-
-  function renderCommitments(target, editable = false) {
-    target.replaceChildren();
-    const items = store.getDay(selected).commitments.sort((a, b) => minutes(a.start) - minutes(b.start));
-    for (const item of items) {
-      const row = document.createElement('li');
-      const text = document.createElement('span');
-      text.className = 'task-content';
-      text.textContent = `${item.start}–${item.end} · ${item.title}`;
-      row.append(text);
-      if (editable) {
-        const actions = document.createElement('div'); actions.className = 'task-actions';
-        for (const label of ['Edit', 'Remove']) {
-          const button = document.createElement('button');
-          button.type = 'button'; button.className = 'secondary'; button.textContent = label;
-          button.setAttribute('aria-label', `${label} ${item.title}`);
-          button.addEventListener('click', () => {
-            if (label === 'Edit') editCommitment(item);
-            else if (action(() => store.removeCommitment(selected, item.id), 'Commitment removed.')) {
-              if (editingId === item.id) resetCommitment();
-              $('#commitment-title').focus();
-            }
-          });
-          actions.append(button);
-        }
-        row.append(actions);
-      }
-      target.append(row);
-    }
-    if (!items.length) {
-      const empty = document.createElement('li'); empty.textContent = 'No fixed commitments yet. Pick a time in the calendar to add one.'; target.append(empty);
-    }
-  }
-
-  function focusDate(date) {
-    const button = [...document.querySelectorAll(view === 'month' ? '.calendar-day' : '.week-day-heading')].find(node => node.dataset.date === date);
-    button?.focus();
-  }
-
-  function selectDate(date) { selected = date; render(); focusDate(date); }
-
-  function renderMonth(tasks) {
+  try { const saved = storage.getItem('day-compass.calendar-view.v1'); if (['day', 'week', 'month'].includes(saved)) view = saved; } catch {}
+  let focusHour = 9, initialized = false;
+  function choose(date) { selected = date; render(); handlers.onSelection?.(); }
+  function open(date, item, start) { choose(date); if (item?.kind !== 'break') handlers.onActivity({ date, item, start }); }
+  function renderMonth() {
     const grid = $('#calendar-days'); grid.replaceChildren();
     for (const date of monthDates(selected)) {
-      const day = store.getDay(date);
-      const { ratio, booked } = capacity(day);
-      const due = tasks.filter(task => task.deadline === date && !task.completed).length;
+      const day = model.getDay(date), { ratio, booked } = planningCapacity(day, model.snapshot().settings);
+      const due = model.getTasks().filter(task => !task.completed && task.deadline === date).length;
       const cell = document.createElement('div'); cell.className = 'month-cell';
       if (date.slice(0, 7) !== selected.slice(0, 7)) cell.classList.add('other-month');
-      const button = document.createElement('button');
-      button.type = 'button'; button.className = 'calendar-day'; button.textContent = Number(date.slice(-2));
-      button.dataset.date = date; button.dataset.color = day.color;
-      button.dataset.load = ratio === 0 ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3';
-      button.dataset.due = due ? 'true' : 'false';
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'calendar-day'; button.textContent = Number(date.slice(-2));
+      Object.assign(button.dataset, { date, color: day.color, load: ratio === 0 ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3', due: due ? 'true' : 'false' });
       button.setAttribute('aria-pressed', String(date === selected));
-      button.setAttribute('aria-label', `${formatDate(date)}. ${booked} minutes booked, ${due} incomplete task deadlines. Select day.`);
-      if (date === dateKey(new Date())) button.setAttribute('aria-current', 'date');
-      button.addEventListener('click', () => selectDate(date));
-      cell.append(button);
+      button.setAttribute('aria-label', `${dateLabel(date)}, ${booked} minutes booked, ${due} deadlines. Select day.`);
+      if (date === now().date) button.setAttribute('aria-current', 'date');
+      button.addEventListener('click', () => { choose(date); [...grid.querySelectorAll('.calendar-day')].find(node => node.dataset.date === date)?.focus(); }); cell.append(button);
       const events = [...day.commitments].sort((a, b) => minutes(a.start) - minutes(b.start));
       for (const item of events.slice(0, 3)) {
-        const event = document.createElement('button');
-        event.type = 'button'; event.className = 'month-event'; event.dataset.eventId = item.id;
-        event.textContent = `${item.start} ${item.title}`; event.title = `${item.title}, ${item.start}–${item.end}`;
-        event.setAttribute('aria-label', `Edit ${item.title} on ${date}, ${item.start} to ${item.end}`);
-        event.addEventListener('click', () => openDay(date, { item })); cell.append(event);
+        const event = document.createElement(item.kind === 'break' ? 'div' : 'button');
+        if (item.kind !== 'break') event.type = 'button';
+        event.className = `month-event${item.completed ? ' completed' : ''}`; event.textContent = `${item.start} ${item.title}`; event.title = `${item.title}: ${item.start}–${item.end}`;
+        if (item.kind !== 'break') event.addEventListener('click', () => open(date, item)); cell.append(event);
       }
-      if (events.length > 3) {
-        const more = document.createElement('button'); more.type = 'button'; more.className = 'month-more'; more.textContent = `+${events.length - 3} more`;
-        more.addEventListener('click', () => { selected = date; view = 'day'; render(); }); cell.append(more);
-      }
-      if (due) { const badge = document.createElement('small'); badge.className = 'month-due'; badge.textContent = `${due} due`; cell.append(badge); }
+      if (events.length > 3) { const more = document.createElement('button'); more.type = 'button'; more.className = 'month-more'; more.textContent = `+${events.length - 3} more`; more.addEventListener('click', () => { view = 'day'; choose(date); }); cell.append(more); }
+      if (due) { const note = document.createElement('small'); note.className = 'month-due'; note.textContent = `${due} due`; cell.append(note); }
       grid.append(cell);
     }
   }
-
   function render() {
-    const tasks = getTasks();
     const dates = view === 'day' ? [selected] : weekDates(selected);
-    const short = date => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    $('#calendar-month').textContent = view === 'month' ? new Date(`${selected}T12:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : view === 'day' ? formatDate(selected) : `${short(dates[0])} – ${short(dates[6])}, ${dates[6].slice(0, 4)}`;
-    $('#previous-period').setAttribute('aria-label', `Previous ${view}`);
-    $('#next-period').setAttribute('aria-label', `Next ${view}`);
+    $('#calendar-month').textContent = view === 'month' ? dateLabel(selected, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' }) : view === 'day' ? dateLabel(selected, { year: 'numeric' }) : `${dateLabel(dates[0])} – ${dateLabel(dates[6], { year: 'numeric' })}`;
+    $('#previous-period').setAttribute('aria-label', `Previous ${view}`); $('#next-period').setAttribute('aria-label', `Next ${view}`);
     document.querySelectorAll('[data-calendar-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.calendarView === view)));
     $('#month-view').hidden = view !== 'month'; $('#week-view').hidden = view === 'month';
-    $('#calendar-instructions').textContent = view === 'month' ? 'Select a date to see its agenda below, or click an event to edit it.' : 'Click a time to add an activity; click an event to edit. Arrow keys move between time slots. Hatched areas are outside planning hours. Swipe sideways in Week view on small screens.';
-    if (view === 'month') renderMonth(tasks);
+    $('#calendar-instructions').textContent = view === 'month' ? 'Select a date for its agenda. Click an activity to edit it.' : 'Click a time to add an activity. Arrow keys move between slots. Hatched areas are outside planning hours. Swipe sideways in Week view.';
+    if (view === 'month') renderMonth();
     else {
-      renderTimetable($('#week-grid'), { dates, selected, focusHour, getDay: store.getDay, getTasks, onSelect: selectDate, onAdd: (date, start) => openDay(date, { start }), onEdit: (date, item) => openDay(date, { item }), onNavigate: (date, hour) => {
-        selected = date; focusHour = hour; render();
-        [...document.querySelectorAll('.time-slot')].find(slot => slot.dataset.date === date && Number(slot.dataset.hour) === hour)?.focus();
-      } });
-      if (!scrollInitialized) { $('#week-view').scrollTop = 7 * 60; scrollInitialized = true; }
+      renderTimetable($('#week-grid'), { dates, selected, focusHour, timeZone: model.snapshot().settings.timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.snapshot().settings),
+        onSelect: date => choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
+        onNavigate: (date, hour) => { focusHour = hour; choose(date); [...document.querySelectorAll('.time-slot')].find(node => node.dataset.date === date && Number(node.dataset.hour) === hour)?.focus(); }
+      });
+      if (!initialized) { $('#week-view').scrollTop = 420; initialized = true; }
     }
-    const day = store.getDay(selected);
-    const { booked, free, ratio } = capacity(day);
-    $('#selected-day').textContent = formatDate(selected);
-    $('#day-capacity').textContent = `${booked} min booked · ${free} min unbooked`;
-    $('#capacity-fill').style.width = `${ratio * 100}%`;
-    $('#day-hours').textContent = `Planning hours: ${day.start}–${day.end}`;
-    renderCommitments($('#day-commitments'));
-    const due = tasks.filter(task => task.deadline === selected && !task.completed);
-    $('#day-deadlines').textContent = due.length ? `Due this day: ${due.map(task => task.title).join(', ')}` : 'No incomplete tasks due this day.';
-    document.dispatchEvent(new Event('calendar-changed'));
+    const day = model.getDay(selected), stats = planningCapacity(day, model.snapshot().settings);
+    $('#selected-day').textContent = dateLabel(selected, { year: 'numeric' });
+    $('#day-hours').textContent = `Planning: ${day.start}–${day.end} · ${model.snapshot().settings.timeZone}`;
+    $('#day-capacity').textContent = `${stats.booked} min booked · ${stats.free} min free${stats.blockedSleep ? ` · ${stats.blockedSleep} min reserved for sleep` : ''}`;
+    $('#capacity-fill').style.width = `${stats.ratio * 100}%`;
+    const list = $('#day-commitments'); list.replaceChildren();
+    for (const item of [...day.commitments].sort((a, b) => minutes(a.start) - minutes(b.start))) {
+      const li = document.createElement('li'); if (item.completed) li.className = 'completed';
+      const title = document.createElement('span'); title.className = 'task-content task-title'; title.textContent = `${item.start}–${item.end} · ${item.title}${item.locked ? ' [locked]' : ''}${item.completed ? ' [completed]' : ''}`; li.append(title);
+      if (item.kind !== 'break') { const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'secondary'; edit.textContent = 'Edit'; edit.setAttribute('aria-label', `Edit ${item.title}`); edit.addEventListener('click', () => open(selected, item)); li.append(edit); }
+      list.append(li);
+    }
+    if (!day.commitments.length) { const empty = document.createElement('li'); empty.textContent = 'Nothing planned yet. Add an activity or generate a plan.'; list.append(empty); }
+    const due = model.getTasks().filter(task => !task.completed && task.deadline && task.deadline <= selected);
+    $('#day-deadlines').textContent = due.length ? `Due or overdue: ${due.map(task => `${task.title} (${task.deadline})`).join(', ')}` : 'No incomplete deadlines on or before this date.';
   }
-
-  for (const id of ['#setup-day', '#calendar-add']) $(id).addEventListener('click', () => openDay());
-  $('#close-day-dialog').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('close', () => {
-    const visibleView = view === 'month' ? $('#calendar-days') : $('#week-grid');
-    const target = returnFocus?.id ? [...visibleView.querySelectorAll('[data-event-id]')].find(node => node.dataset.eventId === returnFocus.id) : returnFocus?.date ? [...visibleView.querySelectorAll('.time-slot')].find(node => node.dataset.date === returnFocus.date && Number(node.dataset.hour) === returnFocus.hour) : null;
-    (target ?? $('#calendar-add')).focus();
+  for (const id of ['#calendar-add', '#setup-day']) $(id).addEventListener('click', () => open(selected));
+  $('#edit-day-hours').addEventListener('click', () => handlers.onHours(selected));
+  document.querySelectorAll('[data-calendar-view]').forEach(button => button.addEventListener('click', () => { view = button.dataset.calendarView; render(); try { storage.setItem('day-compass.calendar-view.v1', view); } catch { $('#calendar-status').textContent = 'View changed but the preference could not be saved.'; } }));
+  for (const [id, direction] of [['#previous-period', -1], ['#next-period', 1]]) $(id).addEventListener('click', () => {
+    if (view === 'month') { const d = new Date(`${selected}T12:00:00`), last = new Date(d.getFullYear(), d.getMonth() + direction + 1, 0).getDate(); selected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d.getDate(), last)).padStart(2, '0')}`; const moved = new Date(d.getFullYear(), d.getMonth() + direction, Math.min(d.getDate(), last), 12); selected = `${moved.getFullYear()}-${String(moved.getMonth() + 1).padStart(2, '0')}-${String(moved.getDate()).padStart(2, '0')}`; }
+    else selected = addDays(selected, direction * (view === 'week' ? 7 : 1));
+    render(); handlers.onSelection?.();
   });
-  settings.addEventListener('submit', event => {
-    event.preventDefault(); action(() => store.setHours(selected, Object.fromEntries(new FormData(settings))), 'Planning hours and colour saved for this day.');
-  });
-  commitmentForm.addEventListener('submit', event => {
-    event.preventDefault();
-    const fields = Object.fromEntries(new FormData(commitmentForm));
-    const targetDate = fields.date; delete fields.date;
-    fields.title = fields.title.trim();
-    const item = { ...fields, id: editingId ?? crypto.randomUUID() };
-    if (action(() => {
-      if (editingId) store.moveCommitment(selected, targetDate, item);
-      else store.saveCommitment(targetDate, item);
-      selected = targetDate;
-    }, editingId ? 'Activity updated.' : 'Activity added.')) {
-      loadSettings(); resetCommitment(); $('#commitment-title').focus();
-    }
-  });
-  $('#cancel-commitment').addEventListener('click', () => { resetCommitment(); $('#commitment-title').focus(); });
-  for (const [selector, direction] of [['#previous-period', -1], ['#next-period', 1]]) {
-    $(selector).addEventListener('click', () => {
-      if (view === 'month') {
-        const current = new Date(`${selected}T12:00:00`);
-        const last = new Date(current.getFullYear(), current.getMonth() + direction + 1, 0).getDate();
-        selected = dateKey(new Date(current.getFullYear(), current.getMonth() + direction, Math.min(current.getDate(), last), 12));
-      } else selected = addDays(selected, view === 'week' ? direction * 7 : direction);
-      render();
-    });
-  }
-  document.querySelectorAll('[data-calendar-view]').forEach(button => button.addEventListener('click', () => {
-    view = button.dataset.calendarView;
-    render();
-    try {
-      storage.setItem(viewStorageKey, view);
-      $('#calendar-status').textContent = `${button.textContent} view saved for your next visit.`;
-    } catch {
-      // The switch still works even when browser storage is unavailable or full.
-      $('#calendar-status').textContent = 'View changed for now, but your preference could not be saved. Check browser storage permissions or available space.';
-    }
-  }));
-  $('#calendar-today').addEventListener('click', () => { selected = dateKey(new Date()); render(); });
-  document.addEventListener('tasks-changed', render);
+  $('#calendar-today').addEventListener('click', () => choose(now().date));
   setInterval(() => { if (!document.hidden && view !== 'month') updateNowLines($('#week-grid')); }, 60000);
   render();
-  return { getDay: store.getDay, getSelectedDate: () => selected };
+  return { getSelectedDate: () => selected, selectDate: choose, refresh: render };
 }
