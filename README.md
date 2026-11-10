@@ -17,6 +17,8 @@ The Node server serves the frontend, authenticated API, SQLite database and back
 
 ## Combined dashboard design
 
+The calendar is the main workspace, with a compact productivity/current activity/free-time row above it and companion cards beside it on desktop. Tap the productivity ring to open daily, weekly or monthly completion details; Escape or Close returns to the planner. Mood choices are collapsed until requested. Phones keep the summary compact and stack supporting cards below the calendar.
+
 The dashboard combines a calm calendar layout with an optional Night aurora atmosphere. Desktop navigation uses a sidebar; phones retain a four-item bottom dock and compact day/week calendar. The companion panel uses real availability gaps and upcoming events, and opens an editable AI request only after a click. It does not fabricate AI insights. Aurora, Ocean, Sunset, Space and Calm quick choices use the existing saved appearance system. Sports/study icons and event colours are decorative and never change stored activities or scheduling rules. The aurora landscape is a local SVG asset.
 
 ## Front-page design

@@ -20,6 +20,23 @@ export function taskProductivity(state, date, period = 'day') {
 
 export function initProductivity({ model, storage, selectedDate }) {
   const $ = selector => document.querySelector(selector);
+  // Keep the full explanation available without filling the calendar screen.
+  const dialog = document.createElement('dialog');
+  dialog.id = 'productivity-dialog';
+  dialog.setAttribute('aria-labelledby', 'progress-heading');
+  const close = document.createElement('button');
+  close.type = 'button'; close.className = 'secondary productivity-close'; close.textContent = 'Close';
+  close.addEventListener('click', () => dialog.close());
+  dialog.append(close, $('.progress-widget'));
+  document.body.append(dialog);
+  const summary = document.createElement('div'); summary.className = 'workspace-summary';
+  const trigger = document.createElement('button');
+  trigger.type = 'button'; trigger.id = 'productivity-toggle'; trigger.className = 'productivity-toggle';
+  trigger.setAttribute('aria-haspopup', 'dialog'); trigger.setAttribute('aria-controls', dialog.id);
+  trigger.innerHTML = '<span class="mini-productivity-ring" aria-hidden="true"><span id="mini-productivity-percent">0%</span></span><span><strong>Productivity</strong><small id="mini-productivity-period">Daily progress</small></span><span aria-hidden="true">\u203a</span>';
+  trigger.addEventListener('click', () => dialog.showModal());
+  summary.append(trigger, $('.now-widget'), $('.free-widget'));
+  $('.dashboard-grid').before(summary);
   let period = 'day';
   try { const saved = storage.getItem('day-compass.productivity-period.v1'); if (['day', 'week', 'month'].includes(saved)) period = saved; } catch {}
   function render() {
@@ -30,6 +47,10 @@ export function initProductivity({ model, storage, selectedDate }) {
     $('#productivity-arc').setAttribute('stroke-dasharray', `${result.percent} 100`);
     $('#productivity-arc').style.opacity = result.percent ? '1' : '0';
     $('#productivity-percent').textContent = `${result.percent}%`;
+    $('#mini-productivity-percent').textContent = `${result.percent}%`;
+    $('.mini-productivity-ring').style.setProperty('--completion', `${result.percent}%`);
+    $('#mini-productivity-period').textContent = `${{ day: 'Daily', week: 'Weekly', month: 'Monthly' }[period]} progress`;
+    trigger.setAttribute('aria-label', `Productivity: ${result.percent}% complete. ${period} view. Open daily, weekly and monthly details`);
     $('#progress-value').textContent = result.total ? `${result.done} of ${result.total} tasks complete` : 'A fresh start';
     $('#productivity-message').textContent = !result.total ? 'Add a task to get going.' : result.done === result.total ? 'You made room. You made progress.' : result.done ? 'Every little step counts.' : 'Your first small win is waiting.';
     $('#progress-scope').textContent = period === 'month' ? dateLabel(date, { weekday: undefined, day: undefined, month: 'long', year: 'numeric' }) : period === 'week' ? `${dateLabel(result.start)} – ${dateLabel(result.end)}` : dateLabel(date, { year: 'numeric' });

@@ -87,8 +87,8 @@
   .compass-workspace .local-banner { border: 0; padding-bottom: 0; }
 }
 @media (min-width: 1440px) {
-  .compass-workspace .dashboard-grid > .calendar-widget { grid-column: 1 / span 9; grid-row: 2; padding: 1.2rem; }
-  .compass-workspace .workspace-sidecar { grid-column: 10 / -1; grid-row: 2 / span 3; display: flex; flex-direction: column; }
+  .compass-workspace .dashboard-grid > .calendar-widget { grid-column: 1 / span 9; grid-row: 1; padding: 1.2rem; }
+  .compass-workspace .workspace-sidecar { grid-column: 10 / -1; grid-row: 1 / span 3; display: flex; flex-direction: column; }
   .compass-workspace .workspace-sidecar > .widget { padding: 1.2rem; }
   .compass-workspace .week-grid[data-view="week"] { grid-template-columns: 3rem repeat(7, minmax(6rem, 1fr)); min-width: 46rem; }
   .compass-workspace .calendar-toolbar { gap: .4rem; }
@@ -97,6 +97,52 @@
   .compass-workspace .timeline-widget { grid-column: 1 / span 4; }
   .compass-workspace .tasks-widget { grid-column: 5 / span 5; }
   .compass-workspace .opportunities-widget { grid-column: 1 / span 9; }
+}
+
+/* A small overview above the calendar; deeper details open only on request. */
+.workspace-summary { display: grid; grid-template-columns: minmax(180px, .85fr) minmax(0, 1.5fr) minmax(0, 1fr); gap: .8rem; margin: .6rem 0 1rem; }
+.workspace-summary[hidden] { display: none; }
+.productivity-toggle { display: flex; align-items: center; gap: .7rem; text-align: left; padding: .7rem 1rem; color: var(--text); background: var(--workspace-glass); border: 1px solid var(--workspace-line); border-radius: 1.1rem; }
+.productivity-toggle > span:nth-child(2) { display: grid; gap: .25rem; flex: 1; }
+.productivity-toggle strong { font-size: .85rem; }
+.productivity-toggle small { font-size: .7rem; color: var(--muted); font-weight: 400; }
+.mini-productivity-ring { --completion: 0%; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: conic-gradient(var(--ring-start) var(--completion), var(--ring-track) 0); flex-shrink: 0; }
+.mini-productivity-ring > span { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--surface); font-size: .8rem; font-weight: 650; }
+.workspace-summary > .widget { grid-column: auto; padding: .8rem 1rem; margin: 0; border-radius: 1.1rem; }
+.workspace-summary .widget-label { margin: 0 0 .3rem; font-size: .55rem; }
+.workspace-summary .now-widget h2, .workspace-summary .free-widget h2 { font-size: 1.05rem; margin: 0; line-height: 1.3; }
+.workspace-summary .now-widget { position: relative; overflow: hidden; }
+.workspace-summary #now-detail { display: inline; font-size: .7rem; margin: 0; }
+.workspace-summary .next-row { border: 0; padding: 0; margin: .3rem 0 0; gap: .4rem; }
+.workspace-summary .next-row p { font-size: .7rem; margin: 0; }
+.workspace-summary .free-widget h2 small { display: inline; font-size: .75rem; font-weight: 400; }
+.workspace-summary #free-date { margin: .3rem 0 0; font-size: .65rem; }
+.workspace-summary .free-widget > .fine-print { display: none; }
+#productivity-dialog { width: min(460px, calc(100% - 2rem)); padding: 1rem; }
+#productivity-dialog .progress-widget { padding: 1rem .25rem .25rem; background: transparent; border: 0; box-shadow: none; }
+.productivity-close { display: block; margin-left: auto; min-height: 44px; }
+.mood-details > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: .5rem; font-size: .9rem; font-weight: 600; }
+.mood-details > summary::before { content: '+'; color: var(--accent); }
+.mood-details[open] > summary::before { content: '\2212'; }
+.compass-workspace .dashboard-heading { padding-block: .8rem .4rem; }
+.compass-workspace .dashboard-heading h1 { font-size: clamp(1.6rem, 2.3vw, 2.3rem); margin-bottom: .3rem; }
+.compass-workspace .dashboard-heading .muted { margin: 0; font-size: .8rem; }
+.compass-workspace .calendar-widget > .section-heading .widget-label { display: none; }
+@media (min-width: 1120px) and (max-width: 1439px) {
+  .compass-workspace .dashboard-grid > .calendar-widget { grid-column: 1 / span 8; grid-row: 1; }
+  .compass-workspace .workspace-sidecar { grid-column: 9 / -1; grid-row: 1 / span 3; display: flex; flex-direction: column; }
+  .compass-workspace .timeline-widget, .compass-workspace .tasks-widget, .compass-workspace .opportunities-widget { grid-column: 1 / span 8; }
+}
+@media (max-width: 700px) {
+  .workspace-summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .6rem; }
+  .productivity-toggle { grid-row: span 2; padding: .7rem; flex-wrap: wrap; justify-content: center; text-align: center; gap: .4rem; }
+  .productivity-toggle > span:nth-child(2) { flex-basis: 100%; }
+  .productivity-toggle > span:last-child { display: none; }
+  .workspace-summary > .widget { padding: .65rem .8rem; }
+  .workspace-summary .next-row { display: none; }
+  .workspace-summary #free-date { display: none; }
+  .compass-workspace .dashboard-heading h1 { font-size: 1.6rem; }
+  .compass-workspace .dashboard-heading > .button { font-size: .7rem; padding: .6rem .8rem; }
 }
 @media (max-width: 1119px) { .workspace-sidecar { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workspace-sidecar .scene-themes { grid-column: 1 / -1; } .scene-theme-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 580px) {
