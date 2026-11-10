@@ -56,6 +56,26 @@ Account sign-in requests only `openid email`. It uses PKCE, a browser-bound one-
 
 Missing credentials show a setup error instead of simulated success. Unit/API tests use locally signed test identity tokens and mocked Google responses. Live Google consent/sign-in has not been verified. See [official Google OpenID Connect documentation](https://developers.google.com/identity/openid-connect/openid-connect).
 
+### Clerk development Google sign-in
+
+Clerk can supply shared Google OAuth credentials for **development**. A production Clerk instance still requires custom Google credentials. Clerk has a free Hobby plan; no paid plan was activated by this integration. Your Clerk development application must have Google enabled under its social/SSO connections.
+
+1. In the Clerk dashboard choose **JavaScript**, then **Manual setup**, or open **Configure > API keys**.
+2. Copy the publishable key (`pk_test_...`) and secret key (`sk_test_...`) from the same development application into private `.env`:
+
+```dotenv
+CLERK_PUBLISHABLE_KEY=your_publishable_key
+CLERK_SECRET_KEY=your_secret_key
+```
+
+3. Restart `npm.cmd start` and open `http://127.0.0.1:8080/auth.html`. Keep using this exact origin. If Clerk requests an application URL, use `http://127.0.0.1:8080`. Continue with Google opens the Clerk authentication page, where you select Google and complete any required verification.
+
+When both Clerk keys are present, the Google button uses Clerk instead of the direct Google OAuth implementation. The official Clerk JS 6/UI 1 components handle provider redirects, signup requirements and verification. On return, the server verifies the Clerk token's signature, issuer and authorized origin, checks that its remote session is active, then creates its own HttpOnly session for a private SQLite planner. Remote session status is rechecked at most every 30 seconds. Logout clears the local session and signs out of Clerk. No Clerk secret is sent to browser JavaScript. The publishable key is intentionally public.
+
+Clerk subjects have their own identity namespace and do not silently merge into password or direct-Google accounts by email. A new Clerk account starts with an empty planner; the original browser data can be copied explicitly into it. Existing app account deletion removes Day Compass records; it does not delete the separate Clerk user profile. No schedule content is sent to Clerk. Clerk and Google process authentication and identity data. The SDK is loaded only on the Clerk sign-in page or when signing a Clerk user out. Network/provider failures produce errors rather than simulated sign-in.
+
+The Clerk flow is implemented and tested with mocked SDK/provider responses. **Live Google-through-Clerk signup remains unverified until real keys are configured and the user completes it.** See [Clerk JavaScript setup](https://clerk.com/docs/js-frontend/getting-started/quickstart), [Google development credentials](https://clerk.com/docs/guides/configure/auth-strategies/social-connections/google), and [token verification](https://clerk.com/docs/reference/backend/verify-token).
+
 ### Google Calendar and Gmail
 
 1. Create a Google Cloud project and enable **Google Calendar API** and **Gmail API**.

@@ -576,5 +576,8 @@ body[data-planner-ready="true"] #startup-status { position: absolute; width: 1px
 #auth-error { color: var(--error); overflow-wrap: anywhere; font-size: .85rem; }
 .auth-local-link { display: block; text-align: center; padding: .8rem .25rem; min-height: 44px; font-size: .85rem; }
 .auth-footnote { text-align: center; padding-top: 1.2rem; }
+.clerk-title { font-size: 1.7rem; }
+#clerk-widget { min-width: 0; }
+#clerk-widget .cl-rootBox, #clerk-widget .cl-cardBox { max-width: 100%; width: 100%; }
 #account-entry { max-width: 460px; }
 @media (max-width: 580px) { .auth-layout { margin-top: .8rem; } .auth-card { padding: 1.4rem; } .auth-card input { font-size: 16px; } .welcome-page .nav-actions { flex-wrap: wrap; gap: .5rem; } }

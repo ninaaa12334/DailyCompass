@@ -11,6 +11,7 @@ import { validatePlanner } from '../planner-store.mjs';
 import { zonedNow, validDate } from '../clock.mjs';
 import { wallToInstant } from '../zoned-time.mjs';
 import { googleSignIn } from './google-auth.mjs';
+import { clerkSignIn } from './clerk-auth.mjs';
 
 const scrypt = promisify(rawScrypt), hash = value => createHash('sha256').update(value).digest('hex');
 export function createApplication(options = {}) {
@@ -19,6 +20,7 @@ export function createApplication(options = {}) {
   const store = database(options.database || config.DATABASE_PATH || 'data/compass.sqlite', config.TOKEN_ENCRYPTION_KEY), { db } = store;
   const integration = google(store, config, options.fetcher), push = pushWorker(db, config, options.pushSender);
   const googleLogin = googleSignIn(db, config, options.fetcher);
+  const clerkLogin = clerkSignIn(db, config, options.clerkDependencies), clerkChecks = new Map();
   let googleRunning = false;
   async function syncGoogleAccounts() {
     if (googleRunning || !integration.configured()) return; googleRunning = true;
@@ -46,17 +48,27 @@ export function createApplication(options = {}) {
     return { version: expected + 1, state };
   }
   async function body(request) { let raw = ''; for await (const chunk of request) { raw += chunk; assert(Buffer.byteLength(raw) <= 2000000, 'Request too large.', 413); } try { return JSON.parse(raw || '{}'); } catch { throw new Error('Invalid JSON request.'); } }
-  function session(request) {
+  async function session(request) {
     const token = request.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith('compass_session='))?.slice(16);
     const sessionHash = hash(token || '');
     const user = db.prepare('SELECT users.id,users.name FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.hash=? AND sessions.expires>?').get(sessionHash, Date.now());
-    return user ? { ...user, sessionHash } : null;
+    if (!user) return null;
+    const external = db.prepare('SELECT external_id,subject FROM clerk_sessions WHERE hash=?').get(sessionHash);
+    if (external) {
+      const cached = clerkChecks.get(sessionHash);
+      if (!cached || cached.until < Date.now()) {
+        if (!await clerkLogin.active(external.external_id, external.subject)) { db.prepare('DELETE FROM sessions WHERE hash=?').run(sessionHash); clerkChecks.delete(sessionHash); return null; }
+        if (clerkChecks.size > 1000) clerkChecks.clear(); clerkChecks.set(sessionHash, { until: Date.now() + 30000 });
+      }
+    }
+    return { ...user, sessionHash, provider: external ? 'clerk' : 'local' };
   }
   const cookie = token => `compass_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${token ? 2592000 : 0}${config.APP_ORIGIN.startsWith('https:') ? '; Secure' : ''}`;
   const json = (response, data, status = 200) => { response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); response.end(JSON.stringify(data)); };
   const server = http.createServer(async (request, response) => {
     response.setHeader('Cache-Control', 'no-store'); response.setHeader('X-Content-Type-Options', 'nosniff'); response.setHeader('Referrer-Policy', 'same-origin'); response.setHeader('X-Frame-Options', 'DENY');
-    response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+    const clerkOrigin = clerkLogin.settings?.frontendOrigin;
+    response.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self'${clerkOrigin ? ` ${clerkOrigin} https://challenges.cloudflare.com https://*.protect.clerk.com` : ''}; style-src 'self' 'unsafe-inline'; img-src 'self' data:${clerkOrigin ? ' https://img.clerk.com' : ''}; connect-src 'self'${clerkOrigin ? ` ${clerkOrigin} https://api.clerk.com https://*.protect.clerk.com:*` : ''}; frame-src 'self'${clerkOrigin ? ` ${clerkOrigin} https://challenges.cloudflare.com https://*.protect.clerk.com` : ''}; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`);
     try {
       const url = new URL(request.url, config.APP_ORIGIN), route = url.pathname;
       if (!route.startsWith('/api/')) {
@@ -69,7 +81,15 @@ export function createApplication(options = {}) {
         response.writeHead(200, { 'Content-Type': `${mime}; charset=utf-8`, ...(name === '/sw.js' ? { 'Service-Worker-Allowed': '/' } : {}) }); response.end(request.method === 'HEAD' ? undefined : file); return;
       }
       if (!['GET', 'HEAD'].includes(request.method)) assert(request.headers.origin === config.APP_ORIGIN, 'Request origin is not allowed.', 403);
-      const user = session(request);
+      const user = await session(request);
+      if (route === '/api/auth/provider' && request.method === 'GET') return json(response, clerkLogin.settings ? { provider: 'clerk', ...clerkLogin.settings } : { provider: googleLogin.configured ? 'google' : 'none' });
+      if (route === '/api/auth/clerk/session' && request.method === 'POST') {
+        assert(!user, 'Already signed in. Sign out before switching accounts.', 409);
+        const input = await body(request), account = await clerkLogin.exchange(input.token, input.timeZone), token = randomBytes(32).toString('base64url'), sessionHash = hash(token);
+        db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(sessionHash, account.id, Date.now() + 2592000000);
+        db.prepare('INSERT INTO clerk_sessions VALUES(?,?,?)').run(sessionHash, account.externalSessionId, account.subject);
+        response.setHeader('Set-Cookie', cookie(token)); return json(response, { user: { id: account.id, name: account.name, provider: 'clerk' } });
+      }
       if (route === '/api/auth/google/start' && request.method === 'POST') {
         assert(!user, 'You are already signed in. Sign out before switching accounts.', 409);
         const key = `google:${request.socket.remoteAddress}`, rate = failures.get(key) || { count: 0, until: Date.now() + 900000 };
@@ -85,7 +105,7 @@ export function createApplication(options = {}) {
         } catch { response.setHeader('Set-Cookie', googleLogin.browserCookie('')); response.writeHead(303, { Location: '/auth.html?error=google' }); response.end(); }
         return;
       }
-      if (route === '/api/session' && request.method === 'GET') return json(response, { user: user ? { id: user.id, name: user.name } : null, features: { ai: Boolean(config.OPENAI_API_KEY && config.OPENAI_MODEL), google: integration.configured(), push: push.configured, pushKey: config.VAPID_PUBLIC_KEY || null } });
+      if (route === '/api/session' && request.method === 'GET') return json(response, { user: user ? { id: user.id, name: user.name, provider: user.provider } : null, features: { ai: Boolean(config.OPENAI_API_KEY && config.OPENAI_MODEL), google: integration.configured(), push: push.configured, pushKey: config.VAPID_PUBLIC_KEY || null } });
       if (['/api/register', '/api/login'].includes(route) && request.method === 'POST') {
         const input = await body(request), name = String(input.name || '').trim().toLowerCase(), password = String(input.password || '');
         const address = request.socket.remoteAddress, rate = failures.get(address) || { count: 0, until: Date.now() + 900000 };

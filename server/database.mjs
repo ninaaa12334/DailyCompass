@@ -22,7 +22,8 @@ export function database(filename = 'data/compass.sqlite', secret = process.env.
     CREATE TABLE IF NOT EXISTS history(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, created INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS mail_reviews(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, id TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY(user_id,id));
     CREATE TABLE IF NOT EXISTS identities(provider TEXT NOT NULL, subject TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(provider,subject));
-    CREATE TABLE IF NOT EXISTS login_oauth(state TEXT PRIMARY KEY, browser_hash TEXT NOT NULL, verifier TEXT NOT NULL, nonce TEXT NOT NULL, time_zone TEXT NOT NULL, expires INTEGER NOT NULL);`);
+    CREATE TABLE IF NOT EXISTS login_oauth(state TEXT PRIMARY KEY, browser_hash TEXT NOT NULL, verifier TEXT NOT NULL, nonce TEXT NOT NULL, time_zone TEXT NOT NULL, expires INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS clerk_sessions(hash TEXT PRIMARY KEY REFERENCES sessions(hash) ON DELETE CASCADE, external_id TEXT NOT NULL, subject TEXT NOT NULL);`);
   return {
     db,
     seal(value) { const iv = randomBytes(12), cipher = createCipheriv('aes-256-gcm', key, iv); return Buffer.concat([iv, cipher.update(JSON.stringify(value)), cipher.final(), cipher.getAuthTag()]).toString('base64'); },

@@ -38,5 +38,5 @@ export function connectAccount(model, session, status) {
   window.addEventListener('beforeunload', event => { if (dirty || sending) { event.preventDefault(); event.returnValue = ''; } });
   window.addEventListener('offline', () => message(session.user ? 'Offline. Changes in this tab will sync when the server is reachable.' : 'Offline. Local changes still save in this browser; online services are unavailable.'));
   window.addEventListener('online', () => { if (session.user) flush().catch(() => {}); else message('Online. Your local planner stays saved in this browser.'); });
-  return { flush, replace, async logout() { await flush(); await api('logout', 'POST'); clearAccountCache(); location.reload(); } };
+  return { flush, replace, async logout() { await flush(); await api('logout', 'POST'); clearAccountCache(); try { if (session.user?.provider === 'clerk') { const { signOutClerk } = await import('./clerk-client.mjs'); await signOutClerk(); } } finally { location.reload(); } } };
 }

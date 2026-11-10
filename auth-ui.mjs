@@ -34,7 +34,7 @@ export function initAuth(root, { mode = 'signup', onSuccess = () => location.ass
   });
   $('#google-signin').addEventListener('click', async () => {
     if (busy) return; setBusy(true); $('#auth-error').textContent = '';
-    try { const result = await api('auth/google/start', 'POST', { timeZone: timeZone() }); clearAccountCache(); location.assign(result.url); }
+    try { const provider = await api('auth/provider'); if (provider.provider === 'clerk') { location.assign('clerk-signin.html'); return; } const result = await api('auth/google/start', 'POST', { timeZone: timeZone() }); clearAccountCache(); location.assign(result.url); }
     catch (error) { $('#auth-error').textContent = error.message; setBusy(false); }
   });
   setMode(mode);

@@ -9,6 +9,7 @@
     "@playwright/test": "^1.65.0"
   },
   "dependencies": {
+    "@clerk/backend": "^3.27.0",
     "web-push": "^4.0.0"
   }
 }

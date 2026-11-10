@@ -33,7 +33,7 @@ export function googleSignIn(db, config, fetcher = fetch) {
   return {
     configured, browserCookie,
     start(timeZone) {
-      if (!configured) throw Object.assign(new Error('Google sign-in needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server. You can still sign up with a username and password.'), { status: 503 });
+      if (!configured) throw Object.assign(new Error('For Clerk Google sign-in, add CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY to private .env and restart the server. Direct Google sign-in needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET instead. Username/password signup is also available.'), { status: 503 });
       new Intl.DateTimeFormat('en', { timeZone }).format();
       const state = randomBytes(32).toString('base64url'), browser = randomBytes(32).toString('base64url'), verifier = randomBytes(48).toString('base64url'), nonce = randomBytes(32).toString('base64url');
       db.prepare('DELETE FROM login_oauth WHERE expires<?').run(Date.now());
