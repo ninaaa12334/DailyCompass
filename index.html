@@ -4,15 +4,15 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Your time. Your rhythm. A calmer place for your tasks, commitments, and daily plans.">
   <title>Day Compass · Your time. Your rhythm.</title>
-  <link rel="stylesheet" href="styles.css"><script src="theme-ui.mjs" type="module"></script><script src="welcome.mjs" type="module"></script>
+  <link rel="stylesheet" href="styles.css"><script src="theme-ui.mjs" type="module"></script>
 </head>
 <body class="welcome-page">
   <noscript><p class="local-banner">JavaScript is needed for appearance controls and the planner. <a href="dashboard.html">Open the planner page</a>.</p></noscript>
   <a class="skip-link" href="#welcome">Skip to content</a>
-  <nav class="topbar" aria-label="Main navigation"><a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">↗</span> Day Compass</a><div class="nav-actions"><a href="#how-it-works">How it works</a><button class="text-button" type="button" data-open-appearance>Appearance</button><button class="secondary" type="button" data-open-access>Log in</button></div></nav>
+  <nav class="topbar" aria-label="Main navigation"><a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">↗</span> Day Compass</a><div class="nav-actions"><a href="#how-it-works">How it works</a><button class="text-button" type="button" data-open-appearance>Appearance</button><a class="button secondary" href="auth.html?mode=login">Log in</a><a class="button" href="auth.html?mode=signup">Sign up</a></div></nav>
   <main id="welcome" tabindex="-1">
     <section class="hero" aria-labelledby="welcome-heading">
-      <div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> A LITTLE DIRECTION. A LOT MORE ROOM.</p><h1 id="welcome-heading">Your time.<br><em>Your rhythm.</em></h1><p class="hero-description">Choose how you want to spend your day. Day Compass helps you turn your tasks, plans, and priorities into a schedule that fits your life.</p><div class="hero-actions"><button type="button" data-open-access>Start planning <span aria-hidden="true">↗</span></button><a class="button secondary" href="dashboard.html?demo=1">Explore a demo</a></div><p class="hero-note">Start small. Make space. Find your own pace.</p></div>
+      <div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> A LITTLE DIRECTION. A LOT MORE ROOM.</p><h1 id="welcome-heading">Your time.<br><em>Your rhythm.</em></h1><p class="hero-description">Choose how you want to spend your day. Day Compass helps you turn your tasks, plans, and priorities into a schedule that fits your life.</p><div class="hero-actions"><a class="button" href="auth.html?mode=signup">Start planning <span aria-hidden="true">&#8599;</span></a><a class="button secondary" href="dashboard.html?demo=1">Explore a demo</a></div><p class="hero-note">Start small. Make space. Find your own pace.</p></div>
       <div class="hero-preview" aria-label="Illustrative planner preview. Example activities, not your personal data.">
         <div class="preview-halo" aria-hidden="true"></div>
         <div class="preview-tag">A LITTLE LOOK INSIDE · EXAMPLE DAY</div>
@@ -24,6 +24,6 @@
     <section class="how-it-works" id="how-it-works" aria-labelledby="steps-heading"><div class="steps-intro"><p class="eyebrow">LESS JUGGLING. MORE LIVING.</p><h2 id="steps-heading">Make the day your own.</h2></div><div class="steps"><article><span>01</span><h3>Start with the essentials</h3><p>Add school, work, and the things that already have a time.</p></article><article><span>02</span><h3>Find your kind of calm</h3><p>Choose your colours and set the hours you want to plan.</p></article><article><span>03</span><h3>Build your daily rhythm</h3><p>Bring your tasks together and see where your time goes.</p></article></div><p class="fine-print">The local planner supports tasks and fixed commitments today. Automatic scheduling is coming next.</p></section>
     <footer><span>Day Compass · A calmer kind of productive.</span><a href="dashboard.html">Open my local planner →</a></footer>
   </main>
-  <dialog id="access-dialog" aria-labelledby="access-heading"><div class="dialog-heading"><p class="widget-label">LET’S START SMALL</p><button class="secondary" type="button" id="close-access">Close</button></div><h2 id="access-heading">Your space, in this browser.</h2><p>Accounts and sign-in aren’t available yet. You can start a local planner without an account, or explore a separate sample demo.</p><p class="muted">Local data stays in this browser and does not sync between devices. There is no password to enter.</p><div class="dialog-actions"><a class="button" href="dashboard.html">Continue to local planner</a><a class="button secondary" href="dashboard.html?demo=1">Try the sample demo</a></div></dialog>
+
 </body>
 </html>

@@ -10,6 +10,7 @@ import { memoryModel, proposeAI, acceptProposal } from './plans.mjs';
 import { validatePlanner } from '../planner-store.mjs';
 import { zonedNow, validDate } from '../clock.mjs';
 import { wallToInstant } from '../zoned-time.mjs';
+import { googleSignIn } from './google-auth.mjs';
 
 const scrypt = promisify(rawScrypt), hash = value => createHash('sha256').update(value).digest('hex');
 export function createApplication(options = {}) {
@@ -17,6 +18,7 @@ export function createApplication(options = {}) {
   if (config.NODE_ENV === 'production' && (!config.APP_ORIGIN.startsWith('https://') || !config.TOKEN_ENCRYPTION_KEY)) throw new Error('Production needs HTTPS APP_ORIGIN and TOKEN_ENCRYPTION_KEY.');
   const store = database(options.database || config.DATABASE_PATH || 'data/compass.sqlite', config.TOKEN_ENCRYPTION_KEY), { db } = store;
   const integration = google(store, config, options.fetcher), push = pushWorker(db, config, options.pushSender);
+  const googleLogin = googleSignIn(db, config, options.fetcher);
   let googleRunning = false;
   async function syncGoogleAccounts() {
     if (googleRunning || !integration.configured()) return; googleRunning = true;
@@ -68,6 +70,21 @@ export function createApplication(options = {}) {
       }
       if (!['GET', 'HEAD'].includes(request.method)) assert(request.headers.origin === config.APP_ORIGIN, 'Request origin is not allowed.', 403);
       const user = session(request);
+      if (route === '/api/auth/google/start' && request.method === 'POST') {
+        assert(!user, 'You are already signed in. Sign out before switching accounts.', 409);
+        const key = `google:${request.socket.remoteAddress}`, rate = failures.get(key) || { count: 0, until: Date.now() + 900000 };
+        if (rate.until < Date.now()) { rate.count = 0; rate.until = Date.now() + 900000; } assert(rate.count < 20, 'Too many Google sign-in attempts. Try again later.', 429); rate.count++; failures.set(key, rate);
+        const input = await body(request), result = googleLogin.start(input.timeZone || 'UTC'); response.setHeader('Set-Cookie', result.cookie); return json(response, { url: result.url });
+      }
+      if (route === '/api/auth/google/callback' && request.method === 'GET') {
+        try {
+          assert(!user, 'Already signed in.');
+          const account = await googleLogin.finish(url.searchParams, request.headers.cookie), token = randomBytes(32).toString('base64url');
+          db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), account.id, Date.now() + 2592000000);
+          response.setHeader('Set-Cookie', [cookie(token), googleLogin.browserCookie('')]); response.writeHead(303, { Location: '/dashboard.html' }); response.end();
+        } catch { response.setHeader('Set-Cookie', googleLogin.browserCookie('')); response.writeHead(303, { Location: '/auth.html?error=google' }); response.end(); }
+        return;
+      }
       if (route === '/api/session' && request.method === 'GET') return json(response, { user: user ? { id: user.id, name: user.name } : null, features: { ai: Boolean(config.OPENAI_API_KEY && config.OPENAI_MODEL), google: integration.configured(), push: push.configured, pushKey: config.VAPID_PUBLIC_KEY || null } });
       if (['/api/register', '/api/login'].includes(route) && request.method === 'POST') {
         const input = await body(request), name = String(input.name || '').trim().toLowerCase(), password = String(input.password || '');

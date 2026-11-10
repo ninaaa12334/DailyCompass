@@ -558,3 +558,23 @@ body { background: radial-gradient(ellipse at 6% 2%, color-mix(in srgb, var(--ti
 .planner-actions:has(#undo-action:disabled):not(:has(#planner-feedback:not(:empty))) { display: none; }
 body[data-planner-ready="true"] #startup-status { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
 #settings-panel > #open-planning-settings { margin-left: .5rem; }
+.auth-layout { width: min(100% - 2rem, 460px); margin: 2rem auto 4rem; }
+.auth-card { padding: 2rem; }
+.auth-switch { display: flex; gap: .3rem; background: var(--surface-alt); padding: .3rem; border-radius: 1rem; margin: .5rem 0 1.5rem; }
+.auth-switch button { flex: 1; background: transparent; color: var(--muted); }
+.auth-switch button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 2px 8px #27273d10; }
+.google-signin { width: 100%; min-height: 48px; }
+.auth-google-help { margin: .6rem 0; }
+.auth-divider { display: flex; align-items: center; gap: .75rem; color: var(--muted); font-size: .75rem; margin: 1.2rem 0; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+#account-form { display: grid; gap: .65rem; }
+#account-form label { margin-bottom: 0; }
+#account-form #username-help { margin: -.3rem 0 .3rem; }
+#account-form .auth-show-password { display: flex; flex-direction: row; gap: .6rem; align-items: center; min-height: 44px; }
+#account-form .auth-show-password input { width: 20px; height: 20px; min-height: 20px; }
+#confirm-password-field label { margin-bottom: .65rem; }
+#auth-error { color: var(--error); overflow-wrap: anywhere; font-size: .85rem; }
+.auth-local-link { display: block; text-align: center; padding: .8rem .25rem; min-height: 44px; font-size: .85rem; }
+.auth-footnote { text-align: center; padding-top: 1.2rem; }
+#account-entry { max-width: 460px; }
+@media (max-width: 580px) { .auth-layout { margin-top: .8rem; } .auth-card { padding: 1.4rem; } .auth-card input { font-size: 16px; } .welcome-page .nav-actions { flex-wrap: wrap; gap: .5rem; } }

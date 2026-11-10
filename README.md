@@ -40,6 +40,22 @@ The server independently checks proposals against sleep, commitments, buffers, k
 
 Personalization is opt-in. Explicit task completions and date postponements are recorded, capped at 1,000 entries per account. View, delete/reset or disable history in Settings. Interests, energy and style provide context when history is sparse. Time spent on a subject is never treated as proof of difficulty.
 
+### Sign up, log in and Google accounts
+
+The welcome page has separate Sign up and Log in links. Sign up confirms the password; Log in uses the existing account. Both are also available in Settings. Continue without an account keeps the original local planner available.
+
+Continue with Google works for both new and returning users. Configure the same `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` used by the server, and add this **additional authorized redirect URI** to the Google Cloud Web application OAuth client:
+
+```text
+http://127.0.0.1:8080/api/auth/google/callback
+```
+
+For deployment, use your HTTPS `APP_ORIGIN` plus `/api/auth/google/callback`. Keep the existing `/api/google/callback` registered for optional Calendar/Gmail connections. Restart the server after editing private `.env`.
+
+Account sign-in requests only `openid email`. It uses PKCE, a browser-bound one-use state cookie, a nonce, and server-side RSA verification against Google signing keys. Issuer, audience, expiry, nonce and verified-email claims are checked. The stable Google subject identifies the account; existing password accounts are never silently merged by email. Google sign-in does not grant Calendar or Gmail access, does not store Google access/refresh tokens, and creates a separate private planner for new users. Linking an existing password account to Google is not implemented. Google-created accounts use Google to log in, rather than a local password.
+
+Missing credentials show a setup error instead of simulated success. Unit/API tests use locally signed test identity tokens and mocked Google responses. Live Google consent/sign-in has not been verified. See [official Google OpenID Connect documentation](https://developers.google.com/identity/openid-connect/openid-connect).
+
 ### Google Calendar and Gmail
 
 1. Create a Google Cloud project and enable **Google Calendar API** and **Gmail API**.

@@ -31,7 +31,7 @@ test('setup routines persist and kept-free periods can be released', async ({ pa
 test('real account sign-in persists private planner, imports local data explicitly, and sign-out restores local mode', async ({ page }) => {
   await ready(page); await page.locator('#calendar-add').click(); await page.locator('#activity-title').fill('My local task'); await page.locator('#activity-start').fill('16:00'); await page.locator('#activity-end').fill('16:45'); await page.locator('#save-activity').click();
   await page.locator('[data-panel=settings]').click(); const username = `qa_${Date.now()}`;
-  await page.locator('#account-name').fill(username); await page.locator('#account-password').fill('this-is-a-test-password'); await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await page.locator('#account-name').fill(username); await page.locator('#account-password').fill('this-is-a-test-password'); await page.locator('#account-confirm').fill('this-is-a-test-password'); await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.locator('#planner-mode')).toContainText(username); await expect(page.locator('#day-commitments')).not.toContainText('My local task');
   await page.locator('[data-panel=settings]').click(); await page.locator('#account-import').click(); await expect(page.locator('#account-message')).toContainText('Copied');
   await page.locator('[data-panel=day]').click(); await expect(page.locator('#day-commitments')).toContainText('My local task');
