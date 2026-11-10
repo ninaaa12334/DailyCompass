@@ -579,5 +579,9 @@ body[data-planner-ready="true"] #startup-status { position: absolute; width: 1px
 .clerk-title { font-size: 1.7rem; }
 #clerk-widget { min-width: 0; }
 #clerk-widget .cl-rootBox, #clerk-widget .cl-cardBox { max-width: 100%; width: 100%; }
+.clerk-auth-page .auth-layout { width: min(100% - 2rem, 600px); }
+.clerk-auth-page .auth-card { padding: 0; background: transparent; border: 0; box-shadow: none; }
+#clerk-status:empty { display: none; }
+#clerk-widget .cl-card { width: 100%; }
 #account-entry { max-width: 460px; }
 @media (max-width: 580px) { .auth-layout { margin-top: .8rem; } .auth-card { padding: 1.4rem; } .auth-card input { font-size: 16px; } .welcome-page .nav-actions { flex-wrap: wrap; gap: .5rem; } }
