@@ -13,9 +13,18 @@ export function taskProductivity(state, date, period = 'day') {
   }
   const inRange = value => value && value >= start && value <= end;
   const scheduled = new Set(Object.entries(state.plans).filter(([day]) => inRange(day)).flatMap(([, entries]) => entries.filter(e => e.kind === 'task').map(e => e.taskId)));
-  const tasks = state.tasks.filter(t => inRange(t.date) || inRange(t.deadline) || scheduled.has(t.id));
+  const everScheduled = new Set(Object.values(state.plans).flatMap(entries => entries.filter(e => e.kind === 'task').map(e => e.taskId)));
+  const scheduledBefore = new Set(Object.entries(state.plans).filter(([day]) => day < start).flatMap(([, entries]) => entries.filter(e => e.kind === 'task').map(e => e.taskId)));
+  const tasks = state.tasks.filter(t => {
+    const belongs = inRange(t.date) || inRange(t.deadline) || scheduled.has(t.id);
+    const overdue = t.deadline ? t.deadline < start : t.date && t.date < start;
+    const undated = !t.date && !t.deadline && !everScheduled.has(t.id);
+    return belongs || (!t.completed && (overdue || undated || scheduledBefore.has(t.id)));
+  });
   const done = tasks.filter(t => t.completed).length;
-  return { start, end, total: tasks.length, done, percent: tasks.length ? Math.round(done / tasks.length * 100) : 0 };
+  // Rounding must never show 100% while even one task is still unchecked.
+  const percent = tasks.length ? (done === tasks.length ? 100 : Math.min(99, Math.round(done / tasks.length * 100))) : 0;
+  return { start, end, total: tasks.length, done, percent };
 }
 
 export function initProductivity({ model, storage, selectedDate }) {
@@ -28,6 +37,7 @@ export function initProductivity({ model, storage, selectedDate }) {
   close.type = 'button'; close.className = 'secondary productivity-close'; close.textContent = 'Close';
   close.addEventListener('click', () => dialog.close());
   dialog.append(close, $('.progress-widget'));
+  dialog.querySelector('.productivity-definition').textContent = 'Completed tasks / tasks in this period, plus unfinished overdue work and active tasks without dates. School, fixed events and breaks do not count. Only tasks you mark complete earn progress; AI and passing time do not confirm completion.';
   document.body.append(dialog);
   const summary = document.createElement('div'); summary.className = 'workspace-summary';
   const trigger = document.createElement('button');
@@ -51,8 +61,8 @@ export function initProductivity({ model, storage, selectedDate }) {
     $('.mini-productivity-ring').style.setProperty('--completion', `${result.percent}%`);
     $('#mini-productivity-period').textContent = `${{ day: 'Daily', week: 'Weekly', month: 'Monthly' }[period]} progress`;
     trigger.setAttribute('aria-label', `Productivity: ${result.percent}% complete. ${period} view. Open daily, weekly and monthly details`);
-    $('#progress-value').textContent = result.total ? `${result.done} of ${result.total} tasks complete` : 'A fresh start';
-    $('#productivity-message').textContent = !result.total ? 'Add a task to get going.' : result.done === result.total ? 'You made room. You made progress.' : result.done ? 'Every little step counts.' : 'Your first small win is waiting.';
+    $('#progress-value').textContent = result.total ? `${result.done} of ${result.total} tasks complete` : 'No tasks to measure';
+    $('#productivity-message').textContent = !result.total ? 'School and fixed events do not earn task-completion credit.' : result.done === result.total ? 'All counted tasks are marked complete.' : `${result.total - result.done} task${result.total - result.done === 1 ? '' : 's'} still unchecked.`;
     $('#progress-scope').textContent = period === 'month' ? dateLabel(date, { weekday: undefined, day: undefined, month: 'long', year: 'numeric' }) : period === 'week' ? `${dateLabel(result.start)} – ${dateLabel(result.end)}` : dateLabel(date, { year: 'numeric' });
     document.querySelectorAll('[data-productivity-period]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.productivityPeriod === period)));
   }

@@ -52,8 +52,8 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
     routineHelp.focus();
   });
   const refreshDocument = async () => sync.replace(await api('planner'));
-  const availabilityCard = node('section', undefined, 'widget opportunities-widget'); availabilityCard.innerHTML = '<div class="section-heading"><div><p class="widget-label">ROOM TO BREATHE</p><h2>A little breathing room</h2></div><button type="button" class="secondary" id="availability-open">Set up my week</button></div><p id="availability-summary"></p><ul id="opportunity-list"></ul><details class="opportunity-details"><summary>Your week & upcoming deadlines</summary><ul id="week-availability"></ul><h3>Due soon</h3><ul id="due-soon"></ul></details>';
-  grid.append(availabilityCard);
+  const availabilityCard = node('section', undefined, 'widget opportunities-widget'); availabilityCard.innerHTML = '<div class="section-heading"><div><h2>Availability details</h2></div><button type="button" class="secondary" id="availability-open">Set up my week</button></div><p id="availability-summary"></p><ul id="opportunity-list"></ul><details class="opportunity-details"><summary>Your week & upcoming deadlines</summary><ul id="week-availability"></ul><h3>Due soon</h3><ul id="due-soon"></ul></details>';
+  settingsPanel.append(availabilityCard);
   function routineRow(value = {}) {
     const row = node('fieldset', undefined, 'routine-row'); row.dataset.id = value.id || crypto.randomUUID();
     const legend = node('legend', 'Weekly routine'); row.append(legend);
@@ -132,6 +132,6 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   pushStatus().catch(() => {}); render();
   const params = new URLSearchParams(location.search); if (params.get('date')) { try { calendar.selectDate(params.get('date')); const item = model.getDay(params.get('date')).commitments.find(e => e.id === params.get('activity') || e.taskId === params.get('activity')); if (item) openActivity({ date: params.get('date'), item }); } catch {} }
   if (location.hash === '#connections') tab('settings');
-  const workspace = initDashboardDesign({ model, calendar, openActivity, now, showPanel: tab, openSetup });
+  const workspace = initDashboardDesign({ model, openActivity, now });
   return { render() { render(); workspace.render(); }, openSetup };
 }

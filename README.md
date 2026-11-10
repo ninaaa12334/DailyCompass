@@ -17,9 +17,11 @@ The Node server serves the frontend, authenticated API, SQLite database and back
 
 ## Combined dashboard design
 
-The calendar is the main workspace, with a compact productivity/current activity/free-time row above it and companion cards beside it on desktop. Tap the productivity ring to open daily, weekly or monthly completion details; Escape or Close returns to the planner. Mood choices are collapsed until requested. Phones keep the summary compact and stack supporting cards below the calendar.
+The calendar is the main workspace, with a compact productivity/current activity/free-time row above it and a single Upcoming events list beside it on desktop. Tasks & deadlines stay below; the duplicate day timeline is collapsed under Day details. Availability tools are in Settings. The planning companion and breathing-room dashboard card have been removed. Upcoming events lists the next six unfinished activities in the next seven days, starting today, and opens the existing activity editor.
 
-The dashboard combines a calm calendar layout with an optional Night aurora atmosphere. Desktop navigation uses a sidebar; phones retain a four-item bottom dock and compact day/week calendar. The companion panel uses real availability gaps and upcoming events, and opens an editable AI request only after a click. It does not fabricate AI insights. Aurora, Ocean, Sunset, Space and Calm quick choices use the existing saved appearance system. Sports/study icons and event colours are decorative and never change stored activities or scheduling rules. The aurora landscape is a local SVG asset.
+Tap the productivity ring to open daily, weekly or monthly task completion details. Each task counts once. The denominator includes tasks dated, due or scheduled in the selected period, unfinished overdue tasks, missed earlier scheduled tasks and active tasks without dates. Fixed events (including school), routines and breaks do not earn task-completion credit. Empty/school-only periods show 0%; any unfinished counted task prevents 100%, even after rounding. Completion comes from the saved task checkbox, never elapsed time or an AI guess. Historical views reflect current saved completion, not an immutable history of what was finished on a past date.
+
+Desktop navigation uses a sidebar; phones retain a four-item bottom dock and compact day/week calendar. Aurora, Ocean, Sunset, Space and Calm choices use the existing saved appearance system; mood choices are collapsed until opened. Sports/study icons and event colours are decorative and never change stored activities or scheduling rules. The aurora landscape is a local SVG asset.
 
 ## Front-page design
 

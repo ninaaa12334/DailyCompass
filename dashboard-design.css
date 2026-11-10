@@ -29,18 +29,6 @@
 .workspace-sidecar { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; min-width: 0; }
 .workspace-sidecar > .widget { min-width: 0; margin: 0; }
 .workspace-sidecar h2 { font-size: 1.1rem; }
-.companion-heading { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
-.companion-heading > div { min-width: 0; }
-.companion-heading .widget-label { font-size: .5rem; }
-.companion-orb { width: 48px; height: 48px; border-radius: 42% 46% 40% 44%; background: linear-gradient(140deg, #efe7ff, #aaa1d8); border: 1px solid #ffffff99; display: flex; justify-content: center; align-items: center; gap: 5px; box-shadow: inset 3px 3px 8px #fff9, 0 10px 20px -12px #634dbd66; flex-shrink: 0; transform: rotate(7deg); }
-.companion-orb i { width: 6px; height: 10px; background: #4e4d7c; border-radius: 50%; box-shadow: 0 0 7px #b9ffef; }
-.companion-insight { padding: 1rem; margin-top: .9rem; border-radius: 1rem; background: color-mix(in srgb, var(--tint) 50%, var(--surface)); border: 1px solid var(--border); }
-.insight-label { font-size: .6rem; color: var(--muted); }
-.companion-insight h3 { font-size: 1.1rem; line-height: 1.4; margin: .5rem 0; letter-spacing: -.035em; }
-.companion-insight p { margin-bottom: 0; font-size: .8rem; line-height: 1.65; }
-.companion-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 .7rem; }
-.companion-actions button { min-height: 44px; flex: 1; font-size: .75rem; padding: .7rem .5rem; }
-#companion-note { margin-bottom: 0; font-size: .65rem; line-height: 1.6; }
 .workspace-upcoming li { padding-block: .4rem; }
 .upcoming-activity { display: flex; align-items: center; width: 100%; background: transparent; color: var(--text); text-align: left; justify-content: flex-start; padding: .55rem .1rem; gap: .7rem; min-height: 52px; border-radius: .5rem; }
 .upcoming-mark { width: 2rem; height: 2rem; display: grid; place-items: center; background: var(--event-fill, var(--tint)); border-radius: .65rem; flex-shrink: 0; }
@@ -67,7 +55,6 @@
 :root[data-theme="aurora-night"] .compass-workspace::before, :root[data-theme="space"] .compass-workspace::before { content: ''; position: fixed; z-index: -1; inset: 0; pointer-events: none; background: linear-gradient(180deg, #17172d22, #17172d44), url('aurora-scene.svg') center bottom / cover; opacity: .68; }
 :root[data-theme="aurora-night"] .compass-workspace .widget { box-shadow: 0 12px 32px -20px #07081599, inset 0 1px #dcd1ff14; backdrop-filter: blur(16px); }
 :root[data-theme="aurora-night"] .compass-workspace .week-event[data-activity="football"] { border-color: #85dac0; box-shadow: inset 0 0 14px #7aefc820; }
-:root[data-theme="aurora-night"] .compass-workspace .companion-orb { box-shadow: 0 0 25px -8px #8ff5df; }
 @media (min-width: 1120px) {
   .compass-workspace { padding-left: 222px; }
   .compass-workspace main, .compass-workspace > .topbar { width: calc(100% - 3rem); max-width: 1560px; }
@@ -124,6 +111,11 @@
 .mood-details > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: .5rem; font-size: .9rem; font-weight: 600; }
 .mood-details > summary::before { content: '+'; color: var(--accent); }
 .mood-details[open] > summary::before { content: '\2212'; }
+.day-details { grid-column: 1 / -1; min-width: 0; border-top: 1px solid var(--border); }
+.day-details > summary { cursor: pointer; padding: 1rem .3rem; min-height: 48px; color: var(--muted); font-size: .85rem; }
+.day-details .timeline-widget { margin-top: .3rem; }
+.compass-workspace .tasks-widget { grid-column: 1 / -1; }
+.workspace-upcoming > .fine-print { font-size: .7rem; }
 .compass-workspace .dashboard-heading { padding-block: .8rem .4rem; }
 .compass-workspace .dashboard-heading h1 { font-size: clamp(1.6rem, 2.3vw, 2.3rem); margin-bottom: .3rem; }
 .compass-workspace .dashboard-heading .muted { margin: 0; font-size: .8rem; }
@@ -131,8 +123,9 @@
 @media (min-width: 1120px) and (max-width: 1439px) {
   .compass-workspace .dashboard-grid > .calendar-widget { grid-column: 1 / span 8; grid-row: 1; }
   .compass-workspace .workspace-sidecar { grid-column: 9 / -1; grid-row: 1 / span 3; display: flex; flex-direction: column; }
-  .compass-workspace .timeline-widget, .compass-workspace .tasks-widget, .compass-workspace .opportunities-widget { grid-column: 1 / span 8; }
+  .compass-workspace .tasks-widget, .compass-workspace .day-details { grid-column: 1 / span 8; }
 }
+@media (min-width: 1440px) { .compass-workspace .tasks-widget, .compass-workspace .day-details { grid-column: 1 / span 9; } }
 @media (max-width: 700px) {
   .workspace-summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .6rem; }
   .productivity-toggle { grid-row: span 2; padding: .7rem; flex-wrap: wrap; justify-content: center; text-align: center; gap: .4rem; }

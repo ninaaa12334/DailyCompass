@@ -22,8 +22,13 @@ for (const width of [360, 390, 430]) test(`combined workspace remains usable on 
   await page.locator('.mood-details summary').click(); await page.locator('[data-scene-theme=aurora-night]').click(); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   if (width === 390) { await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ path: 'qa-artifacts/combined-phone.png' }); }
 });
-test('planning companion uses availability setup and opens AI with a real free gap', async ({ page }) => {
-  await ready(page); await page.locator('#companion-plan').click(); await expect(page.locator('#availability-dialog')).toBeVisible();
-  await page.locator('#availability-form').getByRole('button', { name: 'Save my availability' }).click(); await expect(page.locator('#availability-dialog')).toBeHidden();
-  await expect(page.locator('#companion-gap')).toContainText('free'); await page.locator('#companion-plan').click(); await expect(page.locator('#ai-panel')).toBeVisible(); await expect(page.locator('#ai-prompt')).toHaveValue(/Plan my free time on 2026-11-08 from/);
+test('simple calendar keeps upcoming event editing and tasks without duplicate recommendation cards', async ({ page }) => {
+  await ready(page);
+  await expect(page.locator('.companion-card')).toHaveCount(0);
+  await expect(page.getByText('A little breathing room', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Upcoming events', exact: true })).toBeVisible();
+  await expect(page.locator('.dashboard-grid > .opportunities-widget')).toHaveCount(0);
+  await expect(page.locator('.day-details')).not.toHaveAttribute('open');
+  await expect(page.locator('.tasks-widget')).toBeVisible();
+  await page.locator('.upcoming-activity').first().click(); await expect(page.locator('#activity-dialog')).toBeVisible();
 });

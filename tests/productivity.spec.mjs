@@ -1,5 +1,21 @@
 import { test, expect } from '@playwright/test';
 
+test('school-only calendar stays at zero; unchecking a task lowers progress immediately', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-08T08:00:00Z') });
+  await page.addInitScript(() => {
+    localStorage.setItem('day-compass.tasks.v1', '[]');
+    localStorage.setItem('day-compass.calendar.v1', JSON.stringify({ '2026-11-08': { start: '08:00', end: '20:00', color: 'theme', commitments: [{ id: 'school', title: 'School', start: '08:00', end: '15:00', completed: true }] } }));
+  });
+  await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
+  await expect(page.locator('#mini-productivity-percent')).toHaveText('0%');
+  await page.locator('#task-title').fill('Maths homework'); await page.locator('#save-task').click();
+  await page.locator('#save-activity').click();
+  await expect(page.locator('#mini-productivity-percent')).toHaveText('0%');
+  const task = page.locator('[data-task-id]').first(); await task.check();
+  await expect(page.locator('#mini-productivity-percent')).toHaveText('100%');
+  await task.uncheck(); await expect(page.locator('#mini-productivity-percent')).toHaveText('0%');
+});
+
 test('productivity periods update the ring, persist selection and follow task completion', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-11-08T08:00:00Z') });
   await page.addInitScript(() => {
@@ -8,7 +24,7 @@ test('productivity periods update the ring, persist selection and follow task co
     localStorage.setItem('day-compass.tasks.v1', JSON.stringify([task('a', '2026-11-08', true), task('b', '2026-11-02', false), task('c', '2026-11-20', true)]));
   });
   await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
-  await expect(page.locator('#task-progress')).toHaveAttribute('aria-valuenow', '100');
+  await expect(page.locator('#task-progress')).toHaveAttribute('aria-valuenow', '50');
   await expect(page.locator('#productivity-dialog')).not.toBeVisible();
   await page.locator('#productivity-toggle').click();
   await expect(page.locator('#productivity-dialog')).toBeVisible();

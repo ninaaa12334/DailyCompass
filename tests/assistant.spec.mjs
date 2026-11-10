@@ -14,11 +14,13 @@ test('weekly school edits explain the routine setup without an AI call or calend
   await page.locator('#setup-close').click(); await expect(page.locator('#ai-prompt')).toHaveValue(/on tuesdays/);
 });
 async function setup(page) {
+  await page.locator('[data-panel=settings]').click();
   await page.locator('#availability-open').click();
   const f = page.locator('#availability-form');
   await f.locator('[name=planningStart]').fill('08:00'); await f.locator('[name=planningEnd]').fill('20:00'); await f.locator('[name=travelMinutes]').fill('15');
   await page.locator('#routine-meal').click(); await page.locator('#availability-form').getByRole('button', { name: 'Save my availability', exact: true }).click();
   await expect(page.locator('#availability-dialog')).toBeHidden();
+  await page.locator('[data-panel=day]').click();
 }
 for (const width of [360, 390, 430]) test(`assistant tabs, setup, and welcome fit ${width}px phone screens`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 }); await ready(page); await setup(page);
@@ -35,6 +37,7 @@ test('setup routines persist and kept-free periods can be released', async ({ pa
   await page.clock.install({ time: new Date('2026-11-08T08:00:00Z') }); await ready(page); await setup(page);
   await expect(page.locator('#day-commitments')).toContainText('Meal break');
   const before = await page.locator('#availability-summary').textContent();
+  await page.locator('[data-panel=settings]').click();
   await page.locator('#opportunity-list').getByRole('button', { name: 'Keep it free' }).first().click();
   await expect(page.locator('#opportunity-list')).toContainText('intentionally kept free');
   await page.getByRole('button', { name: 'Release kept-free period' }).click(); await expect(page.locator('#availability-summary')).toHaveText(before);
