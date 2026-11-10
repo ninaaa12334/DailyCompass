@@ -1,3 +1,4 @@
+import { initDashboardDesign } from './dashboard-design.mjs';
 import { initAuth } from './auth-ui.mjs';
 import { availability, activitySuggestion } from './availability.mjs';
 import { api, connectAccount } from './account-client.mjs';
@@ -8,7 +9,7 @@ import { minutes } from './calendar-store.mjs';
 import { PLANNER_KEY } from './planner-store.mjs';
 
 const template = `
-<nav class="assistant-tabs" aria-label="Planner sections"><button type="button" data-panel="day" aria-pressed="true">My day</button><button type="button" data-panel="ai" aria-pressed="false">Plan with AI</button><button type="button" data-panel="settings" aria-pressed="false">Settings</button></nav>
+<nav class="assistant-tabs" aria-label="Planner sections"><button type="button" data-panel="day" aria-pressed="true">Overview</button><button type="button" data-panel="calendar" aria-pressed="false">Calendar</button><button type="button" data-panel="ai" aria-pressed="false">AI planner</button><button type="button" data-panel="settings" aria-pressed="false">Settings</button></nav>
 <p id="sync-status" role="status"></p>
 <section id="ai-panel" class="widget assistant-panel" hidden aria-labelledby="ai-heading"><p class="widget-label">A LITTLE HELP FINDING YOUR RHYTHM</p><h2 id="ai-heading">Plan with AI</h2><p>Tell me what you want to make room for. Review every suggestion before it joins your day.</p><p id="ai-connection" class="local-banner"></p>
 <form id="ai-form"><label for="ai-prompt">What would you like help with?</label><textarea id="ai-prompt" name="prompt" maxlength="2000" required placeholder="I want to practise maths from 5 to 6 pm."></textarea><p class="fine-print" id="ai-date-help">Write the time in your message. If you do not mention a day, I will use today in your planner timezone.</p><div class="assistant-fields"><label>Energy<select name="energy"><option>Medium</option><option>Low</option><option>High</option></select></label><label>Style<select name="balance"><option>Balanced</option><option>Productive</option><option>Relaxed</option></select></label></div><label><input type="checkbox" name="replan"> Replan unfinished, unlocked tasks if needed</label><p class="fine-print">If replanning, approval replaces movable task slots in this range; unchecked suggestions return to your task list. Completed work, started tasks and fixed commitments stay. Sends task titles, dates, durations, priorities, free gaps, your request and optional interests/history to OpenAI. Email content is never included. API use may cost money.</p><button id="ai-generate">Propose / regenerate a plan</button></form><p id="ai-status" role="status"></p><form id="ai-review" hidden><h3>Your proposal</h3><p id="ai-interpretation" class="local-banner"></p><p>Edit the titles and times; uncheck anything you do not want. Nothing changes until you approve.</p><div id="ai-proposals"></div><button>Approve selected activities</button><button type="button" class="secondary" id="ai-reject">Reject proposal</button></form></section>
@@ -32,7 +33,7 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   $('#setup-open').after($('#open-planning-settings'));
   const sync = connectAccount(model, account, syncStatus);
   if (account.user) { $('#planner-mode').textContent = `Private account · ${account.user.name}`; $('#task-help').textContent = 'Saved privately on this server and synced to signed-in devices.'; }
-  function tab(name) { grid.hidden = reminders.hidden = name !== 'day'; panel.hidden = name !== 'ai'; settingsPanel.hidden = name !== 'settings'; tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.panel === name))); if (name === 'settings') refreshConnections(); }
+  function tab(name) { document.body.dataset.workspace = name; grid.hidden = reminders.hidden = !['day', 'calendar'].includes(name); panel.hidden = name !== 'ai'; settingsPanel.hidden = name !== 'settings'; tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.panel === name))); if (name === 'settings') refreshConnections(); if (name === 'calendar') requestAnimationFrame(() => $('.calendar-widget').scrollIntoView({ block: 'start' })); }
   tabs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => tab(b.dataset.panel)));
   document.querySelectorAll('a[href="#calendar-heading"], a[href="#tasks-heading"], a[href="#task-title"]').forEach(link => link.addEventListener('click', () => tab('day')));
   const guard = (id, fn) => async event => { const target = event?.currentTarget; try { if (target?.tagName === 'BUTTON') target.disabled = true; $(id).textContent = 'Working…'; await fn(event); } catch (error) { $(id).textContent = error.message; } finally { if (target?.tagName === 'BUTTON') target.disabled = false; } };
@@ -118,5 +119,6 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   pushStatus().catch(() => {}); render();
   const params = new URLSearchParams(location.search); if (params.get('date')) { try { calendar.selectDate(params.get('date')); const item = model.getDay(params.get('date')).commitments.find(e => e.id === params.get('activity') || e.taskId === params.get('activity')); if (item) openActivity({ date: params.get('date'), item }); } catch {} }
   if (location.hash === '#connections') tab('settings');
-  return { render, openSetup };
+  const workspace = initDashboardDesign({ model, calendar, openActivity, now, showPanel: tab, openSetup });
+  return { render() { render(); workspace.render(); }, openSetup };
 }

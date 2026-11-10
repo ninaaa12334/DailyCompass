@@ -12,12 +12,18 @@ function apply(value) {
   const theme = resolveAppearance(value, media.matches);
   const root = document.documentElement;
   root.dataset.mode = theme.dark ? 'dark' : 'light';
+  root.dataset.theme = value.preset;
   for (const [key, color] of Object.entries({ accent: theme.accent, 'accent-ink': theme.accentText, busy: theme.busy, 'busy-ink': theme.busyText, background: theme.background, tint: theme.tint })) {
     root.style.setProperty(`--${key}`, color);
   }
 }
 apply(saved);
 media.addEventListener('change', () => apply(saved));
+export function selectPreset(preset) {
+  const next = { ...saved, preset, customAccent: false, customBusy: false };
+  if (!store) { storage.setItem(APPEARANCE_KEY, JSON.stringify(next)); store = createAppearanceStore(storage); } else store.save(next);
+  saved = next; loadError = false; apply(saved); document.dispatchEvent(new Event('appearance-changed'));
+}
 
 const dialog = document.createElement('dialog');
 dialog.id = 'appearance-dialog';

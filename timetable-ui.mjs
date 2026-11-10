@@ -1,6 +1,7 @@
 import { addDays, eventPosition, timeLabel } from './calendar-view.mjs';
 import { minutes, capacity } from './calendar-store.mjs';
 import { zonedNow } from './clock.mjs';
+import { activityVisual } from './activity-visuals.mjs';
 
 export function renderTimetable(grid, options) {
   const { dates, selected, focusHour, getDay, getTasks, onSelect, onAdd, onEdit, onNavigate } = options;
@@ -89,12 +90,14 @@ export function renderTimetable(grid, options) {
       if (item.kind !== 'break') button.type = 'button';
       button.className = `week-event${position.height < 40 ? ' short-event' : ''}${item.completed ? ' completed' : ''}`;
       button.dataset.eventId = item.id;
+      const visual = activityVisual(item); button.dataset.activity = visual.kind;
       button.style.top = `${position.top}px`; button.style.height = `${position.height}px`;
       button.title = `${item.title} · ${item.start}–${item.end}`;
       button.setAttribute('aria-label', `Edit ${item.title}, ${date}, ${item.start} to ${item.end}`);
       const title = document.createElement('strong'); title.textContent = item.title;
       const time = document.createElement('small'); time.textContent = `${item.start}–${item.end}`;
-      const label = document.createElement('span'); label.className = 'event-label'; label.append(title, time); button.append(label);
+      const icon = document.createElement('span'); icon.className = 'activity-mark'; icon.textContent = visual.icon; icon.setAttribute('aria-hidden', 'true');
+      const label = document.createElement('span'); label.className = 'event-label'; label.append(icon, title, time); button.append(label);
       if (item.kind !== 'break') button.addEventListener('click', () => onEdit(date, item));
       column.append(button);
     }

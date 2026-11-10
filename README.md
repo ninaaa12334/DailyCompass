@@ -15,6 +15,10 @@ Open http://127.0.0.1:8080/dashboard.html and keep the terminal running. Stop wi
 
 The Node server serves the frontend, authenticated API, SQLite database and background workers. Static hosting cannot provide accounts, AI, OAuth or background reminders. Development binds only to loopback. Use Node rather than exposing the repository through Apache; additional Apache rules also block private directories.
 
+## Combined dashboard design
+
+The dashboard combines a calm calendar layout with an optional Night aurora atmosphere. Desktop navigation uses a sidebar; phones retain a four-item bottom dock and compact day/week calendar. The companion panel uses real availability gaps and upcoming events, and opens an editable AI request only after a click. It does not fabricate AI insights. Aurora, Ocean, Sunset, Space and Calm quick choices use the existing saved appearance system. Sports/study icons and event colours are decorative and never change stored activities or scheduling rules. The aurora landscape is a local SVG asset.
+
 ## Front-page design
 
 The landing page has a CSS/SVG animated scene with Football, Study and Unwind example activities. Switching examples changes the illustration and sample card only; it does not read or change personal schedules. A motion toggle remembers the preference, and system reduced-motion settings disable animation. All decorative assets are local code, with no image-generation or external tracking service added. Automatic decoration based on real saved activities is a future, separate feature.

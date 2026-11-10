@@ -1,6 +1,9 @@
 export const APPEARANCE_KEY = 'day-compass.appearance.v1';
 export const PRESETS = {
   aurora: { label: 'Aurora', accent: '#6554cf', busy: '#6554cf', background: '#f4f4fb', tint: '#e9e4ff' },
+  'aurora-night': { label: 'Night aurora', accent: '#8bf0d6', busy: '#bea5ff', background: '#14152c', tint: '#31244c', dark: true },
+  sunset: { label: 'Sunset', accent: '#96513e', busy: '#96513e', background: '#fff5ef', tint: '#f6dbd8' },
+  space: { label: 'Space', accent: '#c9b8ff', busy: '#c9b8ff', background: '#101422', tint: '#292540', dark: true },
   sage: { label: 'Sage & cream', accent: '#365d4d', busy: '#365d4d', background: '#f4f5ef', tint: '#e6eddf' },
   lavender: { label: 'Lavender', accent: '#624a82', busy: '#624a82', background: '#f5f2f8', tint: '#eae2f3' },
   ocean: { label: 'Ocean blue', accent: '#2d567c', busy: '#2d567c', background: '#f0f5f9', tint: '#dfebf4' },
@@ -37,7 +40,7 @@ export function resolveAppearance(value, systemDark = false) {
   const preset = PRESETS[key];
   const accent = value.customAccent ? value.accent : preset.accent;
   const busy = value.customBusy ? value.busy : preset.busy;
-  return { ...preset, dark: key === 'midnight', accent, accentText: textOn(accent), busy, busyText: textOn(busy) };
+  return { ...preset, dark: Boolean(preset.dark || key === 'midnight'), accent, accentText: textOn(accent), busy, busyText: textOn(busy) };
 }
 
 export function createAppearanceStore(storage) {

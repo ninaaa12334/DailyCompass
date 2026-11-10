@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your planner · Day Compass</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="dashboard-design.css">
   <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#6554cf"><link rel="apple-touch-icon" href="compass-icon.svg">
   <script src="theme-ui.mjs" type="module"></script><script src="bootstrap.js" defer></script>
 </head>
@@ -16,7 +16,7 @@
   </nav>
   <main id="planner" tabindex="-1">
     <div class="local-banner" id="planner-mode">Local planner · Saved in this browser</div>
-    <header class="dashboard-heading"><div><p class="eyebrow" id="dashboard-date">A LITTLE DIRECTION FOR YOUR DAY</p><h1>Make today yours.</h1><p class="muted">A little focus. A little breathing room.</p></div><a class="button secondary" href="#task-title">+ Add a task</a></header>
+    <header class="dashboard-heading"><div><p class="eyebrow" id="dashboard-date">A LITTLE DIRECTION FOR YOUR DAY</p><h1>Make room for what <em>matters.</em></h1><p class="muted">A thoughtful plan. A little space for you.</p></div><a class="button secondary" href="#task-title">+ Add a task</a></header>
     <p id="startup-status" role="status">Loading your saved planner...</p>
     <section id="startup-error" class="widget" role="alert" hidden><h2>Let us get your planner working</h2><p>Retry without deleting your data. If the problem continues, download a backup for recovery.</p><details><summary>Error details</summary><pre id="startup-detail"></pre></details><button type="button" id="retry-startup">Retry</button><button type="button" class="secondary" id="export-backup">Download saved data</button></section>
     <div class="planner-actions"><button type="button" class="secondary" id="open-planning-settings">Planning settings</button><button type="button" class="secondary" id="undo-action" disabled>Undo last change</button><span id="planner-feedback" role="status"></span></div>

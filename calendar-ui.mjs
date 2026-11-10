@@ -4,6 +4,7 @@ import { addDays, weekDates, monthDates } from './calendar-view.mjs';
 import { renderTimetable, updateNowLines } from './timetable-ui.mjs';
 import { zonedNow, dateLabel } from './clock.mjs';
 import { planningCapacity } from './scheduler.mjs';
+import { activityVisual } from './activity-visuals.mjs';
 
 export function initCalendar(model, handlers) {
   const $ = selector => document.querySelector(selector);
@@ -33,7 +34,7 @@ export function initCalendar(model, handlers) {
       for (const item of events.slice(0, 3)) {
         const event = document.createElement(item.kind === 'break' ? 'div' : 'button');
         if (item.kind !== 'break') event.type = 'button';
-        event.className = `month-event${item.completed ? ' completed' : ''}`; event.textContent = `${item.start} ${item.title}`; event.title = `${item.title}: ${item.start}–${item.end}`;
+        event.className = `month-event${item.completed ? ' completed' : ''}`; event.dataset.activity = activityVisual(item).kind; event.textContent = `${item.start} ${item.title}`; event.title = `${item.title}: ${item.start}–${item.end}`;
         if (item.kind !== 'break') event.addEventListener('click', () => open(date, item)); cell.append(event);
       }
       if (events.length > 3) { const more = document.createElement('button'); more.type = 'button'; more.className = 'month-more'; more.textContent = `+${events.length - 3} more`; more.addEventListener('click', () => { view = 'day'; choose(date); }); cell.append(more); }
@@ -65,10 +66,12 @@ export function initCalendar(model, handlers) {
       const li = document.createElement('li');
       const entry = document.createElement(item.kind === 'break' ? 'div' : 'button');
       entry.className = `mobile-agenda-entry${item.completed ? ' completed' : ''}`;
+      const visual = activityVisual(item); entry.dataset.activity = visual.kind;
       if (item.kind !== 'break') { entry.type = 'button'; entry.setAttribute('aria-label', `Edit ${item.title}, ${item.start} to ${item.end}`); entry.addEventListener('click', () => open(selected, item)); }
       const time = document.createElement('span'); time.className = 'mobile-agenda-time'; time.textContent = `${item.start}–${item.end}`;
       const title = document.createElement('strong'); title.className = 'task-title'; title.textContent = item.title;
-      entry.append(time, title); li.append(entry); list.append(li);
+      const icon = document.createElement('span'); icon.className = 'agenda-activity-mark'; icon.textContent = visual.icon; icon.setAttribute('aria-hidden', 'true');
+      entry.append(time, title, icon); li.append(entry); list.append(li);
     }
   }
   function render() {
