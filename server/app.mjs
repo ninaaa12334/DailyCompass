@@ -104,7 +104,7 @@ export function createApplication(options = {}) {
       if (route === '/api/history' && request.method === 'GET') return json(response, db.prepare('SELECT body FROM history WHERE user_id=? ORDER BY created DESC LIMIT 1000').all(user.id).map(r => JSON.parse(r.body)));
       if (route === '/api/history' && request.method === 'DELETE') { db.prepare('DELETE FROM history WHERE user_id=?').run(user.id); return json(response, { ok: true }); }
       if (route === '/api/ai/preview' && request.method === 'POST') {
-        const input = await body(request); assert(validDate(input.date), 'Choose a valid date.');
+        const input = await body(request); assert(typeof input.prompt === 'string' && input.prompt.trim() && input.prompt.length <= 2000, 'Tell me what you would like to plan.');
         const doc = readDocument(user.id), rateKey = `ai:${user.id}`, last = failures.get(rateKey) || 0; assert(Date.now() - last > 5000, 'Wait a few seconds before regenerating.', 429); failures.set(rateKey, Date.now());
         const history = db.prepare('SELECT body FROM history WHERE user_id=? ORDER BY created DESC LIMIT 40').all(user.id).map(r => JSON.parse(r.body));
         return json(response, { ...await proposeAI(doc.state, input, config, history, options.fetcher), version: doc.version });
