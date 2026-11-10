@@ -19,6 +19,17 @@ test('unclear, invalid and overnight times ask for clarification instead of gues
   for (const prompt of ['Math from 5 to 6', 'Math at 5', 'Math from 25:00 to 26:00', 'Math 11pm to 1am', 'Math next week', 'Math on 2026-02-30']) assert.ok(interpretPlanningRequest(prompt, settings, at).clarification, prompt);
   assert.deepEqual(interpretPlanningRequest('Help me plan my afternoon', settings, at), { date: '2026-11-10', start: '12:00', end: '18:00' });
 });
+
+test('weekly school exceptions route to routines instead of asking for task duration', async () => {
+  const prompt = 'I put in my calendar that I have school until 1:30 pm but on tuesdays I finish at 4 pm';
+  const result = interpretPlanningRequest(prompt, settings, at);
+  assert.equal(result.action, 'routines');
+  assert.match(result.clarification, /start and end time/);
+  const snapshot = memoryModel().snapshot(), before = JSON.stringify(snapshot);
+  const proposal = await proposeAI(snapshot, { prompt }, {}, [], () => { throw new Error('Provider must not be called'); }, at);
+  assert.equal(proposal.action, 'routines'); assert.equal(JSON.stringify(snapshot), before);
+  assert.equal(interpretPlanningRequest('Practise math Tuesday from 5 to 6 pm', settings, at).start, '17:00');
+});
 test('prompt-only AI requests get inferred bounds, while clarification sends no provider request', async () => {
   const snapshot = memoryModel().snapshot(); Object.assign(snapshot.settings, settings);
   let context, calls = 0;

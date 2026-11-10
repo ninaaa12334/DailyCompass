@@ -1,6 +1,18 @@
 import { test, expect } from '@playwright/test';
 
 async function ready(page) { await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.'); }
+test('weekly school edits explain the routine setup without an AI call or calendar mutation', async ({ page }) => {
+  await ready(page); await page.locator('[data-panel=ai]').click();
+  const before = await page.evaluate(() => localStorage.getItem('day-compass.planner.v2'));
+  let calls = 0; page.on('request', request => { if (request.url().includes('/api/ai/preview')) calls++; });
+  await page.locator('#ai-prompt').fill('I have school until 1:30 pm but on tuesdays I finish at 4 pm');
+  await page.locator('#ai-form').getByRole('button', { name: 'Propose / regenerate a plan' }).click();
+  await expect(page.locator('#ai-status')).toContainText('weekly routine');
+  await expect(page.locator('#ai-status')).not.toContainText('How long');
+  expect(calls).toBe(0); expect(await page.evaluate(() => localStorage.getItem('day-compass.planner.v2'))).toBe(before);
+  await page.locator('#ai-routines-open').click(); await expect(page.locator('#availability-dialog')).toBeVisible();
+  await page.locator('#setup-close').click(); await expect(page.locator('#ai-prompt')).toHaveValue(/on tuesdays/);
+});
 async function setup(page) {
   await page.locator('#availability-open').click();
   const f = page.locator('#availability-form');

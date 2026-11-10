@@ -9,6 +9,9 @@ export function interpretPlanningRequest(prompt, settings, at = new Date()) {
   const today = zonedNow(at, settings.timeZone).date;
   let date = today, start = settings.planningStart, end = settings.planningEnd;
   const ask = clarification => ({ clarification, date, start, end });
+  const recurring = /\b(weekly|weekdays|mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays)\b|\bevery\s+(day|week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.test(text);
+  const schoolException = /\bschool\b/.test(text) && /\b(but|except)\b/.test(text) && /\b(until|finish|ends?)\b/.test(text);
+  if (recurring || schoolException) return { ...ask('This sounds like a weekly routine or an exception to it. This planner proposes activities for one day; it does not edit repeating school hours. Open Weekly routines to set the usual days and a separate Tuesday entry. Include both the start and end time, then review and save. No calendar changes have been made.'), action: 'routines' };
   const dates = [...new Set(text.match(/\b20\d{2}-\d{2}-\d{2}\b/g) || [])];
   const weekdays = [...text.matchAll(/\b(next\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/g)];
   const relative = text.match(/\b(today|tomorrow)\b/g) || [];

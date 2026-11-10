@@ -1,4 +1,5 @@
 import { initDashboardDesign } from './dashboard-design.mjs';
+import { interpretPlanningRequest } from './planning-request.mjs';
 import { initAuth } from './auth-ui.mjs';
 import { availability, activitySuggestion } from './availability.mjs';
 import { api, connectAccount } from './account-client.mjs';
@@ -38,6 +39,18 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   document.querySelectorAll('a[href="#calendar-heading"], a[href="#tasks-heading"], a[href="#task-title"]').forEach(link => link.addEventListener('click', () => tab('day')));
   const guard = (id, fn) => async event => { const target = event?.currentTarget; try { if (target?.tagName === 'BUTTON') target.disabled = true; $(id).textContent = 'Working…'; await fn(event); } catch (error) { $(id).textContent = error.message; } finally { if (target?.tagName === 'BUTTON') target.disabled = false; } };
   const requireAccount = () => { if (!account.user) throw new Error('Sign in to a private account in Settings first. Your local planner remains separate.'); };
+  const routineHelp = button('Weekly routines', () => openSetup());
+  routineHelp.id = 'ai-routines-open';
+  $('#ai-date-help').after(routineHelp);
+  $('#ai-date-help').textContent += ' For repeating school hours or different hours on Tuesdays, use Weekly routines.';
+  // Explain unsupported recurring edits before signing in or contacting a paid provider.
+  $('#ai-form').addEventListener('submit', event => {
+    const interpreted = interpretPlanningRequest($('#ai-prompt').value, model.snapshot().settings);
+    if (interpreted.action !== 'routines') return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    $('#ai-review').hidden = true; $('#ai-status').textContent = interpreted.clarification;
+    routineHelp.focus();
+  });
   const refreshDocument = async () => sync.replace(await api('planner'));
   const availabilityCard = node('section', undefined, 'widget opportunities-widget'); availabilityCard.innerHTML = '<div class="section-heading"><div><p class="widget-label">ROOM TO BREATHE</p><h2>A little breathing room</h2></div><button type="button" class="secondary" id="availability-open">Set up my week</button></div><p id="availability-summary"></p><ul id="opportunity-list"></ul><details class="opportunity-details"><summary>Your week & upcoming deadlines</summary><ul id="week-availability"></ul><h3>Due soon</h3><ul id="due-soon"></ul></details>';
   grid.append(availabilityCard);
