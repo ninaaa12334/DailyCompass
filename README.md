@@ -15,6 +15,10 @@ Open http://127.0.0.1:8080/dashboard.html and keep the terminal running. Stop wi
 
 The Node server serves the frontend, authenticated API, SQLite database and background workers. Static hosting cannot provide accounts, AI, OAuth or background reminders. Development binds only to loopback. Use Node rather than exposing the repository through Apache; additional Apache rules also block private directories.
 
+## Front-page design
+
+The landing page has a CSS/SVG animated scene with Football, Study and Unwind example activities. Switching examples changes the illustration and sample card only; it does not read or change personal schedules. A motion toggle remembers the preference, and system reduced-motion settings disable animation. All decorative assets are local code, with no image-generation or external tracking service added. Automatic decoration based on real saved activities is a future, separate feature.
+
 ## Available now
 
 - Circular Day/Week/Month productivity view, based on completed tasks dated, due or scheduled in the selected calendar period. Each task counts once; an empty period shows 0% and a fresh-start message. This is task completion, not time worked.
