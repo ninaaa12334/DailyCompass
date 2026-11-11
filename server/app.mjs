@@ -12,6 +12,7 @@ import { zonedNow, validDate } from '../clock.mjs';
 import { wallToInstant } from '../zoned-time.mjs';
 import { googleSignIn } from './google-auth.mjs';
 import { clerkSignIn } from './clerk-auth.mjs';
+import { calendarFeeds } from './ical.mjs';
 
 const scrypt = promisify(rawScrypt), hash = value => createHash('sha256').update(value).digest('hex');
 export function createApplication(options = {}) {
@@ -19,6 +20,29 @@ export function createApplication(options = {}) {
   if (config.NODE_ENV === 'production' && (!config.APP_ORIGIN.startsWith('https://') || !config.TOKEN_ENCRYPTION_KEY)) throw new Error('Production needs HTTPS APP_ORIGIN and TOKEN_ENCRYPTION_KEY.');
   const store = database(options.database || config.DATABASE_PATH || 'data/compass.sqlite', config.TOKEN_ENCRYPTION_KEY), { db } = store;
   const integration = google(store, config, options.fetcher), push = pushWorker(db, config, options.pushSender);
+  const feeds = calendarFeeds(store, options.fetcher), feedBusy = new Set();
+  async function syncFeed(user, rawURL) {
+    assert(!feedBusy.has(user), 'A calendar refresh is already running. Try again shortly.', 409);
+    feedBusy.add(user);
+    try {
+      const previous = feeds.connection(user); assert(rawURL || previous, 'Connect a private iCal link first.', 409);
+      const downloaded = await feeds.read(rawURL || previous.url, readDocument(user).state.settings);
+      const latest = readDocument(user); latest.state.imports = [...(latest.state.imports || []).filter(e => e.importProvider !== 'ical'), ...downloaded.imports];
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const result = saveDocument(user, latest.state, latest.version);
+        feeds.save(user, { url: downloaded.url, automatic: true, lastSync: new Date().toISOString() }); db.exec('COMMIT'); return result;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    } catch (error) { if (!rawURL) feeds.noteFailure(user); throw error; }
+    finally { feedBusy.delete(user); }
+  }
+  async function syncCalendarFeeds() {
+    for (const row of db.prepare('SELECT user_id FROM connections WHERE service=?').all('ical')) {
+      const data = feeds.connection(row.user_id);
+      if (feedBusy.has(row.user_id) || Date.now() - Date.parse(data.lastAttempt || data.lastSync || 0) < 900000) continue;
+      try { await syncFeed(row.user_id); } catch { /* Per-account status is shown in Settings; never log the secret link. */ }
+    }
+  }
   const googleLogin = googleSignIn(db, config, options.fetcher);
   const clerkLogin = clerkSignIn(db, config, options.clerkDependencies), clerkChecks = new Map();
   let googleRunning = false;
@@ -26,7 +50,7 @@ export function createApplication(options = {}) {
     if (googleRunning || !integration.configured()) return; googleRunning = true;
     try { for (const row of db.prepare('SELECT user_id FROM connections WHERE service=?').all('calendar')) {
       const doc = readDocument(row.user_id); if (!doc.state.settings.googleSyncEnabled) continue;
-      try { const data = integration.connection(row.user_id, 'calendar'); const imported = await integration.sync(row.user_id, data.selected || [], doc.state.settings); const latest = readDocument(row.user_id); latest.state.imports = imported; saveDocument(row.user_id, latest.state, latest.version); await integration.mirror(row.user_id, latest.state); }
+      try { const data = integration.connection(row.user_id, 'calendar'); const imported = await integration.sync(row.user_id, data.selected || [], doc.state.settings); const latest = readDocument(row.user_id); latest.state.imports = [...(latest.state.imports || []).filter(e => e.importProvider === 'ical'), ...imported]; saveDocument(row.user_id, latest.state, latest.version); await integration.mirror(row.user_id, latest.state); }
       catch (error) { try { const data = integration.connection(row.user_id, 'calendar'); integration.save(row.user_id, 'calendar', { ...data, error: error.message }); } catch {} }
     } } finally { googleRunning = false; }
   }
@@ -140,6 +164,17 @@ export function createApplication(options = {}) {
       if (route === '/api/planner' && request.method === 'PUT') { const input = await body(request); assert(Number.isInteger(input.version), 'Missing server version.'); input.state.imports = readDocument(user.id).state.imports || []; const result = saveDocument(user.id, input.state, input.version); await push.tick(); return json(response, result); }
       if (route === '/api/history' && request.method === 'GET') return json(response, db.prepare('SELECT body FROM history WHERE user_id=? ORDER BY created DESC LIMIT 1000').all(user.id).map(r => JSON.parse(r.body)));
       if (route === '/api/history' && request.method === 'DELETE') { db.prepare('DELETE FROM history WHERE user_id=?').run(user.id); return json(response, { ok: true }); }
+      if (route === '/api/ical/status' && request.method === 'GET') return json(response, feeds.status(user.id));
+      if (route === '/api/ical/sync' && request.method === 'POST') {
+        const input = await body(request); assert(input.url === undefined || (typeof input.url === 'string' && input.url.length <= 2048), 'Enter a valid private calendar link.');
+        const key = `ical:${user.id}`; assert(Date.now() - (failures.get(key) || 0) > 5000, 'Wait five seconds before refreshing again.', 429); failures.set(key, Date.now());
+        return json(response, await syncFeed(user.id, input.url));
+      }
+      if (route === '/api/ical/disconnect' && request.method === 'POST') {
+        assert(!feedBusy.has(user.id), 'Wait for the current refresh to finish before disconnecting.', 409);
+        const doc = readDocument(user.id); doc.state.imports = (doc.state.imports || []).filter(e => e.importProvider !== 'ical');
+        const result = saveDocument(user.id, doc.state, doc.version); feeds.disconnect(user.id); return json(response, result);
+      }
       if (route === '/api/ai/preview' && request.method === 'POST') {
         const input = await body(request); assert(typeof input.prompt === 'string' && input.prompt.trim() && input.prompt.length <= 2000, 'Tell me what you would like to plan.');
         const doc = readDocument(user.id), rateKey = `ai:${user.id}`, last = failures.get(rateKey) || 0; assert(Date.now() - last > 5000, 'Wait a few seconds before regenerating.', 429); failures.set(rateKey, Date.now());
@@ -150,9 +185,9 @@ export function createApplication(options = {}) {
       if (route === '/api/google/status' && request.method === 'GET') return json(response, integration.status(user.id));
       if (route === '/api/google/connect' && request.method === 'POST') { const input = await body(request); return json(response, { url: integration.authorize(user.id, user.sessionHash, input.service) }); }
       if (route === '/api/google/callback' && request.method === 'GET') { await integration.callback(user.id, user.sessionHash, url.searchParams); response.writeHead(303, { Location: '/dashboard.html#connections' }); response.end(); return; }
-      if (route === '/api/google/disconnect' && request.method === 'POST') { const input = await body(request); assert(['calendar', 'gmail'].includes(input.service), 'Unknown service.'); await integration.disconnect(user.id, input.service); if (input.service === 'calendar') { const doc = readDocument(user.id); doc.state.imports = []; saveDocument(user.id, doc.state, doc.version); } return json(response, { ok: true }); }
+      if (route === '/api/google/disconnect' && request.method === 'POST') { const input = await body(request); assert(['calendar', 'gmail'].includes(input.service), 'Unknown service.'); await integration.disconnect(user.id, input.service); if (input.service === 'calendar') { const doc = readDocument(user.id); doc.state.imports = (doc.state.imports || []).filter(e => e.importProvider === 'ical'); saveDocument(user.id, doc.state, doc.version); } return json(response, { ok: true }); }
       if (route === '/api/google/calendars' && request.method === 'GET') return json(response, (await integration.calendars(user.id)).map(c => ({ id: c.id, summary: c.summary })));
-      if (route === '/api/google/sync' && request.method === 'POST') { const input = await body(request), doc = readDocument(user.id), imported = await integration.sync(user.id, input.calendars, doc.state.settings); const latest = readDocument(user.id); latest.state.imports = imported; latest.state.settings.googleSyncEnabled = true; const result = saveDocument(user.id, latest.state, latest.version); await integration.mirror(user.id, result.state); return json(response, result); }
+      if (route === '/api/google/sync' && request.method === 'POST') { const input = await body(request), doc = readDocument(user.id), imported = await integration.sync(user.id, input.calendars, doc.state.settings); const latest = readDocument(user.id); latest.state.imports = [...(latest.state.imports || []).filter(e => e.importProvider === 'ical'), ...imported]; latest.state.settings.googleSyncEnabled = true; const result = saveDocument(user.id, latest.state, latest.version); await integration.mirror(user.id, result.state); return json(response, result); }
       if (route === '/api/google/export' && request.method === 'POST') { const input = await body(request), doc = readDocument(user.id), event = memoryModel(doc.state).getDay(input.date).commitments.find(e => e.id === input.id); assert(event && !event.sourceImport && !event.sourceRoutine && event.kind !== 'break', 'Choose a saved activity to export.'); await integration.exportEvent(user.id, event, input.date, doc.state.settings); return json(response, { ok: true }); }
       if (route === '/api/gmail/review' && request.method === 'POST') return json(response, await integration.mail(user.id));
       if (route === '/api/gmail/dismiss' && request.method === 'POST') { const input = await body(request); assert(typeof input.id === 'string' && /^[a-zA-Z0-9_-]{1,200}$/.test(input.id), 'Invalid email ID.'); db.prepare("INSERT OR REPLACE INTO mail_reviews VALUES(?,?,'dismissed')").run(user.id, input.id); return json(response, { ok: true }); }
@@ -171,6 +206,6 @@ export function createApplication(options = {}) {
     } catch (error) { json(response, { error: error.status ? error.message : (error.code?.startsWith('ERR_SQLITE') ? 'The database could not save this change.' : error.message || 'Request failed.') }, error.status || 400); }
   });
   const timer = options.worker === false ? null : setInterval(() => { push.tick().catch(() => console.error('Background reminder check failed; inspect notification center and database availability.')); }, 15000); timer?.unref();
-  const googleTimer = options.worker === false ? null : setInterval(() => { syncGoogleAccounts().catch(() => console.error('Google sync check failed.')); }, 300000); googleTimer?.unref();
-  return { server, db, push, integration, readDocument, saveDocument, syncGoogleAccounts, close: () => { if (timer) clearInterval(timer); if (googleTimer) clearInterval(googleTimer); db.close(); } };
+  const googleTimer = options.worker === false ? null : setInterval(() => { syncGoogleAccounts().catch(() => console.error('Google sync check failed.')); syncCalendarFeeds().catch(() => console.error('Private calendar refresh failed.')); }, 300000); googleTimer?.unref();
+  return { server, db, push, integration, readDocument, saveDocument, syncGoogleAccounts, syncCalendarFeeds, close: () => { if (timer) clearInterval(timer); if (googleTimer) clearInterval(googleTimer); db.close(); } };
 }

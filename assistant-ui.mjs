@@ -1,5 +1,6 @@
 import { initDashboardDesign } from './dashboard-design.mjs';
 import { initSettings } from './settings-ui.mjs';
+import { initPrivateCalendar } from './ical-ui.mjs';
 import { interpretPlanningRequest } from './planning-request.mjs';
 import { initAuth } from './auth-ui.mjs';
 import { availability, activitySuggestion } from './availability.mjs';
@@ -135,6 +136,7 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   if (location.hash === '#connections') tab('settings');
   const workspace = initDashboardDesign({ model, openActivity, now });
   initSettings({ account });
+  initPrivateCalendar({ account, sync });
   $('#push-test').addEventListener('click', guard('#push-test-status', async () => {
     requireAccount();
     const registration = await navigator.serviceWorker?.getRegistration(), subscription = await registration?.pushManager?.getSubscription();

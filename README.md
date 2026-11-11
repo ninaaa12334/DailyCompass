@@ -90,6 +90,16 @@ The Clerk flow is implemented and tested with mocked SDK/provider responses. **L
 
 ### Google Calendar and Gmail
 
+**Without Google Cloud (private read-only iCal feed):** Open Settings > Google Calendar. In Google Calendar itself, open Settings > your calendar > Integrate calendar > Secret address in iCal format. Paste that address only into Day Compass's private-link field and press Connect & import calendar. Do not post it in chat, commit it, use a public feed or make your calendar public. This method needs a signed-in Day Compass account but no Google OAuth client or country selection. Google documents the secret address [here](https://support.google.com/calendar/answer/37648/?hl=en).
+
+The server accepts only Google's HTTPS private-feed URL, refuses redirects and limits downloads to 5 MiB. Recurrence parsing runs in a memory/time-bounded worker. The link is stored encrypted with the existing server token key, never returned by status/planner APIs and cleared from the input after submission. It is absent from browser storage and planner backups. Calendar event titles and times are saved in your private account, as with OAuth imports.
+
+Imports cover the past 7 and next 90 days, with refresh about every 15 minutes while the server runs. Google may delay feed updates; this is not instant or two-way sync. Refresh replaces this connection's imports, including changed/deleted occurrences, while retaining OAuth imports and local activities. Failed downloads/parses preserve previous imports. Recurrences, exceptions, timezone-aware timed events and all-day events are supported; an unsupported or oversized feed fails rather than silently dropping events. Imported events block planning conflicts and have reminders off. Disconnect removes the stored link and its imports from Day Compass; reset the secret address in Google Calendar to invalidate it elsewhere. Use one connection method per calendar to avoid duplicates.
+
+The private-feed flow is verified using synthetic feeds and mocked Google downloads; a live private calendar feed still needs the user to connect and confirm its events. Windows test-notification delivery has been confirmed by the user; scheduled delivery still needs a separate timed test.
+
+**OAuth connection (advanced, Google Cloud required):**
+
 Settings is organized into Planning, Google Calendar, Notifications, Account and Privacy. Each section shows its own controls, setup guidance and status. Gmail and calendar export are collapsed optional features.
 
 1. Create a Google Cloud project and enable **Google Calendar API**. Enable **Gmail API** only if you also want email suggestions.

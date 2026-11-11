@@ -131,6 +131,11 @@
 .connection-setup code { display: block; padding: .5rem; background: var(--surface-alt); overflow-wrap: anywhere; white-space: normal; }
 .settings-content .assistant-actions { flex-wrap: wrap; }
 .settings-advanced button { margin: .4rem .4rem .4rem 0; }
+.private-calendar-setup { background: var(--surface-alt); border: 1px solid var(--border); padding: 1rem; border-radius: 1rem; }
+.private-calendar-setup h4 { font-size: 1.05rem; margin: 0 0 .7rem; }
+.private-calendar-setup input { background: var(--surface); }
+.private-calendar-setup p, .private-calendar-setup li { line-height: 1.7; }
+.private-calendar-setup ol { padding-left: 1.3rem; }
 @media (max-width: 760px) {
   .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .settings-navigation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
