@@ -44,5 +44,6 @@ export function initSettings({ account }) {
   notifications.querySelector('h3').after(create('p', account.features.push ? 'Server ready. Enable this device and send a test.' : 'Server setup needed: notification keys and a push contact are missing.', 'settings-readiness'), pushHelp);
   const test = create('button', 'Send test notification', 'secondary'); test.type = 'button'; test.id = 'push-test'; $('#push-enable').after(test);
   const testStatus = create('p'); testStatus.id = 'push-test-status'; testStatus.setAttribute('role', 'status'); test.closest('.assistant-actions').after(testStatus);
+  const operationStatus = create('p'); operationStatus.id = 'push-operation-status'; operationStatus.setAttribute('role', 'status'); test.closest('.assistant-actions').after(operationStatus);
   return { select };
 }

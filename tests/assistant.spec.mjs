@@ -55,7 +55,7 @@ test('real account sign-in persists private planner, imports local data explicit
   await page.reload(); await expect(page.locator('#day-commitments')).toContainText('My local task');
   await page.locator('[data-panel=ai]').click(); await expect(page.locator('#ai-connection')).toContainText('disconnected');
   await page.locator('[data-panel=settings]').click(); await page.locator('[data-settings-view=calendar]').click(); await page.getByText('Advanced: Google OAuth connection (Google Cloud required)', { exact: true }).click(); await page.getByText('Optional: Gmail event suggestions', { exact: true }).click(); await page.locator('[data-connect=gmail]').click(); await expect(page.locator('#connection-message')).toContainText('disconnected');
-  await page.locator('[data-settings-view=notifications]').click(); await page.locator('#push-enable').click(); await expect(page.locator('#push-status')).toContainText('VAPID');
+  await page.locator('[data-settings-view=notifications]').click(); await page.locator('#push-enable').click(); await expect(page.locator('#push-operation-status')).toContainText('VAPID');
   await page.locator('[data-settings-view=account]').click(); await page.locator('#account-logout').click(); await expect(page.locator('#planner-mode')).toHaveText('Local planner · Saved in this browser'); await expect(page.locator('#day-commitments')).toContainText('My local task');
 });
 test('AI review edits, rejects and approves selected activities without saving the preview', async ({ page }) => {
