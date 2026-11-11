@@ -125,8 +125,9 @@ export async function startApp() {
     const list = $('#reminder-list'); list.replaceChildren();
     const reminders = upcomingReminders(model, now());
     const settings = model.snapshot().settings;
-    $('#reminder-mode').textContent = account.user && settings.backgroundReminders ? 'Background reminders are enabled for this account. Check Notifications for this device’s subscription and delivery status.' : settings.remindersEnabled ? 'Open-page alerts are enabled while this page remains open, outside quiet hours.' : 'Notifications are off for this planner. Enable background reminders on this device in Notifications.';
-    $('#reminder-mode-help').textContent = account.user && settings.backgroundReminders ? 'The server must stay running. Device permission and subscription are checked in Notifications; this list alone does not confirm delivery.' : 'These are reminder times only. They do not notify you unless alerts are enabled. Times use your configured timezone.';
+    const fallback = storage.getItem('day-compass.open-page-fallback.v1') === 'true';
+    $('#reminder-mode').textContent = settings.remindersEnabled && fallback ? 'Page-open reminders are enabled on this browser. Keep this page open and the computer awake, outside quiet hours.' : account.user && settings.backgroundReminders ? 'Background reminders are enabled for this account. Check Notifications for this device’s subscription and delivery status.' : settings.remindersEnabled ? 'Open-page alerts are enabled while this page remains open, outside quiet hours.' : 'Notifications are off for this planner. Enable background reminders on this device in Notifications.';
+    $('#reminder-mode-help').textContent = !fallback && account.user && settings.backgroundReminders ? 'The server must stay running. Device permission and subscription are checked in Notifications; this list alone does not confirm delivery.' : 'Page-open reminders cannot run after the page closes and browser suspension may delay them. Times use your configured timezone.';
     const validKeys = new Set(reminders.map(item => item.key));
     if (activeAlertKey && !validKeys.has(activeAlertKey)) { $('#reminder-alert').textContent = ''; activeAlertKey = null; }
     for (const [key, notification] of displayedNotifications) if (!validKeys.has(key)) { notification.close(); displayedNotifications.delete(key); }
@@ -182,7 +183,7 @@ export async function startApp() {
   $('#enable-notifications').addEventListener('click', async () => { if (!('Notification' in window)) { $('#notification-status').textContent = 'Browser notifications are unavailable here. In-app reminders still work.'; return; } const permission = await Notification.requestPermission(); $('#notification-status').textContent = permission === 'granted' ? 'Permission granted. Enable reminders and save preferences to receive open-page alerts.' : 'Notifications not enabled. In-app reminders remain available.'; });
   async function tickReminders() {
     const settings = model.snapshot().settings, time = now();
-    if (!settings.remindersEnabled || (account.user && settings.backgroundReminders) || isQuiet(time.minute, settings)) return;
+    if (!settings.remindersEnabled || (account.user && settings.backgroundReminders && storage.getItem('day-compass.open-page-fallback.v1') !== 'true') || isQuiet(time.minute, settings)) return;
     const stamp = dayNumber(time.date) * 1440 + time.minute;
     const send = () => { for (const reminder of upcomingReminders(model, time).filter(item => item.due <= stamp && item.startStamp >= stamp)) {
       if (!model.claimReminder(reminder.key)) continue;

@@ -142,6 +142,7 @@
 .reminder-schedule li { display: grid; gap: .35rem; padding: .8rem 0; }
 .reminder-schedule li span { font-size: .75rem; color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
 .reminder-schedule summary { min-height: 44px; cursor: pointer; padding-top: .8rem; }
+#push-operation-status { overflow-wrap: anywhere; line-height: 1.7; }
 .welcome-connections { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; padding: 1rem; margin-block: .8rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--workspace-glass); }
 .welcome-connections > div { flex: 1; min-width: 180px; }
 .welcome-connections p { margin: .3rem 0 0; font-size: .8rem; color: var(--muted); }

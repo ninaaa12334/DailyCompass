@@ -45,5 +45,6 @@ export function initSettings({ account }) {
   const test = create('button', 'Send test notification', 'secondary'); test.type = 'button'; test.id = 'push-test'; $('#push-enable').after(test);
   const testStatus = create('p'); testStatus.id = 'push-test-status'; testStatus.setAttribute('role', 'status'); test.closest('.assistant-actions').after(testStatus);
   const operationStatus = create('p'); operationStatus.id = 'push-operation-status'; operationStatus.setAttribute('role', 'status'); test.closest('.assistant-actions').after(operationStatus);
+  const fallback = create('button', 'Use reminders while this page is open', 'secondary'); fallback.type = 'button'; fallback.id = 'push-open-page-fallback'; fallback.hidden = true; operationStatus.after(fallback);
   return { select };
 }

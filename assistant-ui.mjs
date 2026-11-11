@@ -142,9 +142,17 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
     finally { clearTimeout(timeout); }
     $('#push-operation-status').textContent = 'Connecting this device to its browser push service?';
     const key = Uint8Array.from(atob(account.features.pushKey.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-    const subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    let subscription;
+    try { subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }); }
+    catch (error) {
+      if (/push service (?:not available|unavailable)/i.test(error.message || '')) {
+        $('#push-open-page-fallback').hidden = false;
+        throw new Error('Permission is allowed, but this browser window cannot use its push service. Open http://127.0.0.1:8080/dashboard.html#notifications in a normal Chrome or Edge window (outside an embedded preview or private window), sign in and try again. If it still fails there, restart that browser and retry. You can use page-open reminders below; they do not work after the page closes.');
+      }
+      throw error;
+    }
     $('#push-operation-status').textContent = 'Saving this device to your private account?';
-    await api('push/subscribe', 'POST', subscription.toJSON()); model.saveSettings({ backgroundReminders: true }); await sync.flush(); await pushStatus();
+    await api('push/subscribe', 'POST', subscription.toJSON()); storage.setItem('day-compass.open-page-fallback.v1', 'false'); model.saveSettings({ backgroundReminders: true }); await sync.flush(); await pushStatus();
     $('#push-operation-status').textContent = 'Background reminders are enabled for this account and device. Press Send test notification to check Windows delivery.';
   }));
   $('#push-disable').addEventListener('click', guard('#push-operation-status', async () => {
@@ -162,6 +170,10 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   initSettings({ account });
   initPrivateCalendar({ account, sync });
   initReminderSettings({ model, account, sync, pushStatus });
+  $('#push-open-page-fallback').addEventListener('click', guard('#push-operation-status', async () => {
+    storage.setItem('day-compass.open-page-fallback.v1', 'true'); model.saveSettings({ remindersEnabled: true }); await sync.flush();
+    $('#push-operation-status').textContent = 'Page-open reminders are enabled on this browser. Keep Day Compass open and the computer awake. Quiet hours still apply. This is not background push; no reminders can fire from this page after it closes.';
+  }));
   $('#push-test').addEventListener('click', guard('#push-test-status', async () => {
     requireAccount();
     const registration = await navigator.serviceWorker?.getRegistration(), subscription = await registration?.pushManager?.getSubscription();

@@ -1,4 +1,5 @@
 import { api } from './account-client.mjs';
+import { storage } from './runtime.mjs';
 
 const statusText = {
   pending: 'Scheduled', quiet: 'Skipped: quiet hours', missed: 'Missed: activity already started',
@@ -41,7 +42,7 @@ export function initReminderSettings({ model, account, sync, pushStatus }) {
       }
       for (const r of pending.slice(0, 8)) $('#scheduled-reminders').append(row(r));
       for (const r of records.filter(r => r.status !== 'pending').sort((a, b) => b.due - a.due).slice(0, 12)) $('#notification-center').append(row(r));
-      $('#reminder-center-status').textContent = !model.snapshot().settings.backgroundReminders ? 'Background reminders are off. Enable this device above to schedule them.' : pending.length ? `${pending.length} upcoming reminder${pending.length === 1 ? '' : 's'}. A scheduled reminder still needs a subscribed device and a running server.` : 'No upcoming reminders. Give an unfinished task or activity a calendar time and set its reminder to Default or a lead time.';
+      $('#reminder-center-status').textContent = storage.getItem('day-compass.open-page-fallback.v1') === 'true' && model.snapshot().settings.remindersEnabled ? 'Page-open reminders are active on this browser. Keep Day Compass open and the computer awake. Background push is not enabled on this device; its subscription error is separate from page-open alerts.' : !model.snapshot().settings.backgroundReminders ? 'Background reminders are off. Enable this device above to schedule them.' : pending.length ? `${pending.length} upcoming reminder${pending.length === 1 ? '' : 's'}. A scheduled reminder still needs a subscribed device and a running server.` : 'No upcoming reminders. Give an unfinished task or activity a calendar time and set its reminder to Default or a lead time.';
       await pushStatus();
     } catch (error) { $('#reminder-center-status').textContent = error.message; }
     finally { refreshing = false; }

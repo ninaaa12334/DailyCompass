@@ -142,6 +142,8 @@ The worker checks every 15 seconds while the **server stays running**, even when
 
 A push-service acceptance is **not proof of device delivery**. Jobs are claimed before sending to avoid duplicate attempts after a crash; an interrupted send may be lost rather than retried. Browser/device/network conditions can delay or suppress delivery. This is not a guaranteed alarm. Email reminders are not configured. In-app upcoming reminders remain available, and open-page alerts can be enabled separately.
 
+If browser subscription fails with “Registration failed - push service not available” despite permission being granted, Day Compass explains the browser-level failure rather than claiming push is enabled. Try the same local URL in a normal Chrome or Edge window outside an embedded preview/private window. The app offers an explicit page-open fallback after this error; choosing it enables open-page reminders for this browser/account without pretending to create a push subscription. The page and computer must remain awake, quiet hours still apply, and no closed-page reminder is possible. A later successful push setup turns that browser's fallback off. Simulated browser tests verify the unavailable-service path and fallback alert dispatch; real Windows fallback delivery remains to be confirmed by the user.
+
 On supported iPhone/iPad versions, install to the Home Screen and open from that icon before requesting Web Push permission. Deployment requires HTTPS; localhost is allowed for development. See [official WebKit Web Push guidance](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/). Physical iPhone delivery has not been tested.
 
 ## Time handling and deployment boundaries
