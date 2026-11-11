@@ -44,7 +44,7 @@ test('Google callback creates a real session cookie; unconfigured signin reports
   // Reuse fixture's token generator with the nonce from the actual HTTP flow.
   f.change({ nonce: url.searchParams.get('nonce') });
   const callback = await fetch(`${base}/api/auth/google/callback?state=${url.searchParams.get('state')}&code=test`, { headers: { Cookie: started.headers.get('set-cookie').split(';')[0] }, redirect: 'manual' });
-  assert.equal(callback.status, 303); assert.equal(callback.headers.get('location'), '/dashboard.html');
+  assert.equal(callback.status, 303); assert.equal(callback.headers.get('location'), '/onboarding.html');
   const sessionCookie = callback.headers.getSetCookie().find(v => v.startsWith('compass_session=')).split(';')[0];
   const session = await (await fetch(`${base}/api/session`, { headers: { Cookie: sessionCookie } })).json(); assert.ok(session.user.id);
   const invalid = await fetch(`${base}/api/auth/google/callback?state=invalid&code=test`, { redirect: 'manual' }); assert.equal(invalid.headers.get('location'), '/auth.html?error=google');

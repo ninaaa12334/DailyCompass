@@ -11,12 +11,15 @@ import { loadAccount } from './account-client.mjs';
 import { initAssistant } from './assistant-ui.mjs';
 import { wallToInstant } from './zoned-time.mjs';
 import { initProductivity } from './productivity.mjs';
+import { bindAccountAppearance } from './theme-ui.mjs';
 
 export async function startApp() {
   const $ = selector => document.querySelector(selector);
   const account = await loadAccount();
+  if (account.user && account.document.state.settings.onboardingComplete === false) { location.replace('onboarding.html'); return; }
   if (isDemo) seedDemo(storage);
   const model = createPlannerStore(storage);
+  if (account.user) bindAccountAppearance(model);
   const form = $('#activity-form');
   let calendar, assistant, productivity, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
   const displayedNotifications = new Map();
@@ -195,5 +198,10 @@ export async function startApp() {
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }
   productivity = initProductivity({ model, storage, selectedDate: calendar.getSelectedDate });
   assistant = initAssistant({ model, account, calendar, openActivity, now });
+  if (account.user && new URLSearchParams(location.search).get('welcome') === '1') {
+    const welcome = document.createElement('section'); welcome.className = 'welcome-connections'; welcome.setAttribute('aria-label', 'Optional calendar connection');
+    welcome.innerHTML = '<div><strong>Your planner is ready.</strong><p>Want to bring your Google Calendar along?</p></div><a class="button secondary" href="dashboard.html#connections">Connect Google Calendar</a><button type="button" class="secondary">Not now</button>';
+    welcome.querySelector('button').addEventListener('click', () => welcome.remove()); $('.dashboard-heading').after(welcome);
+  }
   renderTasks(); renderSummary(); tickReminders();
 }

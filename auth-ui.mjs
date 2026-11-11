@@ -1,7 +1,7 @@
 import { api } from './account-client.mjs';
 import { clearAccountCache } from './runtime.mjs';
 
-export function initAuth(root, { mode = 'signup', onSuccess = () => location.assign('dashboard.html'), timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone } = {}) {
+export function initAuth(root, { mode = 'signup', onSuccess = result => location.assign(result.onboardingRequired ? 'onboarding.html' : 'dashboard.html'), timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone } = {}) {
   root.innerHTML = `<div class="auth-switch" role="group" aria-label="Account access"><button type="button" data-auth-mode="signup">Sign up</button><button type="button" data-auth-mode="login">Log in</button></div>
     <h2 id="auth-title"></h2><p id="auth-description" class="muted"></p>
     <button type="button" id="google-signin" class="secondary google-signin">Continue with Google</button><p class="auth-google-help fine-print">Sign in or create an account. Calendar and Gmail access are separate, optional connections.</p><div class="auth-divider"><span>or use a username</span></div>
@@ -27,8 +27,8 @@ export function initAuth(root, { mode = 'signup', onSuccess = () => location.ass
     if (mode === 'signup' && $('#account-password').value !== $('#account-confirm').value) { $('#account-confirm').setCustomValidity('The passwords do not match.'); $('#account-confirm').reportValidity(); return; }
     setBusy(true); $('#auth-error').textContent = '';
     try {
-      await api(mode === 'signup' ? 'register' : 'login', 'POST', { name: $('#account-name').value, password: $('#account-password').value, timeZone: timeZone() });
-      clearAccountCache(); form.reset(); onSuccess();
+      const result = await api(mode === 'signup' ? 'register' : 'login', 'POST', { name: $('#account-name').value, password: $('#account-password').value, timeZone: timeZone() });
+      clearAccountCache(); form.reset(); onSuccess(result);
     } catch (error) { $('#auth-error').textContent = error.message; }
     finally { setBusy(false); }
   });

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { finishOnboarding } from './onboarding-helper.mjs';
 
 test('welcome links open real signup and login pages, with no obsolete account notice', async ({ page }) => {
   await page.goto('/index.html'); await page.getByRole('link', { name: 'Sign up', exact: true }).click();
@@ -10,7 +11,7 @@ test('signup confirms password and creates a persistent account that can log in 
   const name = `signup_${Date.now()}`;
   await page.goto('/auth.html?mode=signup'); await page.locator('#account-name').fill(name); await page.locator('#account-password').fill('a-good-test-password'); await page.locator('#account-confirm').fill('does-not-match'); await page.locator('#account-submit').click();
   expect(await page.locator('#account-confirm').evaluate(input => input.validity.customError)).toBe(true);
-  await page.locator('#account-confirm').fill('a-good-test-password'); await page.locator('#account-submit').click(); await expect(page.locator('#planner-mode')).toContainText(name);
+  await page.locator('#account-confirm').fill('a-good-test-password'); await page.locator('#account-submit').click(); await finishOnboarding(page); await expect(page.locator('#planner-mode')).toContainText(name);
   await page.locator('[data-panel=settings]').click(); await page.locator('[data-settings-view=account]').click(); await page.locator('#account-logout').click(); await expect(page.locator('#planner-mode')).toContainText('Local planner');
   await page.goto('/auth.html?mode=login'); await page.locator('#account-name').fill(name); await page.locator('#account-password').fill('a-good-test-password'); await page.locator('#account-submit').click(); await expect(page.locator('#planner-mode')).toContainText(name);
 });

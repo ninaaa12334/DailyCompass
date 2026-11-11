@@ -34,6 +34,7 @@ test('Clerk HTTP exchange creates an HttpOnly planner session, preserves isolati
   const provider = await (await fetch(`${base}/api/auth/provider`)).json(); assert.equal(provider.provider, 'clerk'); assert.ok(!JSON.stringify(provider).includes(config.CLERK_SECRET_KEY));
   const exchange = await fetch(`${base}/api/auth/clerk/session`, { method: 'POST', headers: { Origin: config.APP_ORIGIN, 'Content-Type': 'application/json' }, body: JSON.stringify({ token: 'valid-test-token', timeZone: 'Europe/Budapest' }) });
   assert.equal(exchange.status, 200); const cookie = exchange.headers.get('set-cookie').split(';')[0]; assert.match(exchange.headers.get('set-cookie'), /HttpOnly/);
+  assert.equal((await exchange.json()).onboardingRequired, true);
   const session = await (await fetch(`${base}/api/session`, { headers: { Cookie: cookie } })).json(); assert.equal(session.user.provider, 'clerk');
   assert.equal((await fetch(`${base}/api/planner`)).status, 401);
   const planner = await (await fetch(`${base}/api/planner`, { headers: { Cookie: cookie } })).json(); assert.equal(planner.state.tasks.length, 0);

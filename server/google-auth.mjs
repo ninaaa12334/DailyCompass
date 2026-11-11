@@ -56,7 +56,7 @@ export function googleSignIn(db, config, fetcher = fetch) {
       if (linked) return linked;
       const id = randomUUID(), prefix = String(identity.email || 'planner').split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 20) || 'planner';
       let name; do { name = `${prefix}_${randomBytes(3).toString('hex')}`; } while (db.prepare('SELECT id FROM users WHERE name=?').get(name));
-      const state = memoryModel().snapshot(); state.settings.timeZone = pending.time_zone;
+      const state = memoryModel().snapshot(); state.settings.timeZone = pending.time_zone; state.settings.onboardingComplete = false;
       db.exec('BEGIN IMMEDIATE');
       try {
         db.prepare('INSERT INTO users VALUES(?,?,?)').run(id, name, `${randomBytes(16).toString('hex')}:${randomBytes(64).toString('hex')}`);

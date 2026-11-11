@@ -54,6 +54,10 @@ Personalization is opt-in. Explicit task completions and date postponements are 
 
 ### Sign up, log in and Google accounts
 
+New username/password, Google OAuth and Clerk accounts start with a three-step welcome setup before the planner: choose a live-preview theme, planning hours/timezone and default reminder lead. “Let’s get started” saves these choices to the private account and opens the planner with a dismissible, optional Google Calendar connection invitation. No calendar grant or notification permission is requested during setup. Incomplete new-account setup resumes on the next login. Existing accounts without the new flag bypass onboarding and keep their schedules and notification preferences.
+
+Appearance now follows signed-in accounts across browsers/devices and updates through the normal versioned private planner sync. Local/demo appearance remains separate. Changing an account theme does not change the browser-only planner's theme. A failed or conflicting setup save stays on the setup page rather than overwriting another tab's planner. Completing onboarding does not claim full availability/routines setup has been done.
+
 The welcome page has separate Sign up and Log in links. Sign up confirms the password; Log in uses the existing account. Both are also available in Settings. Continue without an account keeps the original local planner available.
 
 Continue with Google works for both new and returning users. Configure the same `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` used by the server, and add this **additional authorized redirect URI** to the Google Cloud Web application OAuth client:

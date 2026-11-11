@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { finishOnboarding } from './onboarding-helper.mjs';
 
 async function ready(page) { await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.'); }
 test('weekly school edits explain the routine setup without an AI call or calendar mutation', async ({ page }) => {
@@ -47,6 +48,7 @@ test('real account sign-in persists private planner, imports local data explicit
   await ready(page); await page.locator('#calendar-add').click(); await page.locator('#activity-title').fill('My local task'); await page.locator('#activity-start').fill('16:00'); await page.locator('#activity-end').fill('16:45'); await page.locator('#save-activity').click();
   await page.locator('[data-panel=settings]').click(); await page.locator('[data-settings-view=account]').click(); const username = `qa_${Date.now()}`;
   await page.locator('#account-name').fill(username); await page.locator('#account-password').fill('this-is-a-test-password'); await page.locator('#account-confirm').fill('this-is-a-test-password'); await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await finishOnboarding(page);
   await expect(page.locator('#planner-mode')).toContainText(username); await expect(page.locator('#day-commitments')).not.toContainText('My local task');
   await page.locator('[data-panel=settings]').click(); await page.locator('[data-settings-view=account]').click(); await page.locator('#account-import').click(); await expect(page.locator('#account-message')).toContainText('Copied');
   await page.locator('[data-panel=day]').click(); await expect(page.locator('#day-commitments')).toContainText('My local task');

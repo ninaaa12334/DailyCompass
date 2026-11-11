@@ -30,7 +30,7 @@ export function clerkSignIn(db, config, dependencies = {}) {
       } catch { throw Object.assign(new Error('Clerk sign-in expired or could not be verified. Please try again.'), { status: 401 }); }
       const linked = db.prepare("SELECT users.id,users.name FROM identities JOIN users ON users.id=identities.user_id WHERE provider='clerk' AND subject=?").get(claims.sub);
       if (linked) return { ...linked, externalSessionId: claims.sid, subject: claims.sub };
-      const id = randomUUID(), name = `planner_${randomBytes(6).toString('hex')}`, state = memoryModel().snapshot(); state.settings.timeZone = timeZone;
+      const id = randomUUID(), name = `planner_${randomBytes(6).toString('hex')}`, state = memoryModel().snapshot(); state.settings.timeZone = timeZone; state.settings.onboardingComplete = false;
       db.exec('BEGIN IMMEDIATE');
       try {
         db.prepare('INSERT INTO users VALUES(?,?,?)').run(id, name, `${randomBytes(16).toString('hex')}:${randomBytes(64).toString('hex')}`);

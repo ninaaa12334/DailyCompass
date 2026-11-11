@@ -4,6 +4,7 @@ import { dayNumber, validDate } from './clock.mjs';
 import { routineEvents } from './availability.mjs';
 import { wallToInstant } from './zoned-time.mjs';
 import { importedDays } from './imported-time.mjs';
+import { validateAppearance } from './appearance.mjs';
 
 export const PLANNER_KEY = 'day-compass.planner.v2';
 export const CATEGORIES = ['Study', 'Exercise', 'Chores', 'Personal projects', 'Social', 'Work', 'Appointments'];
@@ -30,7 +31,8 @@ export function validatePlanner(state) {
   ensure(state?.version === 2 && Number.isInteger(state.revision) && state.revision >= 0 && Array.isArray(state.tasks) && [state.days, state.plans, state.settings, state.reminderLog].every(value => value && typeof value === 'object' && !Array.isArray(value)), 'Saved planner data has an unsupported structure. Original data has been preserved.');
   new Intl.DateTimeFormat('en', { timeZone: state.settings.timeZone }).format();
   const settings = state.settings;
-  for (const key of ['setupConfirmed', 'historyEnabled', 'backgroundReminders', 'googleSyncEnabled', 'googleAutoExport']) if (settings[key] !== undefined) ensure(typeof settings[key] === 'boolean', `Invalid ${key}.`);
+  for (const key of ['setupConfirmed', 'historyEnabled', 'backgroundReminders', 'googleSyncEnabled', 'googleAutoExport', 'onboardingComplete']) if (settings[key] !== undefined) ensure(typeof settings[key] === 'boolean', `Invalid ${key}.`);
+  if (settings.appearance !== undefined) validateAppearance(settings.appearance);
   for (const [key, max] of [['travelMinutes', 180], ['minimumGap', 240]]) if (settings[key] !== undefined) ensure(Number.isInteger(settings[key]) && settings[key] >= (key === 'minimumGap' ? 5 : 0) && settings[key] <= max, `Invalid ${key}.`);
   if (settings.interests !== undefined) ensure(typeof settings.interests === 'string' && settings.interests.length <= 500, 'Interests must be under 500 characters.');
   if (settings.routines !== undefined) { ensure(Array.isArray(settings.routines) && settings.routines.length <= 100, 'Too many routines.'); for (const r of settings.routines) { ensure(typeof r.id === 'string' && typeof r.title === 'string' && r.title.length > 0 && r.title.length <= 120 && Array.isArray(r.weekdays) && r.weekdays.every(n => Number.isInteger(n) && n >= 0 && n <= 6), 'Invalid routine.'); interval(r); } }
