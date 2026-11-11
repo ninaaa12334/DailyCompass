@@ -136,6 +136,12 @@
 .private-calendar-setup input { background: var(--surface); }
 .private-calendar-setup p, .private-calendar-setup li { line-height: 1.7; }
 .private-calendar-setup ol { padding-left: 1.3rem; }
+.reminder-preferences, .reminder-schedule { margin-block: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--surface-alt); }
+.reminder-preferences h4, .reminder-schedule h4 { margin: 0 0 1rem; font-size: 1rem; }
+.reminder-preferences input { background: var(--surface); }
+.reminder-schedule li { display: grid; gap: .35rem; padding: .8rem 0; }
+.reminder-schedule li span { font-size: .75rem; color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
+.reminder-schedule summary { min-height: 44px; cursor: pointer; padding-top: .8rem; }
 @media (max-width: 760px) {
   .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .settings-navigation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }

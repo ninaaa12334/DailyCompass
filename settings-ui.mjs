@@ -23,7 +23,7 @@ export function initSettings({ account }) {
     b.addEventListener('click', () => select(id)); nav.append(b); content.append(panel); panels.set(id, { panel, b });
   }
   function select(id) { for (const [key, { panel, b }] of panels) { panel.hidden = key !== id; b.setAttribute('aria-pressed', String(key === id)); } }
-  select(location.hash === '#connections' ? 'calendar' : 'planning');
+  select(location.hash === '#connections' ? 'calendar' : location.hash === '#notifications' ? 'notifications' : 'planning');
   const googleHelp = create('details', null, 'connection-setup'); googleHelp.id = 'google-setup-help';
   googleHelp.innerHTML = '<summary>Set up the Google Calendar connection</summary><ol><li>In Google Cloud, select a project and enable Google Calendar API.</li><li>Configure Google Auth platform: Branding, External audience, and your Google account as a test user.</li><li>Create an OAuth client of type Web application. Add this exact authorized redirect URI:<code id="google-redirect-uri"></code></li><li>Save GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the server’s private .env, then restart the server. Keep your Clerk keys as they are.</li><li>Sign in here, connect Google Calendar, choose calendars, then import. Google sign-in alone does not give calendar access.</li></ol><a href="https://developers.google.com/workspace/calendar/api/quickstart/nodejs" target="_blank" rel="noopener noreferrer">Official Google setup guide</a>';
   calendar.querySelector('h3').after(create('p', account.features.google ? 'Server ready. Connect your Google account, then choose which calendars to import.' : 'Server setup needed: Google Calendar credentials have not been configured.', 'settings-readiness'), googleHelp);

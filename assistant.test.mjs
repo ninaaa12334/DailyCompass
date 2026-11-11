@@ -144,6 +144,33 @@ test('push jobs reschedule/cancel, deduplicate across restarts and report accept
 });
 test('encrypted token storage detects tampering', () => { const store = database(':memory:', randomBytes(32).toString('base64')); const sealed = store.seal({ token: 'secret' }); assert.equal(store.open(sealed).token, 'secret'); assert.throws(() => store.open(sealed.slice(0, -8) + 'AAAAAAAA')); store.db.close(); });
 
+test('at-start reminders tolerate the worker interval, expire after a minute and never send twice', async () => {
+  const model = memoryModel(base());
+  for (const [id, start, end] of [['now', '09:10', '09:11'], ['late', '09:11', '09:20']]) model.saveActivity({ id, kind: 'fixed', title: id, date: '2026-11-08', start, end, category: 'Study', priority: 'Medium', notes: '', reminder: 0, repeat: 'none', repeatUntil: '', locked: false });
+  model.saveSettings({ backgroundReminders: true });
+  const db = database(':memory:').db; db.prepare('INSERT INTO users VALUES(?,?,?)').run('u', 'student', 'test'); db.prepare('INSERT INTO documents VALUES(?,?,?)').run('u', 1, JSON.stringify(model.snapshot()));
+  const sub = { endpoint: 'https://fcm.googleapis.com/fcm/send/test', keys: { auth: 'test', p256dh: 'test' } }; db.prepare('INSERT INTO subscriptions VALUES(?,?,?)').run('u', sub.endpoint, JSON.stringify(sub));
+  let sends = 0; const worker = pushWorker(db, { VAPID_PUBLIC_KEY: 'test', VAPID_PRIVATE_KEY: 'test', VAPID_SUBJECT: 'mailto:test@example.com' }, async (_, payload, options) => { sends++; assert.ok(options.TTL > 0); });
+  await worker.tick(new Date('2026-11-08T08:10:15Z')); await worker.tick(new Date('2026-11-08T08:10:30Z'));
+  assert.equal(sends, 1);
+  await worker.tick(new Date('2026-11-08T08:12:10Z')); assert.equal(sends, 1);
+  assert.equal(db.prepare("SELECT count(*) n FROM deliveries WHERE status='missed'").get().n, 1); db.close();
+});
+
+test('pending reminders reflect new titles and quiet hours, and cancelled future reminders can be restored', async () => {
+  const model = memoryModel(base());
+  model.saveActivity({ id: 'event', kind: 'fixed', title: 'Original', date: '2026-11-08', start: '10:00', end: '11:00', category: 'Study', priority: 'Medium', notes: '', reminder: 'default', repeat: 'none', repeatUntil: '', locked: false });
+  model.saveSettings({ backgroundReminders: true }); let snapshot = model.snapshot();
+  const db = database(':memory:').db; db.prepare('INSERT INTO users VALUES(?,?,?)').run('u', 'student', 'test'); db.prepare('INSERT INTO documents VALUES(?,?,?)').run('u', 1, JSON.stringify(snapshot));
+  const worker = pushWorker(db, {}), save = () => db.prepare('UPDATE documents SET body=?').run(JSON.stringify(snapshot));
+  await worker.tick(at); snapshot.settings.backgroundReminders = false; save(); await worker.tick(at);
+  assert.equal(db.prepare('SELECT status FROM deliveries').get().status, 'cancelled');
+  snapshot.settings.backgroundReminders = true; snapshot.settings.quietStart = '09:00'; snapshot.settings.quietEnd = '11:00'; snapshot.days['2026-11-08'].commitments[0].title = 'Renamed'; save(); await worker.tick(at);
+  const record = db.prepare('SELECT body,status FROM deliveries').get(); assert.equal(record.status, 'pending'); assert.equal(JSON.parse(record.body).title, 'Renamed'); assert.equal(JSON.parse(record.body).quiet, true);
+  snapshot.days['2026-11-08'].commitments[0].completed = true; save(); await worker.tick(at);
+  assert.equal(db.prepare('SELECT status FROM deliveries').get().status, 'cancelled'); db.close();
+});
+
 test('test notifications are restricted to the account owning the subscribed endpoint', async () => {
   const db = database(':memory:').db;
   db.prepare('INSERT INTO users VALUES(?,?,?)').run('owner', 'owner', 'test');
