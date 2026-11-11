@@ -1,4 +1,5 @@
 import { initDashboardDesign } from './dashboard-design.mjs';
+import { initSettings } from './settings-ui.mjs';
 import { interpretPlanningRequest } from './planning-request.mjs';
 import { initAuth } from './auth-ui.mjs';
 import { availability, activitySuggestion } from './availability.mjs';
@@ -133,5 +134,13 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   const params = new URLSearchParams(location.search); if (params.get('date')) { try { calendar.selectDate(params.get('date')); const item = model.getDay(params.get('date')).commitments.find(e => e.id === params.get('activity') || e.taskId === params.get('activity')); if (item) openActivity({ date: params.get('date'), item }); } catch {} }
   if (location.hash === '#connections') tab('settings');
   const workspace = initDashboardDesign({ model, openActivity, now });
+  initSettings({ account });
+  $('#push-test').addEventListener('click', guard('#push-test-status', async () => {
+    requireAccount();
+    const registration = await navigator.serviceWorker?.getRegistration(), subscription = await registration?.pushManager?.getSubscription();
+    if (!subscription) throw new Error('Enable background reminders on this device first.');
+    await api('push/test', 'POST', { endpoint: subscription.endpoint });
+    $('#push-test-status').textContent = 'Test accepted by your browser’s push service. Check this device for a Day Compass notification. If nothing appears, check browser and system notification settings. This is not proof of delivery.';
+  }));
   return { render() { render(); workspace.render(); }, openSetup };
 }

@@ -116,6 +116,28 @@
 .day-details .timeline-widget { margin-top: .3rem; }
 .compass-workspace .tasks-widget { grid-column: 1 / -1; }
 .workspace-upcoming > .fine-print { font-size: .7rem; }
+.settings-layout { display: grid; grid-template-columns: 175px minmax(0, 1fr); gap: 1.5rem; margin-top: 1.5rem; }
+.settings-navigation { display: flex; flex-direction: column; align-items: stretch; gap: .4rem; }
+.settings-navigation button { justify-content: flex-start; text-align: left; min-height: 48px; font-size: .8rem; background: transparent; color: var(--muted); }
+.settings-navigation button[aria-pressed="true"] { color: var(--text); border: 1px solid var(--border); background: var(--surface-alt); }
+.settings-content { min-width: 0; }
+.settings-content > .settings-block { margin: 0; border-top: 0; padding-top: 0; }
+.settings-content .settings-block[hidden] { display: none; }
+.settings-content .opportunities-widget { margin-top: 1.5rem; padding: 1rem; background: var(--surface-alt); border-radius: 1rem; }
+.settings-readiness { background: var(--surface-alt); border: 1px solid var(--border); border-radius: .8rem; padding: .8rem; font-size: .8rem; }
+.connection-setup, .settings-advanced { border: 1px solid var(--border); border-radius: .8rem; padding: .7rem 1rem; margin: 1rem 0; }
+.connection-setup summary, .settings-advanced summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-size: .85rem; }
+.connection-setup li { padding-block: .4rem; font-size: .8rem; line-height: 1.7; }
+.connection-setup code { display: block; padding: .5rem; background: var(--surface-alt); overflow-wrap: anywhere; white-space: normal; }
+.settings-content .assistant-actions { flex-wrap: wrap; }
+.settings-advanced button { margin: .4rem .4rem .4rem 0; }
+@media (max-width: 760px) {
+  .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .settings-navigation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-navigation button { font-size: .75rem; padding: .6rem; }
+  .connection-setup, .settings-advanced { padding: .6rem; }
+  .connection-setup ol { padding-left: 1.2rem; }
+}
 .compass-workspace .dashboard-heading { padding-block: .8rem .4rem; }
 .compass-workspace .dashboard-heading h1 { font-size: clamp(1.6rem, 2.3vw, 2.3rem); margin-bottom: .3rem; }
 .compass-workspace .dashboard-heading .muted { margin: 0; font-size: .8rem; }

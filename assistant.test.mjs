@@ -62,8 +62,8 @@ test('AI replan preserves started, locked and completed tasks and removes only f
   assert.throws(() => acceptProposal(state, '2026-11-08', [{ taskId: task.id, title: task.title, start: '16:00', end: '16:30' }], { replan: true }, at), /unavailable/);
 });
 
-async function server(t, config = {}, fetcher) {
-  const origin = 'http://127.0.0.1:9999', app = createApplication({ database: ':memory:', worker: false, config: { APP_ORIGIN: origin, ...config }, fetcher });
+async function server(t, config = {}, fetcher, pushSender) {
+  const origin = 'http://127.0.0.1:9999', app = createApplication({ database: ':memory:', worker: false, config: { APP_ORIGIN: origin, ...config }, fetcher, pushSender });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   const address = `http://127.0.0.1:${app.server.address().port}`;
   t.after(async () => { await new Promise(resolve => app.server.close(resolve)); app.close(); });
@@ -143,6 +143,37 @@ test('push jobs reschedule/cancel, deduplicate across restarts and report accept
   assert.throws(() => validSubscription({ ...subscription, endpoint: 'https://127.0.0.1/private' }), /Unsupported/); db.close();
 });
 test('encrypted token storage detects tampering', () => { const store = database(':memory:', randomBytes(32).toString('base64')); const sealed = store.seal({ token: 'secret' }); assert.equal(store.open(sealed).token, 'secret'); assert.throws(() => store.open(sealed.slice(0, -8) + 'AAAAAAAA')); store.db.close(); });
+
+test('test notifications are restricted to the account owning the subscribed endpoint', async () => {
+  const db = database(':memory:').db;
+  db.prepare('INSERT INTO users VALUES(?,?,?)').run('owner', 'owner', 'test');
+  const sub = { endpoint: 'https://fcm.googleapis.com/fcm/send/test', keys: { auth: 'test', p256dh: 'test' } };
+  db.prepare('INSERT INTO subscriptions VALUES(?,?,?)').run('owner', sub.endpoint, JSON.stringify(sub));
+  let sends = 0;
+  const config = { VAPID_PUBLIC_KEY: 'test', VAPID_PRIVATE_KEY: 'test', VAPID_SUBJECT: 'mailto:test@example.com' };
+  const worker = pushWorker(db, config, async (_, payload) => { sends++; assert.equal(JSON.parse(payload).title, 'Day Compass'); });
+  await assert.rejects(worker.sendTest('other', sub.endpoint), /not subscribed/);
+  assert.equal(sends, 0);
+  assert.deepEqual(await worker.sendTest('owner', sub.endpoint), { acceptedByPushService: true, deviceDeliveryConfirmed: false });
+  assert.equal(sends, 1);
+  const expired = pushWorker(db, config, async () => { throw Object.assign(new Error('expired'), { statusCode: 410 }); });
+  await assert.rejects(expired.sendTest('owner', sub.endpoint), /HTTP 410/);
+  assert.equal(db.prepare('SELECT count(*) n FROM subscriptions').get().n, 0); db.close();
+});
+
+test('test push HTTP route requires authentication, ownership and a cooldown', async t => {
+  let sent = 0;
+  const app = await server(t, { VAPID_PUBLIC_KEY: 'test', VAPID_PRIVATE_KEY: 'test', VAPID_SUBJECT: 'mailto:test@example.com' }, undefined, async () => { sent++; });
+  const alice = await app.register('pushalice'), bob = await app.register('pushbob');
+  const subscription = { endpoint: 'https://fcm.googleapis.com/fcm/send/http-test', keys: { auth: 'test', p256dh: 'test' } };
+  assert.equal((await app.call('push/subscribe', 'POST', subscription, alice)).response.status, 200);
+  assert.equal((await app.call('push/test', 'POST', { endpoint: subscription.endpoint })).response.status, 401);
+  assert.equal((await app.call('push/test', 'POST', { endpoint: subscription.endpoint }, bob)).response.status, 404);
+  const result = await app.call('push/test', 'POST', { endpoint: subscription.endpoint }, alice);
+  assert.equal(result.data.acceptedByPushService, true); assert.equal(result.data.deviceDeliveryConfirmed, false);
+  assert.equal((await app.call('push/test', 'POST', { endpoint: subscription.endpoint }, alice)).response.status, 429);
+  assert.equal(sent, 1);
+});
 test('SQLite schedules and encrypted credentials survive closing and reopening the server database', () => {
   const parent = path.resolve('data'); mkdirSync(parent, { recursive: true }); const directory = mkdtempSync(path.join(parent, 'test-persistence-')), filename = path.join(directory, 'planner.sqlite');
   try {

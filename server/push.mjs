@@ -63,5 +63,18 @@ export function pushWorker(db, config, sender = webpush.sendNotification.bind(we
       db.prepare('DELETE FROM deliveries WHERE start<?').run(+at - 30 * 86400000);
     } finally { running = false; }
   }
-  return { tick, configured };
+  async function sendTest(user, endpoint) {
+    if (!configured) throw Object.assign(new Error('Configure notification keys and contact on the server first.'), { status: 503 });
+    const record = db.prepare('SELECT body FROM subscriptions WHERE user_id=? AND endpoint=?').get(user, endpoint);
+    if (!record) throw Object.assign(new Error('This device is not subscribed for your account. Enable it first.'), { status: 404 });
+    const subscription = validSubscription(JSON.parse(record.body));
+    try {
+      await sender(subscription, JSON.stringify({ title: 'Day Compass', body: 'Your test notification arrived. Scheduled reminders need the server to stay running.', tag: `compass-test-${Date.now()}`, url: '/dashboard.html', key: 'test' }), { TTL: 60, timeout: 10000, vapidDetails: { subject: config.VAPID_SUBJECT, publicKey: config.VAPID_PUBLIC_KEY, privateKey: config.VAPID_PRIVATE_KEY } });
+    } catch (error) {
+      if ([404, 410].includes(error.statusCode)) db.prepare('DELETE FROM subscriptions WHERE user_id=? AND endpoint=?').run(user, endpoint);
+      throw Object.assign(new Error(error.statusCode ? `Test push failed (HTTP ${error.statusCode}). Re-enable this device or check the server keys.` : 'The test push could not reach the browser push service. Check network access and server configuration.'), { status: 502 });
+    }
+    return { acceptedByPushService: true, deviceDeliveryConfirmed: false };
+  }
+  return { tick, configured, sendTest };
 }

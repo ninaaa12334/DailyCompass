@@ -45,16 +45,16 @@ test('setup routines persist and kept-free periods can be released', async ({ pa
 });
 test('real account sign-in persists private planner, imports local data explicitly, and sign-out restores local mode', async ({ page }) => {
   await ready(page); await page.locator('#calendar-add').click(); await page.locator('#activity-title').fill('My local task'); await page.locator('#activity-start').fill('16:00'); await page.locator('#activity-end').fill('16:45'); await page.locator('#save-activity').click();
-  await page.locator('[data-panel=settings]').click(); const username = `qa_${Date.now()}`;
+  await page.locator('[data-panel=settings]').click(); await page.locator('[data-settings-view=account]').click(); const username = `qa_${Date.now()}`;
   await page.locator('#account-name').fill(username); await page.locator('#account-password').fill('this-is-a-test-password'); await page.locator('#account-confirm').fill('this-is-a-test-password'); await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.locator('#planner-mode')).toContainText(username); await expect(page.locator('#day-commitments')).not.toContainText('My local task');
-  await page.locator('[data-panel=settings]').click(); await page.locator('#account-import').click(); await expect(page.locator('#account-message')).toContainText('Copied');
+  await page.locator('[data-panel=settings]').click(); await page.locator('[data-settings-view=account]').click(); await page.locator('#account-import').click(); await expect(page.locator('#account-message')).toContainText('Copied');
   await page.locator('[data-panel=day]').click(); await expect(page.locator('#day-commitments')).toContainText('My local task');
   await page.reload(); await expect(page.locator('#day-commitments')).toContainText('My local task');
   await page.locator('[data-panel=ai]').click(); await expect(page.locator('#ai-connection')).toContainText('disconnected');
-  await page.locator('[data-panel=settings]').click(); await page.locator('[data-connect=gmail]').click(); await expect(page.locator('#connection-message')).toContainText('disconnected');
-  await page.locator('#push-enable').click(); await expect(page.locator('#push-status')).toContainText('VAPID');
-  await page.locator('#account-logout').click(); await expect(page.locator('#planner-mode')).toHaveText('Local planner · Saved in this browser'); await expect(page.locator('#day-commitments')).toContainText('My local task');
+  await page.locator('[data-panel=settings]').click(); await page.locator('[data-settings-view=calendar]').click(); await page.getByText('Optional: Gmail event suggestions', { exact: true }).click(); await page.locator('[data-connect=gmail]').click(); await expect(page.locator('#connection-message')).toContainText('disconnected');
+  await page.locator('[data-settings-view=notifications]').click(); await page.locator('#push-enable').click(); await expect(page.locator('#push-status')).toContainText('VAPID');
+  await page.locator('[data-settings-view=account]').click(); await page.locator('#account-logout').click(); await expect(page.locator('#planner-mode')).toHaveText('Local planner · Saved in this browser'); await expect(page.locator('#day-commitments')).toContainText('My local task');
 });
 test('AI review edits, rejects and approves selected activities without saving the preview', async ({ page }) => {
   // Provider responses are mocked explicitly; UI approval is still exercised.

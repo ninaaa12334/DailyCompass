@@ -2,6 +2,7 @@
   "private": true,
   "scripts": {
     "start": "node scripts/serve.mjs",
+    "setup:push": "node scripts/setup-push.mjs",
     "test": "node --test --test-isolation=none *.test.mjs",
     "test:browser": "playwright test"
   },

@@ -90,11 +90,15 @@ The Clerk flow is implemented and tested with mocked SDK/provider responses. **L
 
 ### Google Calendar and Gmail
 
-1. Create a Google Cloud project and enable **Google Calendar API** and **Gmail API**.
-2. Configure the OAuth consent screen; add your Google account as a test user while in Testing.
+Settings is organized into Planning, Google Calendar, Notifications, Account and Privacy. Each section shows its own controls, setup guidance and status. Gmail and calendar export are collapsed optional features.
+
+1. Create a Google Cloud project and enable **Google Calendar API**. Enable **Gmail API** only if you also want email suggestions.
+2. Configure Google Auth platform (Branding, Audience, Data Access). For a personal Gmail account, choose External and add your Google account as a test user while in Testing. Add the Calendar read-only scopes listed below.
 3. Create an OAuth **Web application** client. Register the exact redirect `http://127.0.0.1:8080/api/google/callback`, or your deployed HTTPS origin plus `/api/google/callback`.
 4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and matching `APP_ORIGIN`; restart.
-5. Sign in to Day Compass and connect each service separately in Settings.
+5. Sign in to Day Compass, open Settings > Google Calendar, connect, choose calendars, then import. Clerk Google sign-in and Calendar permission are separate; keep the Clerk keys.
+
+Use the same `127.0.0.1` origin throughout; `localhost` is a different origin and needs its own exact registered redirect. A Google OAuth redirect mismatch means the registered URI differs from `APP_ORIGIN` + `/api/google/callback`. Testing-mode Calendar refresh tokens normally expire after seven days and require reconnecting. See [Google setup](https://developers.google.com/workspace/calendar/api/quickstart/nodejs) and [OAuth token expiration](https://developers.google.com/identity/protocols/oauth2#expiration). Standard Calendar API use has [no additional cost](https://developers.google.com/workspace/calendar/api/guides/quota); no paid service or hosting is provisioned here.
 
 Calendar import asks for `calendar.calendarlist.readonly` and `calendar.events.readonly`. Choose calendars and import. A full paginated rolling sync covers the previous 7 and next 90 days, expands recurring occurrences, updates changed events and removes deleted/cancelled imports. Free/transparent events are skipped; all-day/overnight events split at local midnight. Stable calendar/event/date IDs prevent repeated import duplicates. Overlapping busy imports are merged for availability. Selecting calendars enables five-minute server polling, which can be disabled. Failed fetches preserve previous imports. Status, last success and errors are visible. Imported timed events retain their source instants and reproject immediately when timezone changes; the next sync refreshes the rolling import window.
 
@@ -108,13 +112,15 @@ OAuth uses session-bound one-use state, PKCE and server-side exchange. Tokens ar
 
 ### Background reminders
 
-Generate keys once:
+Configure keys and a real contact email once, from the project terminal:
 
 ```sh
-node scripts/generate-push-keys.mjs
+npm.cmd run setup:push
 ```
 
-Copy output into private `.env`, replace the contact address and restart. Keep the same pair for existing subscriptions. Sign in, read the explanation in Settings and enable background reminders. Permission is requested only on that click. Event-specific timing and Planning settings defaults support 10, 30 and 1,440 minutes before. Open-page popups are suppressed in account background mode to avoid duplicates.
+The script prompts for a push-service contact address (not an email-reminder address), saves keys to private `.env` without printing them, and preserves an existing complete pair. A partial pair is rejected to prevent silently breaking existing subscriptions. Restart the server after configuration. Sign in, open Settings > Notifications and enable background reminders on this device. Permission is requested only on that click. Press Send test notification; the server targets only this account's registered device and rate-limits tests. Provider acceptance is reported honestly, without claiming the notification appeared.
+
+To test a scheduled reminder, use Planning settings to select a default lead time and check quiet hours. Create a saved Day Compass activity far enough in the future (for example, 15 minutes away with a 10-minute lead), with reminders set to Default. Save and wait through its reminder time while the server and computer stay awake. Routine templates and imported Google events have reminders off in the current implementation. Event-specific timing and Planning settings defaults support 10, 30 and 1,440 minutes before. Open-page popups are suppressed in account background mode to avoid duplicates.
 
 The worker checks every 15 seconds while the **server stays running**, even when the page closes. It derives jobs from saved occurrences for the next 31 days, reconciles edits/deletion/completion/timezone changes, and persists delivery fingerprints. Notification center shows pending, cancelled, missed, quiet, failed and push-service-accepted states. Payloads hide activity titles; tapping opens the authenticated event. Subscriptions are user-scoped and restricted to supported push domains. Sign-out currently disables all that account's subscriptions; other devices must re-enable them.
 
