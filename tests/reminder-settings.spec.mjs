@@ -1,6 +1,25 @@
 import { test, expect } from '@playwright/test';
 import { memoryModel } from '../server/plans.mjs';
 
+test('disabled reminder times explain the state and link directly to enabling notifications', async ({ page }) => {
+  await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
+  await expect(page.locator('#reminder-mode')).toContainText('Notifications are off');
+  await page.locator('#open-reminder-settings').click();
+  await expect(page.locator('#settings-notifications')).toBeVisible(); await expect(page.locator('#push-enable')).toBeVisible();
+});
+
+test('background mode never shows the misleading open-page alerts-off message', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-11T18:00:00Z') });
+  const model = memoryModel(); model.saveSettings({ timeZone: 'Europe/Budapest', backgroundReminders: true, remindersEnabled: false });
+  model.saveActivity({ id: 'sat-test', kind: 'fixed', title: 'SAT practise', date: '2026-11-11', start: '20:45', end: '21:30', reminder: 25, category: 'Study', priority: 'Medium', notes: '', repeat: 'none', repeatUntil: '', locked: false });
+  await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: {} } }));
+  await page.route('**/api/planner', route => route.fulfill({ json: { state: model.snapshot(), version: 0 } }));
+  await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
+  await expect(page.locator('#reminder-mode')).toContainText('Background reminders are enabled');
+  await expect(page.locator('#reminder-mode')).not.toContainText('off');
+  await expect(page.locator('#reminder-list')).toContainText('reminder 2026-11-11 at 20:20');
+});
+
 test('reminder lead and quiet hours save locally, persist and can be reopened from a direct link', async ({ page }) => {
   await page.goto('/dashboard.html#notifications'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
   await expect(page.locator('#reminder-preferences-form')).toBeVisible();

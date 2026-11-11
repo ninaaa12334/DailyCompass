@@ -124,11 +124,13 @@ export async function startApp() {
   function renderReminders() {
     const list = $('#reminder-list'); list.replaceChildren();
     const reminders = upcomingReminders(model, now());
-    $('#reminder-mode').textContent = model.snapshot().settings.remindersEnabled ? 'Alerts are enabled while this page remains open, outside quiet hours.' : 'Alerts are off. These are upcoming reminder times; enable alerts in Planning settings.';
+    const settings = model.snapshot().settings;
+    $('#reminder-mode').textContent = account.user && settings.backgroundReminders ? 'Background reminders are enabled for this account. Check Notifications for this device’s subscription and delivery status.' : settings.remindersEnabled ? 'Open-page alerts are enabled while this page remains open, outside quiet hours.' : 'Notifications are off for this planner. Enable background reminders on this device in Notifications.';
+    $('#reminder-mode-help').textContent = account.user && settings.backgroundReminders ? 'The server must stay running. Device permission and subscription are checked in Notifications; this list alone does not confirm delivery.' : 'These are reminder times only. They do not notify you unless alerts are enabled. Times use your configured timezone.';
     const validKeys = new Set(reminders.map(item => item.key));
     if (activeAlertKey && !validKeys.has(activeAlertKey)) { $('#reminder-alert').textContent = ''; activeAlertKey = null; }
     for (const [key, notification] of displayedNotifications) if (!validKeys.has(key)) { notification.close(); displayedNotifications.delete(key); }
-    for (const reminder of reminders.slice(0, 20)) { const li = document.createElement('li'); li.textContent = `${reminder.title}: ${reminder.date} at ${reminder.start}, reminder ${reminder.lead} min before`; list.append(li); }
+    for (const reminder of reminders.slice(0, 20)) { const li = document.createElement('li'), dueDate = new Date(Math.floor(reminder.due / 1440) * 86400000).toISOString().slice(0, 10); li.textContent = `${reminder.title}: activity ${reminder.date} at ${reminder.start} · reminder ${dueDate} at ${timeLabel(reminder.due % 1440)} (${reminder.lead} min before)`; list.append(li); }
     if (!reminders.length) { const li = document.createElement('li'); li.textContent = 'No upcoming reminders. Add an activity or apply a schedule to create them.'; list.append(li); }
   }
   function previewPlan() {
@@ -198,6 +200,7 @@ export async function startApp() {
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }
   productivity = initProductivity({ model, storage, selectedDate: calendar.getSelectedDate });
   assistant = initAssistant({ model, account, calendar, openActivity, now });
+  $('#open-reminder-settings').addEventListener('click', () => { $('[data-panel=settings]').click(); $('[data-settings-view=notifications]').click(); $('#settings-panel').scrollIntoView({ block: 'start' }); });
   if (account.user && new URLSearchParams(location.search).get('welcome') === '1') {
     const welcome = document.createElement('section'); welcome.className = 'welcome-connections'; welcome.setAttribute('aria-label', 'Optional calendar connection');
     welcome.innerHTML = '<div><strong>Your planner is ready.</strong><p>Want to bring your Google Calendar along?</p></div><a class="button secondary" href="dashboard.html#connections">Connect Google Calendar</a><button type="button" class="secondary">Not now</button>';
