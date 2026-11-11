@@ -5,7 +5,7 @@ import { wallTimeCandidates, wallToInstant } from './zoned-time.mjs';
 import { createApplication } from './server/app.mjs';
 import { memoryModel, validateProposal, acceptProposal, proposeAI } from './server/plans.mjs';
 import { expandGoogleEvent } from './server/google.mjs';
-import { reminderJobs, pushWorker, validSubscription } from './server/push.mjs';
+import { reminderJobs, pushWorker, validSubscription, pushReceipt, recordPushReceipt } from './server/push.mjs';
 import { database } from './server/database.mjs';
 import { randomBytes } from 'node:crypto';
 import { importedDays } from './imported-time.mjs';
@@ -181,7 +181,7 @@ test('test notifications are restricted to the account owning the subscribed end
   const worker = pushWorker(db, config, async (_, payload) => { sends++; assert.equal(JSON.parse(payload).title, 'Day Compass'); });
   await assert.rejects(worker.sendTest('other', sub.endpoint), /not subscribed/);
   assert.equal(sends, 0);
-  assert.deepEqual(await worker.sendTest('owner', sub.endpoint), { acceptedByPushService: true, deviceDeliveryConfirmed: false });
+  const sentTest = await worker.sendTest('owner', sub.endpoint); assert.equal(sentTest.acceptedByPushService, true); assert.equal(sentTest.deviceDeliveryConfirmed, false); assert.match(sentTest.testKey, /^[a-f0-9]{64}$/);
   assert.equal(sends, 1);
   const expired = pushWorker(db, config, async () => { throw Object.assign(new Error('expired'), { statusCode: 410 }); });
   await assert.rejects(expired.sendTest('owner', sub.endpoint), /HTTP 410/);
@@ -198,8 +198,25 @@ test('test push HTTP route requires authentication, ownership and a cooldown', a
   assert.equal((await app.call('push/test', 'POST', { endpoint: subscription.endpoint }, bob)).response.status, 404);
   const result = await app.call('push/test', 'POST', { endpoint: subscription.endpoint }, alice);
   assert.equal(result.data.acceptedByPushService, true); assert.equal(result.data.deviceDeliveryConfirmed, false);
+  const key = result.data.testKey;
+  assert.equal((await app.call(`push/test/status?key=${key}`, 'GET', null, bob)).response.status, 404);
+  assert.equal((await app.call('push/receipt', 'POST', { key, phase: 'received' }, bob)).response.status, 404);
+  assert.equal((await app.call('push/receipt', 'POST', { key, phase: 'received' }, alice)).response.status, 200);
+  assert.equal((await app.call(`push/test/status?key=${key}`, 'GET', null, alice)).data.browserReceived, true);
+  await app.call('push/receipt', 'POST', { key, phase: 'display-requested' }, alice);
+  const receipt = (await app.call(`push/test/status?key=${key}`, 'GET', null, alice)).data; assert.equal(receipt.displayRequested, true); assert.equal(receipt.deviceDeliveryConfirmed, false);
+  assert.equal((await app.call('push/receipt', 'POST', { key, phase: 'displayed' }, alice)).response.status, 400);
   assert.equal((await app.call('push/test', 'POST', { endpoint: subscription.endpoint }, alice)).response.status, 429);
   assert.equal(sent, 1);
+});
+
+test('scheduled push receipts are account scoped and never claim confirmed Windows display', () => {
+  const db = database(':memory:').db; db.prepare('INSERT INTO users VALUES(?,?,?)').run('u', 'student', 'test');
+  const key = 'a'.repeat(64); db.prepare("INSERT INTO deliveries VALUES(?,?,?,?,?,'sending',NULL)").run('u', key, '{}', 1, 2);
+  recordPushReceipt(db, 'u', key, 'received'); recordPushReceipt(db, 'u', key, 'display-failed');
+  assert.equal(pushReceipt(db, 'u', key).browserReceived, true); assert.equal(pushReceipt(db, 'u', key).displayRequested, false);
+  assert.match(pushReceipt(db, 'u', key).displayError, /could not request/);
+  assert.throws(() => recordPushReceipt(db, 'other', key, 'received'), /not found/); db.close();
 });
 test('SQLite schedules and encrypted credentials survive closing and reopening the server database', () => {
   const parent = path.resolve('data'); mkdirSync(parent, { recursive: true }); const directory = mkdtempSync(path.join(parent, 'test-persistence-')), filename = path.join(directory, 'planner.sqlite');

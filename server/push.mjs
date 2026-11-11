@@ -4,7 +4,18 @@ import { addDays } from '../calendar-view.mjs';
 import { zonedNow } from '../clock.mjs';
 import { wallToInstant } from '../zoned-time.mjs';
 import { minutes } from '../calendar-store.mjs';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+
+export function pushReceipt(db, user, key) {
+  const receipt = db.prepare('SELECT received,display_requested,error FROM push_receipts WHERE user_id=? AND key=?').get(user, key);
+  return { browserReceived: Boolean(receipt), displayRequested: Boolean(receipt?.display_requested), displayError: receipt?.error || null };
+}
+export function recordPushReceipt(db, user, key, phase) {
+  if (!/^[a-f0-9]{64}$/.test(key || '') || !['received', 'display-requested', 'display-failed'].includes(phase)) throw Object.assign(new Error('Invalid notification receipt.'), { status: 400 });
+  const issued = db.prepare('SELECT key FROM deliveries WHERE user_id=? AND key=? UNION SELECT key FROM push_tests WHERE user_id=? AND key=?').get(user, key, user, key);
+  if (!issued) throw Object.assign(new Error('Notification not found for this account.'), { status: 404 });
+  db.prepare('INSERT INTO push_receipts VALUES(?,?,?,?,?) ON CONFLICT(user_id,key) DO UPDATE SET display_requested=COALESCE(push_receipts.display_requested,excluded.display_requested),error=COALESCE(excluded.error,push_receipts.error)').run(user, key, Date.now(), phase === 'display-requested' ? Date.now() : null, phase === 'display-failed' ? 'The browser could not request notification display.' : null);
+}
 
 export function validSubscription(value) {
   const url = new URL(value?.endpoint);
@@ -61,6 +72,8 @@ export function pushWorker(db, config, sender = webpush.sendNotification.bind(we
       }
       db.prepare('DELETE FROM sessions WHERE expires<?').run(+at); db.prepare('DELETE FROM oauth WHERE expires<?').run(+at);
       db.prepare('DELETE FROM deliveries WHERE start<?').run(+at - 30 * 86400000);
+      db.prepare('DELETE FROM push_tests WHERE created<?').run(+at - 86400000);
+      db.prepare('DELETE FROM push_receipts WHERE received<?').run(+at - 30 * 86400000);
     } finally { running = false; }
   }
   async function sendTest(user, endpoint) {
@@ -68,13 +81,17 @@ export function pushWorker(db, config, sender = webpush.sendNotification.bind(we
     const record = db.prepare('SELECT body FROM subscriptions WHERE user_id=? AND endpoint=?').get(user, endpoint);
     if (!record) throw Object.assign(new Error('This device is not subscribed for your account. Enable it first.'), { status: 404 });
     const subscription = validSubscription(JSON.parse(record.body));
+    const key = randomBytes(32).toString('hex');
+    db.prepare("INSERT INTO push_tests VALUES(?,?,?,'sending')").run(user, key, Date.now());
     try {
-      await sender(subscription, JSON.stringify({ title: 'Day Compass', body: 'Your test notification arrived. Scheduled reminders need the server to stay running.', tag: `compass-test-${Date.now()}`, url: '/dashboard.html', key: 'test' }), { TTL: 60, timeout: 10000, vapidDetails: { subject: config.VAPID_SUBJECT, publicKey: config.VAPID_PUBLIC_KEY, privateKey: config.VAPID_PRIVATE_KEY } });
+      await sender(subscription, JSON.stringify({ title: 'Day Compass', body: 'Day Compass notification test. Open your planner for details.', tag: `compass-test-${key}`, url: '/dashboard.html', key }), { TTL: 300, timeout: 10000, vapidDetails: { subject: config.VAPID_SUBJECT, publicKey: config.VAPID_PUBLIC_KEY, privateKey: config.VAPID_PRIVATE_KEY } });
+      db.prepare("UPDATE push_tests SET status='accepted' WHERE user_id=? AND key=?").run(user, key);
     } catch (error) {
+      db.prepare("UPDATE push_tests SET status='failed' WHERE user_id=? AND key=?").run(user, key);
       if ([404, 410].includes(error.statusCode)) db.prepare('DELETE FROM subscriptions WHERE user_id=? AND endpoint=?').run(user, endpoint);
       throw Object.assign(new Error(error.statusCode ? `Test push failed (HTTP ${error.statusCode}). Re-enable this device or check the server keys.` : 'The test push could not reach the browser push service. Check network access and server configuration.'), { status: 502 });
     }
-    return { acceptedByPushService: true, deviceDeliveryConfirmed: false };
+    return { acceptedByPushService: true, deviceDeliveryConfirmed: false, testKey: key };
   }
   return { tick, configured, sendTest };
 }

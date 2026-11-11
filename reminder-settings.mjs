@@ -37,7 +37,8 @@ export function initReminderSettings({ model, account, sync, pushStatus }) {
       const pending = records.filter(r => r.status === 'pending').sort((a, b) => a.due - b.due);
       function row(r) {
         const li = document.createElement('li'), title = document.createElement('strong'), detail = document.createElement('span');
-        title.textContent = r.title; detail.textContent = `${new Date(r.due).toLocaleString(undefined, { timeZone })} · ${r.status === 'pending' && r.quiet ? 'Will be skipped: quiet hours' : statusText[r.status] || r.status}${r.error ? ` · ${r.error}` : ''}`;
+        const reported = r.receipt?.displayError ? 'Browser received push; display request failed' : r.receipt?.displayRequested ? 'Browser received push and requested display; Windows display unconfirmed' : r.receipt?.browserReceived ? 'Browser received push; display unconfirmed' : null;
+        title.textContent = r.title; detail.textContent = `${new Date(r.due).toLocaleString(undefined, { timeZone })} · ${reported || (r.status === 'pending' && r.quiet ? 'Will be skipped: quiet hours' : statusText[r.status] || r.status)}${r.error ? ` · ${r.error}` : ''}`;
         li.append(title, detail); return li;
       }
       for (const r of pending.slice(0, 8)) $('#scheduled-reminders').append(row(r));

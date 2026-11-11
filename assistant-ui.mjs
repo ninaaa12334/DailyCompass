@@ -2,6 +2,7 @@ import { initDashboardDesign } from './dashboard-design.mjs';
 import { initSettings } from './settings-ui.mjs';
 import { initPrivateCalendar } from './ical-ui.mjs';
 import { initReminderSettings } from './reminder-settings.mjs';
+import { initNotificationDiagnostics } from './notification-diagnostics.mjs';
 import { interpretPlanningRequest } from './planning-request.mjs';
 import { initAuth } from './auth-ui.mjs';
 import { availability, activitySuggestion } from './availability.mjs';
@@ -174,12 +175,6 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
     storage.setItem('day-compass.open-page-fallback.v1', 'true'); model.saveSettings({ remindersEnabled: true }); await sync.flush();
     $('#push-operation-status').textContent = 'Page-open reminders are enabled on this browser. Keep Day Compass open and the computer awake. Quiet hours still apply. This is not background push; no reminders can fire from this page after it closes.';
   }));
-  $('#push-test').addEventListener('click', guard('#push-test-status', async () => {
-    requireAccount();
-    const registration = await navigator.serviceWorker?.getRegistration(), subscription = await registration?.pushManager?.getSubscription();
-    if (!subscription) throw new Error('Enable background reminders on this device first.');
-    await api('push/test', 'POST', { endpoint: subscription.endpoint });
-    $('#push-test-status').textContent = 'Test accepted by your browser’s push service. Check this device for a Day Compass notification. If nothing appears, check browser and system notification settings. This is not proof of delivery.';
-  }));
+  initNotificationDiagnostics({ account });
   return { render() { render(); workspace.render(); }, openSetup };
 }

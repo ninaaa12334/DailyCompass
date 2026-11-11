@@ -43,7 +43,7 @@ test('private calendar connection submits once, clears the secret field and supp
 
 test('test notification targets this device and reports acceptance without claiming delivery', async ({ page }) => {
   const endpoint = 'https://fcm.googleapis.com/fcm/send/test-only';
-  await page.addInitScript(endpoint => Object.defineProperty(navigator, 'serviceWorker', { value: { getRegistration: async () => ({ pushManager: { getSubscription: async () => ({ endpoint }) } }) } }), endpoint);
+  await page.addInitScript(endpoint => { const registration = { async update() {}, pushManager: { getSubscription: async () => ({ endpoint }) } }; Object.defineProperty(navigator, 'serviceWorker', { value: { getRegistration: async () => registration, register: async () => registration } }); }, endpoint);
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: { push: true } } }));
   await page.route('**/api/planner', route => route.fulfill({ json: { state: memoryModel().snapshot(), version: 0 } }));
   let target;

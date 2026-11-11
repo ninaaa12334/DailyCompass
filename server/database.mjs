@@ -19,6 +19,8 @@ export function database(filename = 'data/compass.sqlite', secret = process.env.
     CREATE TABLE IF NOT EXISTS oauth(state TEXT PRIMARY KEY, user_id TEXT NOT NULL, session_hash TEXT NOT NULL, service TEXT NOT NULL, verifier TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS subscriptions(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, endpoint TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(user_id,endpoint));
     CREATE TABLE IF NOT EXISTS deliveries(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, key TEXT NOT NULL, body TEXT NOT NULL, due INTEGER NOT NULL, start INTEGER NOT NULL, status TEXT NOT NULL, error TEXT, PRIMARY KEY(user_id,key));
+    CREATE TABLE IF NOT EXISTS push_tests(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, key TEXT NOT NULL, created INTEGER NOT NULL, status TEXT NOT NULL, PRIMARY KEY(user_id,key));
+    CREATE TABLE IF NOT EXISTS push_receipts(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, key TEXT NOT NULL, received INTEGER NOT NULL, display_requested INTEGER, error TEXT, PRIMARY KEY(user_id,key));
     CREATE TABLE IF NOT EXISTS history(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, created INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS mail_reviews(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, id TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY(user_id,id));
     CREATE TABLE IF NOT EXISTS identities(provider TEXT NOT NULL, subject TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(provider,subject));
