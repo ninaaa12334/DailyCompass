@@ -201,3 +201,20 @@ body:not([data-planner-ready]) .dashboard-grid, body:not([data-planner-ready]) .
 .scene-linen .scene-theme-art::after, .scene-pistachio .scene-theme-art::after, .scene-lavender .scene-theme-art::after, .scene-dusk .scene-theme-art::after { clip-path: none; width: 48px; height: 48px; border-radius: 50%; top: 12%; left: auto; right: -10px; background: #ffffff30; }
 @media(min-width: 1120px) { .compass-workspace .assistant-tabs { padding: 1.6rem .85rem; } .compass-workspace .assistant-tabs button { border-radius: 14px; } }
 @media(prefers-reduced-motion: reduce) { .compass-workspace .assistant-panel:not([hidden]) { animation: none; } }
+
+/* A compact event rail leaves the available width to the calendar. */
+.compass-workspace .workspace-upcoming { padding: 1rem; }
+.workspace-upcoming h2 { font-size: .95rem; margin-bottom: .35rem; }
+.workspace-upcoming > .fine-print { font-size: .7rem; margin-bottom: .6rem; }
+#workspace-upcoming-list { max-height: 250px; overflow-y: auto; margin-bottom: 0; scrollbar-width: thin; }
+.workspace-upcoming li { padding-block: .15rem; }
+.workspace-upcoming .upcoming-activity { min-height: 44px; gap: .5rem; padding-block: .4rem; }
+.workspace-upcoming .upcoming-mark { width: 1.65rem; height: 1.65rem; border-radius: .5rem; font-size: .9rem; }
+.workspace-upcoming .upcoming-activity strong { font-size: .75rem; }
+@media(min-width: 1120px) {
+  .compass-workspace .dashboard-grid { grid-template-columns: repeat(9, minmax(0, 1fr)) 210px; }
+  .compass-workspace .dashboard-grid > .calendar-widget { grid-column: 1 / span 9; }
+  .compass-workspace .workspace-sidecar { grid-column: 10 / -1; gap: .75rem; }
+  .compass-workspace .workspace-sidecar > .widget { padding: 1rem; }
+  .compass-workspace .tasks-widget, .compass-workspace .day-details { grid-column: 1 / span 9; }
+}
