@@ -594,3 +594,20 @@ body[data-planner-ready="true"] #startup-status { position: absolute; width: 1px
 .task-chat-reminder { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .task-chat [hidden] { display: none !important; }
 @media(max-width: 700px) { .task-chat-launch { bottom: calc(5rem + env(safe-area-inset-bottom)); right: .75rem; } .task-chat { padding: 1rem; } }
+/* Gentle interaction polish; motion is brief and optional. */
+html { scroll-behavior: smooth; }
+button:active, .button:active { transform: translateY(0) scale(.98); box-shadow: none; }
+button, .button, input, select, textarea { transition: background-color .18s, border-color .18s, box-shadow .18s, transform .18s; }
+input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+dialog[open] { animation: dialog-arrive .18s ease-out; }
+dialog::backdrop { background: #19152455; backdrop-filter: blur(5px); }
+@keyframes dialog-arrive { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+#appearance-dialog { width: min(680px, calc(100vw - 2rem)); padding: 1.7rem; border-radius: 26px; }
+#appearance-dialog .theme-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#appearance-dialog .theme-option { position: relative; flex-wrap: wrap; gap: .5rem; padding: .85rem; border-radius: 15px; transition: background .18s, border-color .18s; }
+#appearance-dialog .theme-option:hover { background: var(--surface-alt); }
+#appearance-dialog .theme-option:has(input:checked) { outline: 1px solid var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--tint) 45%, var(--surface)); }
+#appearance-dialog .theme-swatch { flex-basis: 100%; height: 46px; border-radius: 9px; order: -1; }
+.setup-again { display: inline-block; font-size: .8rem; margin-bottom: 1rem; color: var(--muted); }
+@media(max-width: 580px) { #appearance-dialog { padding: 1.2rem; } #appearance-dialog .theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media(prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

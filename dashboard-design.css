@@ -49,7 +49,7 @@
 .scene-theme-check { display: none; position: absolute; right: .3rem; top: .3rem; color: #18362c; background: #a6f5dc; border-radius: 50%; width: 1.2rem; height: 1.2rem; font-size: .7rem; text-align: center; line-height: 1.2rem; }
 .scene-theme[aria-pressed="true"] .scene-theme-check { display: block; }
 .calm-theme { width: 100%; margin-top: .75rem; min-height: 44px; font-size: .7rem; }
-:root[data-mode="dark"] .compass-workspace { --surface: #20243d; --surface-alt: #252a45; --border: #454561; --text: #f1f0fa; --muted: #bfc4da; --lilac-card: #302b4d; --peach-card: #362c43; --workspace-glass: #22243ded; --workspace-line: #a69aca40; background: radial-gradient(ellipse at 70% 0%, #7051ad30, transparent 48%), var(--background); }
+:root[data-mode="dark"] .compass-workspace { --border: #454561; --text: #f1f0fa; --muted: #bfc4da; --lilac-card: #302b4d; --peach-card: #362c43; --workspace-glass: color-mix(in srgb, var(--surface) 94%, transparent); --workspace-line: #a69aca40; background: radial-gradient(ellipse at 70% 0%, #7051ad30, transparent 48%), var(--background); }
 :root[data-mode="dark"] .compass-workspace .week-event, :root[data-mode="dark"] .compass-workspace .month-event { background: linear-gradient(140deg, color-mix(in srgb, var(--event-line, #9584c3) 32%, var(--surface)), color-mix(in srgb, var(--event-line, #9584c3) 18%, var(--surface))); color: var(--text); border-color: color-mix(in srgb, var(--event-line, #9584c3) 65%, transparent); }
 :root[data-mode="dark"] .compass-workspace .upcoming-mark { background: color-mix(in srgb, var(--event-line, #9584c3) 22%, var(--surface)); }
 :root[data-theme="aurora-night"] .compass-workspace::before, :root[data-theme="space"] .compass-workspace::before { content: ''; position: fixed; z-index: -1; inset: 0; pointer-events: none; background: linear-gradient(180deg, #17172d22, #17172d44), url('aurora-scene.svg') center bottom / cover; opacity: .68; }
@@ -188,3 +188,16 @@
   .compass-workspace .week-event.short-event .event-label { position: static; }
   .compass-workspace .dashboard-heading h1 { font-size: 2rem; }
 }
+/* Comfortable surfaces keep the calendar at the centre of attention. */
+body:not([data-planner-ready]) .dashboard-grid, body:not([data-planner-ready]) .workspace-summary, body:not([data-planner-ready]) .assistant-tabs { visibility: hidden; }
+.compass-workspace .widget { border-radius: 22px; border-color: color-mix(in srgb, var(--border) 75%, transparent); box-shadow: 0 8px 32px -24px #34264238; }
+.compass-workspace .calendar-widget { background: var(--surface); }
+.compass-workspace .calendar-toolbar { padding-bottom: 1rem; }
+.compass-workspace .calendar-view-switch { background: var(--surface-alt); border-color: var(--border); border-radius: 12px; padding: .2rem; }
+.compass-workspace .calendar-view-switch button { border-radius: 9px; }
+.compass-workspace .week-event { box-shadow: 0 2px 4px #00000004; }
+.compass-workspace .assistant-panel:not([hidden]) { animation: workspace-arrive .18s ease-out; }
+@keyframes workspace-arrive { from { opacity: .4; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.scene-linen .scene-theme-art::after, .scene-pistachio .scene-theme-art::after, .scene-lavender .scene-theme-art::after, .scene-dusk .scene-theme-art::after { clip-path: none; width: 48px; height: 48px; border-radius: 50%; top: 12%; left: auto; right: -10px; background: #ffffff30; }
+@media(min-width: 1120px) { .compass-workspace .assistant-tabs { padding: 1.6rem .85rem; } .compass-workspace .assistant-tabs button { border-radius: 14px; } }
+@media(prefers-reduced-motion: reduce) { .compass-workspace .assistant-panel:not([hidden]) { animation: none; } }

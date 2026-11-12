@@ -8,17 +8,18 @@ const $ = selector => document.querySelector(selector), form = $('#onboarding-fo
 try {
   const account = await loadAccount();
   if (!account.user) location.replace('auth.html?mode=login');
-  else if (account.document.state.settings.onboardingComplete !== false) location.replace('dashboard.html');
+  else if (account.document.state.settings.onboardingComplete !== false && new URLSearchParams(location.search).get('edit') !== '1') location.replace('dashboard.html');
   else {
     const model = createPlannerStore(storage); bindAccountAppearance(model);
     let step = 0, version = account.document.version, saving = false;
     const settings = model.snapshot().settings;
     $('#onboarding-start').value = settings.planningStart; $('#onboarding-end').value = settings.planningEnd;
     $('#onboarding-zone').value = settings.timeZone; $('#onboarding-reminder').value = settings.reminderMinutes;
-    for (const [preset, label] of [['aurora', 'Calm'], ['aurora-night', 'Aurora'], ['ocean', 'Ocean'], ['sunset', 'Sunset'], ['space', 'Space'], ['lavender', 'Lavender']]) {
+    for (const preset of ['aurora', 'linen', 'pistachio', 'lavender', 'ocean', 'sunset', 'dusk', 'aurora-night', 'space']) {
+      const label = PRESETS[preset].label;
       const choice = document.createElement('label'), radio = document.createElement('input'), art = document.createElement('span');
       radio.type = 'radio'; radio.name = 'theme'; radio.value = preset; radio.required = true; radio.checked = currentAppearance().preset === preset;
-      art.className = 'onboarding-theme-art'; art.style.background = `linear-gradient(135deg, ${PRESETS[preset].accent}, ${PRESETS[preset].tint})`; art.setAttribute('aria-hidden', 'true');
+      art.className = 'onboarding-theme-art'; art.style.background = `linear-gradient(135deg, ${PRESETS[preset].background} 0 45%, ${PRESETS[preset].tint} 45% 75%, ${PRESETS[preset].accent} 75%)`; art.setAttribute('aria-hidden', 'true');
       choice.append(radio, art, document.createTextNode(label)); $('#onboarding-themes').append(choice);
       radio.addEventListener('change', () => { selectPreset(preset); $('#onboarding-error').textContent = ''; });
     }
@@ -27,6 +28,7 @@ try {
       document.querySelectorAll('.onboarding-step').forEach((fieldset, index) => { fieldset.hidden = index !== step; fieldset.disabled = index !== step; });
       document.querySelectorAll('.onboarding-dots i').forEach((dot, index) => dot.classList.toggle('active', index <= step));
       $('#onboarding-step-label').textContent = `Step ${step + 1} of 3`; $('#onboarding-back').hidden = step === 0;
+      $('#welcome-stage').textContent = ['Your colours', 'Your rhythm', 'Your starting point'][step];
       $('#onboarding-next').textContent = step === 2 ? 'Let’s get started' : 'Continue';
       const legend = document.querySelectorAll('.onboarding-step legend')[step]; legend.tabIndex = -1; legend.focus();
     }

@@ -32,6 +32,6 @@
   window.addEventListener('error', event => { if (!ready) fail(event.error || new Error(event.message || 'A planner file could not be loaded.')); });
   window.addEventListener('unhandledrejection', event => { if (!ready) fail(event.reason); });
   import('./app.js').then(async module => {
-    await module.startApp(); ready = true; document.body.dataset.plannerReady = 'true'; clearTimeout(timeout); panel.hidden = true; status.textContent = 'Planner ready.';
+    const result = await module.startApp(); if (result === false) { clearTimeout(timeout); return; } ready = true; document.body.dataset.plannerReady = 'true'; clearTimeout(timeout); panel.hidden = true; status.textContent = 'Planner ready.';
   }).catch(fail);
 })();

@@ -3,6 +3,7 @@ import { dateLabel } from './clock.mjs';
 import { activityVisual } from './activity-visuals.mjs';
 import { minutes } from './calendar-store.mjs';
 import { selectPreset } from './theme-ui.mjs';
+import { PRESETS } from './appearance.mjs';
 
 const node = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
 export function initDashboardDesign({ model, openActivity, now }) {
@@ -26,9 +27,11 @@ export function initDashboardDesign({ model, openActivity, now }) {
   themeDetails.append(node('summary', 'Choose a mood'));
   themes.querySelector('h2').remove(); themes.querySelector('.widget-label').remove();
   themeDetails.append(...themes.children); themes.append(themeDetails);
-  for (const [preset, label] of [['aurora-night', 'Aurora'], ['ocean', 'Ocean'], ['sunset', 'Sunset'], ['space', 'Space']]) {
+  for (const [preset, label] of [['linen', 'Linen'], ['pistachio', 'Pistachio'], ['lavender', 'Lavender'], ['dusk', 'Soft dusk'], ['aurora-night', 'Aurora'], ['ocean', 'Ocean'], ['sunset', 'Sunset'], ['space', 'Space']]) {
     const button = node('button', undefined, `scene-theme scene-${preset}`); button.type = 'button'; button.dataset.sceneTheme = preset; button.setAttribute('aria-label', `${label} workspace theme`);
-    const art = node('span', undefined, 'scene-theme-art'); art.setAttribute('aria-hidden', 'true'); button.append(art, node('span', label, 'scene-theme-name'), node('span', '\u2713', 'scene-theme-check')); $('.scene-theme-grid').append(button);
+    const art = node('span', undefined, 'scene-theme-art'); art.setAttribute('aria-hidden', 'true');
+    if (['linen', 'pistachio', 'lavender', 'dusk'].includes(preset)) { art.style.background = `linear-gradient(135deg, ${PRESETS[preset].tint}, ${PRESETS[preset].accent})`; }
+    button.append(art, node('span', label, 'scene-theme-name'), node('span', '\u2713', 'scene-theme-check')); $('.scene-theme-grid').append(button);
   }
   document.querySelectorAll('[data-scene-theme]').forEach(button => button.addEventListener('click', () => { try { selectPreset(button.dataset.sceneTheme); } catch { $('#planner-feedback').textContent = 'This theme could not be saved. Check browser storage permissions.'; } }));
   function themeState() { document.querySelectorAll('[data-scene-theme]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.sceneTheme === document.documentElement.dataset.theme))); }

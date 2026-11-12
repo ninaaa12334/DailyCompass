@@ -13,7 +13,7 @@ function apply(value) {
   const root = document.documentElement;
   root.dataset.mode = theme.dark ? 'dark' : 'light';
   root.dataset.theme = value.preset;
-  for (const [key, color] of Object.entries({ accent: theme.accent, 'accent-ink': theme.accentText, busy: theme.busy, 'busy-ink': theme.busyText, background: theme.background, tint: theme.tint })) {
+  for (const [key, color] of Object.entries({ accent: theme.accent, 'accent-ink': theme.accentText, busy: theme.busy, 'busy-ink': theme.busyText, background: theme.background, tint: theme.tint, surface: theme.surface, 'surface-alt': theme.surfaceAlt, 'ring-start': theme.accent, 'ring-track': theme.tint, 'blue-wash': theme.tint, 'pink-wash': theme.background })) {
     root.style.setProperty(`--${key}`, color);
   }
 }
@@ -45,14 +45,15 @@ dialog.setAttribute('aria-labelledby', 'appearance-title');
 // This template is static UI. User-entered colours are only assigned through validated values.
 dialog.innerHTML = `
   <div class="dialog-heading"><div><p class="widget-label">MAKE YOURSELF AT HOME</p><h2 id="appearance-title">Your colours, your space.</h2></div><button type="button" class="secondary" id="close-appearance">Close</button></div>
-  <p class="muted">Choose a palette, then make it a little more you.</p>
+  <p class="muted">Soft daylight or a quieter evening. Find what feels comfortable.</p>
   <form id="appearance-form">
     <fieldset><legend>Theme</legend><div class="theme-options" id="theme-options"></div></fieldset>
     <div class="colour-choice"><label><input type="checkbox" name="customAccent"> Use a custom accent</label><input type="color" name="accent" aria-label="Custom accent colour"></div>
     <div class="colour-choice"><label><input type="checkbox" name="customBusy"> Use a custom busyness colour</label><input type="color" name="busy" aria-label="Calendar busyness colour"></div>
     <p class="fine-print">Button text adjusts for contrast. Dates with their own busy colour keep that override.</p>
     <div class="theme-preview" id="theme-preview"><span>Live preview</span><span class="preview-button">Your accent</span></div>
-    <p class="fine-print">${isDemo ? 'Demo preferences stay separate from your personal planner.' : 'Preferences save in this browser. You can change them anytime.'}</p>
+    <p class="fine-print">${isDemo ? 'Demo preferences stay separate from your personal planner.' : 'Signed-in choices save with your account. You can change them anytime.'}</p>
+    ${isDemo ? '' : '<a class="setup-again" href="onboarding.html?edit=1">Revisit welcome setup →</a>'}
     <p id="appearance-error" role="alert" hidden></p>
     <button type="submit">Save appearance</button>
   </form>`;
@@ -65,7 +66,7 @@ for (const [key, preset] of Object.entries(PRESETS)) {
   const input = document.createElement('input');
   input.type = 'radio'; input.name = 'preset'; input.value = key; input.required = true;
   const swatch = document.createElement('span');
-  swatch.className = 'theme-swatch'; swatch.style.background = preset.accent ?? 'linear-gradient(90deg,#365d4d 50%,#141e23 50%)';
+  swatch.className = 'theme-swatch'; swatch.style.background = preset.background ? `linear-gradient(135deg, ${preset.background} 0 40%, ${preset.tint} 40% 72%, ${preset.accent} 72%)` : 'linear-gradient(90deg,#365d4d 50%,#141e23 50%)';
   swatch.setAttribute('aria-hidden', 'true');
   label.append(input, swatch, document.createTextNode(preset.label));
   dialog.querySelector('#theme-options').append(label);

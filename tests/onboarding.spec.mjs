@@ -50,3 +50,28 @@ test('existing accounts bypass setup and retain scheduled notification preferenc
   await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.'); await expect(page).toHaveURL(/dashboard\.html/);
   await page.goto('/onboarding.html'); await expect(page).toHaveURL(/dashboard\.html/);
 });
+
+test('existing account can revisit setup, choose soft palettes and keep saved tasks', async ({ page }) => {
+  const model = memoryModel();
+  model.saveSettings({ onboardingComplete: true, backgroundReminders: true, reminderMinutes: 25 });
+  model.saveActivity({ id: 'keep-me', kind: 'task', date: '', title: 'Existing project', deadline: '2026-12-20', duration: 30, spent: 0, category: 'Study', priority: 'Medium', notes: '', repeat: 'none', repeatUntil: '', reminder: 'default', locked: false });
+  let state = model.snapshot();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'returning', name: 'Returning user' }, features: {} } }));
+  await page.route('**/api/planner', async route => {
+    if (route.request().method() === 'PUT') state = route.request().postDataJSON().state;
+    await route.fulfill({ json: { state, version: 1 } });
+  });
+  await page.goto('/onboarding.html?edit=1');
+  await page.locator('input[name=theme][value=linen]').check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'linen');
+  await page.screenshot({ path: 'qa-artifacts/welcome-setup-linen-desktop.png', fullPage: true });
+  await page.locator('input[name=theme][value=dusk]').check();
+  await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark');
+  await page.screenshot({ path: 'qa-artifacts/welcome-setup-dusk-desktop.png', fullPage: true });
+  await page.locator('#onboarding-next').click(); await page.locator('#onboarding-next').click(); await page.locator('#onboarding-next').click();
+  await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
+  expect(state.settings.appearance.preset).toBe('dusk'); expect(state.tasks[0].title).toBe('Existing project'); expect(state.settings.backgroundReminders).toBe(true);
+  await page.screenshot({ path: 'qa-artifacts/workspace-dusk-desktop.png', fullPage: true });
+});
