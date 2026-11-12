@@ -4,18 +4,32 @@ import { activityVisual } from './activity-visuals.mjs';
 import { minutes } from './calendar-store.mjs';
 import { selectPreset } from './theme-ui.mjs';
 import { PRESETS } from './appearance.mjs';
+import { storage } from './runtime.mjs';
 
 const node = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
 export function initDashboardDesign({ model, openActivity, now }) {
   const $ = selector => document.querySelector(selector);
   document.body.classList.add('compass-workspace');
   const tabs = $('.assistant-tabs');
+  tabs.id = 'workspace-navigation';
   const brand = node('a', undefined, 'workspace-brand'); brand.href = 'index.html';
   brand.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="16"/><path d="m30 11-4 15-15 11 10-17Z"/><path d="M24 1v9m0 28v9M1 24h9m28 0h9"/></svg><span>Day Compass<small>A little direction.</small></span>';
-  tabs.prepend(brand);
+  brand.setAttribute('aria-label', 'Day Compass home'); tabs.prepend(brand);
   const icons = { day: '\u2302', calendar: '\u25a6', ai: '\u2727', settings: '\u2699' };
-  tabs.querySelectorAll('[data-panel]').forEach(button => { const icon = node('span', icons[button.dataset.panel], 'workspace-nav-icon'); icon.setAttribute('aria-hidden', 'true'); button.prepend(icon); });
+  tabs.querySelectorAll('[data-panel]').forEach(button => { const label = button.textContent.trim(), icon = node('span', icons[button.dataset.panel], 'workspace-nav-icon'); icon.setAttribute('aria-hidden', 'true'); button.replaceChildren(icon, node('span', label, 'workspace-nav-label')); button.setAttribute('aria-label', label); button.title = label; });
   const appearance = node('a', undefined, 'workspace-appearance'); appearance.href = '#appearance'; appearance.innerHTML = '<span aria-hidden="true">&#9680;</span> Themes & appearance'; appearance.addEventListener('click', event => { event.preventDefault(); $('[data-open-appearance]').click(); }); tabs.append(appearance, node('p', 'A calmer kind of productive.', 'workspace-sidebar-note'));
+  appearance.lastChild.replaceWith(node('span', 'Themes & appearance', 'workspace-nav-label'));
+  appearance.setAttribute('aria-label', 'Themes & appearance'); appearance.title = 'Themes & appearance';
+  const collapse = node('button', undefined, 'sidebar-toggle'); collapse.type = 'button'; collapse.setAttribute('aria-controls', tabs.id);
+  let compact = false;
+  try { compact = storage.getItem('day-compass.sidebar-compact.v1') === 'true'; } catch { /* Navigation still works without saved preferences. */ }
+  function sidebarState() {
+    document.body.dataset.sidebar = compact ? 'compact' : 'expanded';
+    collapse.textContent = compact ? '›' : '‹'; collapse.setAttribute('aria-expanded', String(!compact));
+    collapse.setAttribute('aria-label', compact ? 'Expand sidebar' : 'Collapse sidebar'); collapse.title = compact ? 'Expand sidebar' : 'Collapse sidebar';
+  }
+  collapse.addEventListener('click', () => { document.body.dataset.sidebarAnimated = 'true'; compact = !compact; sidebarState(); try { storage.setItem('day-compass.sidebar-compact.v1', String(compact)); } catch {} });
+  brand.after(collapse); sidebarState();
   const sidecar = node('aside', undefined, 'workspace-sidecar'); sidecar.setAttribute('aria-label', 'Upcoming events');
   sidecar.innerHTML = '<section class="widget workspace-upcoming"><h2>Upcoming events</h2><p class="fine-print">Next activities from today, over the next seven days.</p><ul id="workspace-upcoming-list"></ul></section><section class="widget scene-themes"><p class="widget-label">A SPACE THAT FEELS LIKE YOU</p><h2>Choose a mood</h2><div class="scene-theme-grid"></div><button type="button" class="secondary calm-theme" data-scene-theme="aurora">Back to Calm</button></section>';
   $('.calendar-widget').after(sidecar);

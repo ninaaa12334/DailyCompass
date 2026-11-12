@@ -44,7 +44,30 @@ html { scrollbar-gutter: stable; }
 @media(hover:none), (pointer:coarse) {
   .dashboard-page button:active, .dashboard-page .button:active { transform: none; filter: brightness(.94); }
 }
+.sidebar-toggle { display: none !important; }
+@media(min-width: 1120px) {
+  .compass-workspace { --sidebar-width: 192px; padding-left: var(--sidebar-width); }
+  .compass-workspace .assistant-tabs { width: var(--sidebar-width); padding: 1.4rem .7rem; }
+  .compass-workspace[data-sidebar-animated=true] { transition: padding-left 200ms var(--ease-soft); }
+  .compass-workspace[data-sidebar-animated=true] .assistant-tabs { transition: width 200ms var(--ease-soft); }
+  .compass-workspace .workspace-brand { padding: 0 .35rem 1rem; gap: .45rem; }
+  .compass-workspace .workspace-brand > span { font-size: .9rem; }
+  .compass-workspace .workspace-brand svg { width: 30px; }
+  .compass-workspace .sidebar-toggle { display: flex !important; min-height: 36px; align-self: flex-end; width: 36px; padding: 0; font-size: 1.65rem; color: var(--muted); background: var(--surface-alt); border: 1px solid var(--border); border-radius: 10px; margin: -.6rem 0 .4rem; }
+  .compass-workspace .assistant-tabs button[data-panel] { padding-inline: .75rem; gap: .65rem; }
+  .compass-workspace .workspace-appearance { padding-inline: .75rem; gap: .65rem; font-size: .7rem; }
+  .compass-workspace[data-sidebar=compact] { --sidebar-width: 72px; }
+  .compass-workspace[data-sidebar=compact] .workspace-nav-label,
+  .compass-workspace[data-sidebar=compact] .workspace-brand > span,
+  .compass-workspace[data-sidebar=compact] .workspace-sidebar-note { display: none; }
+  .compass-workspace[data-sidebar=compact] .workspace-brand { justify-content: center; padding-inline: 0; }
+  .compass-workspace[data-sidebar=compact] .sidebar-toggle { align-self: center; }
+  .compass-workspace[data-sidebar=compact] .assistant-tabs button[data-panel],
+  .compass-workspace[data-sidebar=compact] .workspace-appearance { justify-content: center; padding-inline: 0; }
+  .compass-workspace[data-sidebar=compact] .workspace-appearance > span:first-child { font-size: 1.2rem; }
+}
 @media(prefers-reduced-motion: reduce) {
+  .compass-workspace[data-sidebar-animated=true] { transition: none; }
   .dashboard-page *, .dashboard-page *::before, .dashboard-page *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .dashboard-page button:active, .dashboard-page .button:active { transform: none; }
 }

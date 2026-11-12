@@ -32,3 +32,23 @@ test('simple calendar keeps upcoming event editing and tasks without duplicate r
   await expect(page.locator('.tasks-widget')).toBeVisible();
   await page.locator('.upcoming-activity').first().click(); await expect(page.locator('#activity-dialog')).toBeVisible();
 });
+
+test('sidebar collapse frees calendar space, persists, and leaves phone navigation labelled', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 }); await ready(page);
+  const before = (await page.locator('.calendar-widget').boundingBox()).width;
+  await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Expand sidebar', exact: true })).toHaveAttribute('aria-expanded', 'false');
+  await expect.poll(async () => (await page.locator('.calendar-widget').boundingBox()).width).toBeGreaterThan(before + 100);
+  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+  await expect(page.locator('.calendar-widget')).toBeVisible();
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.screenshot({ path: 'qa-artifacts/compact-sidebar.png' });
+  await page.reload(); await expect(page.locator('#startup-status')).toContainText('ready');
+  await expect(page.getByRole('button', { name: 'Expand sidebar', exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('[data-panel=calendar] .workspace-nav-label')).toBeVisible();
+  await expect(page.locator('.sidebar-toggle')).toBeHidden();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
+  await expect(page.locator('[data-panel=calendar] .workspace-nav-label')).toBeVisible();
+});
