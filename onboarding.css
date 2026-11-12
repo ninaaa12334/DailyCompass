@@ -16,6 +16,8 @@
 .onboarding-step > p:first-of-type { text-align: center; color: var(--muted); font-size: .95rem; line-height: 1.7; margin: 0 auto 1.7rem; max-width: 46ch; }
 .onboarding-step label { display: block; font-size: .85rem; margin: 1rem 0 .5rem; }
 .onboarding-step input { margin-top: .4rem; border-radius: 14px; min-height: 48px; }
+.onboarding-step .onboarding-all-zones { display: flex; align-items: center; gap: .6rem; min-height: 44px; font-weight: 400; margin: .5rem 0; }
+.onboarding-step .onboarding-all-zones input { min-height: 1.15rem; margin: 0; border-radius: 0; }
 .onboarding-step .fine-print { line-height: 1.65; margin: .7rem 0 1.2rem; }
 .onboarding-themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; width: min(640px, 100%); margin: 0 auto; }
 .onboarding-themes label { position: relative; margin: 0; padding: .65rem; border: 1px solid var(--border); border-radius: 18px; background: color-mix(in srgb, var(--surface) 80%, transparent); cursor: pointer; text-align: center; font-size: .8rem; transition: border-color .18s, box-shadow .18s; }

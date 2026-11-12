@@ -3,6 +3,7 @@ import { storage } from './runtime.mjs';
 import { createPlannerStore } from './planner-store.mjs';
 import { PRESETS } from './appearance.mjs';
 import { selectPreset, currentAppearance, bindAccountAppearance } from './theme-ui.mjs';
+import { initLocationPicker } from './location-picker.mjs';
 
 const $ = selector => document.querySelector(selector), form = $('#onboarding-form');
 try {
@@ -16,13 +17,12 @@ try {
     $('#onboarding-start').value = settings.planningStart; $('#onboarding-end').value = settings.planningEnd;
     $('#onboarding-zone').value = settings.timeZone; $('#onboarding-reminder').value = settings.reminderMinutes;
     $('#onboarding-interests').value = settings.interests || '';
-    const zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
-    for (const zone of new Set([settings.timeZone, 'UTC', ...zones])) { const option = document.createElement('option'); option.value = zone; $('#onboarding-zones').append(option); }
     function zonePreview() {
       try { $('#onboarding-zone-preview').textContent = `The time there is ${new Intl.DateTimeFormat(undefined, { timeZone: $('#onboarding-zone').value, weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date())}. Does that match your local time?`; }
       catch { $('#onboarding-zone-preview').textContent = 'Choose a valid timezone from the suggestions.'; }
     }
     $('#onboarding-zone').addEventListener('input', zonePreview); zonePreview();
+    const locationPicker = initLocationPicker(settings, zonePreview);
     for (const preset of ['aurora', 'linen', 'pistachio', 'lavender', 'ocean', 'sunset', 'dusk', 'aurora-night', 'space']) {
       const label = PRESETS[preset].label;
       const choice = document.createElement('label'), radio = document.createElement('input'), art = document.createElement('span');
@@ -50,7 +50,7 @@ try {
         }
         if (step < 2) { show(step + 1); return; }
         saving = true; $('#onboarding-next').disabled = $('#onboarding-back').disabled = true;
-        model.saveSettings({ planningStart: $('#onboarding-start').value, planningEnd: $('#onboarding-end').value, timeZone: $('#onboarding-zone').value, interests: $('#onboarding-interests').value.trim(), reminderMinutes: Number($('#onboarding-reminder').value), appearance: currentAppearance(), onboardingComplete: true });
+        model.saveSettings({ planningStart: $('#onboarding-start').value, planningEnd: $('#onboarding-end').value, countryCode: locationPicker.countryCode(), timeZone: $('#onboarding-zone').value, interests: $('#onboarding-interests').value.trim(), reminderMinutes: Number($('#onboarding-reminder').value), appearance: currentAppearance(), onboardingComplete: true });
         const result = await api('planner', 'PUT', { state: model.snapshot(), version }); version = result.version;
         location.replace('dashboard.html?welcome=1');
       } catch (error) { $('#onboarding-error').textContent = error.status === 409 ? 'Your account changed in another tab. Reload this page before finishing; your calendar has not been overwritten.' : error.message; }

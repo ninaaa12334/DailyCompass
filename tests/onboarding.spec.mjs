@@ -91,3 +91,23 @@ test('older account with no completion marker must finish setup before opening c
   expect(state.settings.onboardingComplete).toBe(true); expect(state.settings.timeZone).toBe('UTC'); expect(state.settings.interests).toBe('School, football'); expect(state.tasks[0].title).toBe('Keep this task');
   await page.reload(); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
 });
+
+test('country picker includes Kosovo, filters multi-zone countries, and saves country with timezone', async ({ page }) => {
+  let state = memoryModel().snapshot(); state.settings.onboardingComplete = false;
+  await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'locations', name: 'Locations' }, features: {} } }));
+  await page.route('**/api/planner', async route => { if (route.request().method() === 'PUT') state = route.request().postDataJSON().state; await route.fulfill({ json: { state, version: 1 } }); });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/onboarding.html'); await page.locator('#onboarding-next').click();
+  await expect(page.locator('#onboarding-countries option')).toHaveCount(250);
+  await page.locator('#onboarding-country').fill('United States');
+  expect(await page.locator('#onboarding-zones option').count()).toBeGreaterThan(20);
+  await expect(page.locator('#onboarding-zone')).toHaveValue('');
+  await page.locator('#onboarding-all-zones').check(); expect(await page.locator('#onboarding-zones option').count()).toBeGreaterThan(400);
+  await page.locator('#onboarding-all-zones').uncheck(); await page.locator('#onboarding-country').fill('Kosovo');
+  await expect(page.locator('#onboarding-zone')).toHaveValue('Europe/Belgrade'); await expect(page.locator('#onboarding-location-help')).toContainText('Kosovo');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'qa-artifacts/setup-country-kosovo-phone.png', fullPage: true });
+  await page.locator('#onboarding-next').click(); await page.locator('#onboarding-next').click();
+  await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
+  expect(state.settings.countryCode).toBe('XK'); expect(state.settings.timeZone).toBe('Europe/Belgrade');
+});
