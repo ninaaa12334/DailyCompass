@@ -1,3 +1,4 @@
+import { completedSnapshot } from './completed-planner.mjs';
 import { test, expect } from '@playwright/test';
 import { memoryModel } from '../server/plans.mjs';
 
@@ -24,7 +25,7 @@ for (const width of [360, 390, 1440]) test(`settings sections stay organized at 
 });
 
 test('private calendar connection submits once, clears the secret field and supports refresh and disconnect', async ({ page }) => {
-  const state = memoryModel().snapshot(); let connected = false, calls = [];
+  const state = completedSnapshot(); let connected = false, calls = [];
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: {} } }));
   await page.route('**/api/planner', route => route.fulfill({ json: { state, version: 0 } }));
   await page.route('**/api/ical/status', route => route.fulfill({ json: { connected, lastSync: connected ? '2026-11-11T12:00:00Z' : null } }));
@@ -45,7 +46,7 @@ test('test notification targets this device and reports acceptance without claim
   const endpoint = 'https://fcm.googleapis.com/fcm/send/test-only';
   await page.addInitScript(endpoint => { const registration = { async update() {}, pushManager: { getSubscription: async () => ({ endpoint }) } }; Object.defineProperty(navigator, 'serviceWorker', { value: { getRegistration: async () => registration, register: async () => registration } }); }, endpoint);
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: { push: true } } }));
-  await page.route('**/api/planner', route => route.fulfill({ json: { state: memoryModel().snapshot(), version: 0 } }));
+  await page.route('**/api/planner', route => route.fulfill({ json: { state: completedSnapshot(), version: 0 } }));
   let target;
   await page.route('**/api/push/test', route => { target = route.request().postDataJSON(); return route.fulfill({ json: { acceptedByPushService: true, deviceDeliveryConfirmed: false } }); });
   await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');

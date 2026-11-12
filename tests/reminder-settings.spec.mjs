@@ -1,3 +1,4 @@
+import { completedSnapshot } from './completed-planner.mjs';
 import { test, expect } from '@playwright/test';
 import { memoryModel } from '../server/plans.mjs';
 
@@ -10,7 +11,7 @@ test('disabled reminder times explain the state and link directly to enabling no
 
 test('background mode never shows the misleading open-page alerts-off message', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-11-11T18:00:00Z') });
-  const model = memoryModel(); model.saveSettings({ timeZone: 'Europe/Budapest', backgroundReminders: true, remindersEnabled: false });
+  const model = memoryModel(); model.saveSettings({ onboardingComplete: true, timeZone: 'Europe/Budapest', backgroundReminders: true, remindersEnabled: false });
   model.saveActivity({ id: 'sat-test', kind: 'fixed', title: 'SAT practise', date: '2026-11-11', start: '20:45', end: '21:30', reminder: 25, category: 'Study', priority: 'Medium', notes: '', repeat: 'none', repeatUntil: '', locked: false });
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: {} } }));
   await page.route('**/api/planner', route => route.fulfill({ json: { state: model.snapshot(), version: 0 } }));
@@ -35,7 +36,7 @@ test('reminder lead and quiet hours save locally, persist and can be reopened fr
 });
 
 test('reminder center shows nearest upcoming first, quiet-hour warnings and honest delivery status', async ({ page }) => {
-  const state = memoryModel().snapshot(); state.settings.backgroundReminders = true;
+  const state = completedSnapshot(); state.settings.backgroundReminders = true;
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: {} } }));
   await page.route('**/api/planner', route => route.fulfill({ json: { state, version: 0 } }));
   const records = [{ title: 'Later task', due: Date.now() + 7200000, status: 'pending', quiet: true }, { title: 'Next task', due: Date.now() + 3600000, status: 'pending', quiet: false }, { title: 'Previous task', due: Date.now() - 3600000, status: 'accepted-by-push-service' }];

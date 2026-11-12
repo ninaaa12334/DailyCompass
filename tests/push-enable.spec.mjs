@@ -1,8 +1,9 @@
+import { completedSnapshot } from './completed-planner.mjs';
 import { test, expect } from '@playwright/test';
 import { memoryModel } from '../server/plans.mjs';
 
 async function account(page) {
-  let state = memoryModel().snapshot();
+  let state = completedSnapshot();
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: { push: true, pushKey: 'AQID' } } }));
   await page.route('**/api/planner', route => { if (route.request().method() === 'PUT') state = route.request().postDataJSON().state; return route.fulfill({ json: { state, version: 1 } }); });
   await page.route('**/api/reminders', route => route.fulfill({ json: [] }));
@@ -68,7 +69,7 @@ test('another account does not inherit this account’s remembered device choice
 
 test('unavailable push service offers an explicit page-open fallback that fires without a subscription', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-11-11T18:00:00Z') });
-  const model = memoryModel(); model.saveSettings({ timeZone: 'Europe/Budapest', backgroundReminders: true, remindersEnabled: false });
+  const model = memoryModel(); model.saveSettings({ onboardingComplete: true, timeZone: 'Europe/Budapest', backgroundReminders: true, remindersEnabled: false });
   model.saveActivity({ id: 'event', kind: 'fixed', title: 'Future activity', date: '2026-11-11', start: '19:02', end: '19:30', reminder: 1, category: 'Study', priority: 'Medium', notes: '', repeat: 'none', repeatUntil: '', locked: false });
   let state = model.snapshot(), subscriptions = 0;
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: { push: true, pushKey: 'AQID' } } }));

@@ -17,7 +17,7 @@ import { initInterfaceMotion } from './interface-motion.mjs';
 export async function startApp() {
   const $ = selector => document.querySelector(selector);
   const account = await loadAccount();
-  if (account.user && account.document.state.settings.onboardingComplete === false) { location.replace('onboarding.html'); return false; }
+  if (account.user && account.document.state.settings.onboardingComplete !== true) { location.replace('onboarding.html'); return false; }
   if (isDemo) seedDemo(storage);
   const model = createPlannerStore(storage);
   if (account.user) bindAccountAppearance(model);

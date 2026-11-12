@@ -1,9 +1,10 @@
+import { completedSnapshot } from './completed-planner.mjs';
 import { test, expect } from '@playwright/test';
 import { memoryModel } from '../server/plans.mjs';
 
 async function setup(page) {
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: { push: true } } }));
-  await page.route('**/api/planner', route => route.fulfill({ json: { state: memoryModel().snapshot(), version: 0 } }));
+  await page.route('**/api/planner', route => route.fulfill({ json: { state: completedSnapshot(), version: 0 } }));
   await page.route('**/api/reminders', route => route.fulfill({ json: [] }));
   await page.addInitScript(() => {
     globalThis.popupRequests = [];

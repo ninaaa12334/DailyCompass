@@ -29,7 +29,7 @@ for (const width of [360, 390, 430]) test(`assistant tabs, setup, and welcome fi
   for (const panel of ['ai', 'settings', 'day']) {
     await page.locator(`[data-panel=${panel}]`).click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    for (const button of await page.locator('.assistant-tabs button').all()) expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    for (const button of await page.locator('.assistant-tabs button:visible').all()) expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(44);
     if (width === 390) await page.screenshot({ path: `qa-artifacts/assistant-${panel}.png`, fullPage: true });
   }
   await page.goto('/index.html'); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -60,7 +60,7 @@ test('real account sign-in persists private planner, imports local data explicit
 });
 test('AI review edits, rejects and approves selected activities without saving the preview', async ({ page }) => {
   // Provider responses are mocked explicitly; UI approval is still exercised.
-  const state = { version: 2, revision: 0, tasks: [], days: {}, plans: {}, unscheduled: {}, settings: { timeZone: 'Europe/Budapest', planningStart: '08:00', planningEnd: '20:00', sleepStart: '23:00', sleepEnd: '07:00', breakMinutes: 5, remindersEnabled: false, reminderMinutes: 10, quietStart: '22:00', quietEnd: '07:00' }, reminderLog: {}, undo: null };
+  const state = { version: 2, revision: 0, tasks: [], days: {}, plans: {}, unscheduled: {}, settings: { onboardingComplete: true, timeZone: 'Europe/Budapest', planningStart: '08:00', planningEnd: '20:00', sleepStart: '23:00', sleepEnd: '07:00', breakMinutes: 5, remindersEnabled: false, reminderMinutes: 10, quietStart: '22:00', quietEnd: '07:00' }, reminderLog: {}, undo: null };
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'test', name: 'Test' }, features: { ai: true } } }));
   await page.route('**/api/planner', route => route.fulfill({ json: { state, version: 0 } }));
   let previewRequest;

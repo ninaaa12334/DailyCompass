@@ -44,7 +44,7 @@ test('unfinished Google account setup handles save conflicts without opening the
 });
 
 test('existing accounts bypass setup and retain scheduled notification preferences', async ({ page }) => {
-  const state = memoryModel().snapshot(); state.settings.backgroundReminders = true; state.settings.reminderMinutes = 30;
+  const state = memoryModel().snapshot(); state.settings.onboardingComplete = true; state.settings.backgroundReminders = true; state.settings.reminderMinutes = 30;
   await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'existing', name: 'Existing' }, features: {} } }));
   await page.route('**/api/planner', route => route.fulfill({ json: { state, version: 0 } }));
   await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.'); await expect(page).toHaveURL(/dashboard\.html/);
@@ -74,4 +74,20 @@ test('existing account can revisit setup, choose soft palettes and keep saved ta
   await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
   expect(state.settings.appearance.preset).toBe('dusk'); expect(state.tasks[0].title).toBe('Existing project'); expect(state.settings.backgroundReminders).toBe(true);
   await page.screenshot({ path: 'qa-artifacts/workspace-dusk-desktop.png', fullPage: true });
+});
+
+test('older account with no completion marker must finish setup before opening calendar', async ({ page }) => {
+  const model = memoryModel();
+  model.saveActivity({ id: 'existing', kind: 'task', title: 'Keep this task', date: '', deadline: '2026-12-20', duration: 30, spent: 0, category: 'Study', priority: 'Medium', notes: '', reminder: 'default', repeat: 'none', repeatUntil: '', locked: false });
+  let state = model.snapshot(); delete state.settings.onboardingComplete;
+  await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'legacy', name: 'Legacy' }, features: {} } }));
+  await page.route('**/api/planner', async route => { if (route.request().method() === 'PUT') state = route.request().postDataJSON().state; await route.fulfill({ json: { state, version: 1 } }); });
+  await page.goto('/dashboard.html#calendar-heading'); await expect(page).toHaveURL(/onboarding.html/);
+  await expect(page.locator('#onboarding-themes')).toBeVisible();
+  await page.locator('input[name=theme][value=pistachio]').check(); await page.locator('#onboarding-next').click();
+  await page.locator('#onboarding-zone').fill('UTC'); await expect(page.locator('#onboarding-zone-preview')).toContainText('Does that match your local time');
+  await page.locator('#onboarding-next').click(); await page.locator('#onboarding-interests').fill('School, football');
+  await page.locator('#onboarding-next').click(); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
+  expect(state.settings.onboardingComplete).toBe(true); expect(state.settings.timeZone).toBe('UTC'); expect(state.settings.interests).toBe('School, football'); expect(state.tasks[0].title).toBe('Keep this task');
+  await page.reload(); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
 });

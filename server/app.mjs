@@ -112,7 +112,7 @@ export function createApplication(options = {}) {
         const input = await body(request), account = await clerkLogin.exchange(input.token, input.timeZone), token = randomBytes(32).toString('base64url'), sessionHash = hash(token);
         db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(sessionHash, account.id, Date.now() + 2592000000);
         db.prepare('INSERT INTO clerk_sessions VALUES(?,?,?)').run(sessionHash, account.externalSessionId, account.subject);
-        response.setHeader('Set-Cookie', cookie(token)); return json(response, { user: { id: account.id, name: account.name, provider: 'clerk' }, onboardingRequired: readDocument(account.id).state.settings.onboardingComplete === false });
+        response.setHeader('Set-Cookie', cookie(token)); return json(response, { user: { id: account.id, name: account.name, provider: 'clerk' }, onboardingRequired: readDocument(account.id).state.settings.onboardingComplete !== true });
       }
       if (route === '/api/auth/google/start' && request.method === 'POST') {
         assert(!user, 'You are already signed in. Sign out before switching accounts.', 409);
@@ -125,7 +125,7 @@ export function createApplication(options = {}) {
           assert(!user, 'Already signed in.');
           const account = await googleLogin.finish(url.searchParams, request.headers.cookie), token = randomBytes(32).toString('base64url');
           db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), account.id, Date.now() + 2592000000);
-          response.setHeader('Set-Cookie', [cookie(token), googleLogin.browserCookie('')]); response.writeHead(303, { Location: readDocument(account.id).state.settings.onboardingComplete === false ? '/onboarding.html' : '/dashboard.html' }); response.end();
+          response.setHeader('Set-Cookie', [cookie(token), googleLogin.browserCookie('')]); response.writeHead(303, { Location: readDocument(account.id).state.settings.onboardingComplete !== true ? '/onboarding.html' : '/dashboard.html' }); response.end();
         } catch { response.setHeader('Set-Cookie', googleLogin.browserCookie('')); response.writeHead(303, { Location: '/auth.html?error=google' }); response.end(); }
         return;
       }
@@ -151,7 +151,7 @@ export function createApplication(options = {}) {
           const actual = await scrypt(password, salt, 64); assert(account && timingSafeEqual(actual, Buffer.from(expected, 'hex')), 'Username or password is incorrect.', 401);
         }
         failures.delete(address); const token = randomBytes(32).toString('base64url');
-        db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), account.id, Date.now() + 2592000000); response.setHeader('Set-Cookie', cookie(token)); return json(response, { user: { id: account.id, name }, onboardingRequired: readDocument(account.id).state.settings.onboardingComplete === false });
+        db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), account.id, Date.now() + 2592000000); response.setHeader('Set-Cookie', cookie(token)); return json(response, { user: { id: account.id, name }, onboardingRequired: readDocument(account.id).state.settings.onboardingComplete !== true });
       }
       assert(user, 'Sign in to use your private server planner.', 401);
       assert(!request.headers['x-compass-user'] || request.headers['x-compass-user'] === user.id, 'The signed-in account changed in another tab. Export unsynced changes, then reload.', 401);
