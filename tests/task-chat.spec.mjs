@@ -1,0 +1,30 @@
+import {test,expect} from '@playwright/test';
+
+test('chat reviews an uncertain deadline, saves without calendar time, edits and completes',async({page})=>{
+  await page.clock.install({time:new Date('2026-11-12T08:00:00Z')});
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
+  await page.getByRole('button',{name:'✦ Task helper',exact:true}).click();
+  await page.locator('#task-chat-text').fill('I have a history project due next week');
+  await page.getByRole('button',{name:'Review task',exact:true}).click();
+  await expect(page.locator('#task-chat-status')).toContainText('Which date next week');
+  await page.screenshot({path:'qa-artifacts/task-chat-mobile.png'});
+  await expect(page.locator('#task-chat-review [name=deadline]')).toHaveValue('');
+  await page.locator('#task-chat-review [name=deadline]').fill('2026-11-19');
+  await page.getByRole('button',{name:'Add to tasks & deadlines',exact:true}).click();
+  await expect(page.locator('#task-chat-status')).toContainText('Saved to tasks');
+  await page.locator('#task-chat-close').click();
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('day-compass.planner.v2')));
+  expect(saved.tasks).toHaveLength(1); expect(saved.tasks[0].date).toBe(''); expect(saved.tasks[0].deadlineReminder).toEqual({date:'2026-11-19',time:'09:00'});
+  await page.reload(); await expect(page.locator('#startup-status')).toHaveText('Planner ready.');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.getByRole('button',{name:'Edit a history project',exact:true}).click();
+  await page.locator('#flexible-fields summary').click();
+  await expect(page.locator('[name=deadlineAlertDate]')).toHaveValue('2026-11-19');
+  await page.locator('[name=deadlineAlertTime]').fill('10:00');
+  await page.locator('#save-activity').click();
+  await expect(page.locator('#activity-dialog')).not.toBeVisible();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('day-compass.planner.v2')).tasks[0].deadlineReminder.time)).toBe('10:00');
+  await page.getByRole('checkbox',{name:'Mark a history project complete',exact:true}).click();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('day-compass.planner.v2')).tasks[0].completed)).toBe(true);
+});

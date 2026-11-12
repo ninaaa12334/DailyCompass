@@ -5,6 +5,7 @@ import { zonedNow } from '../clock.mjs';
 import { wallToInstant } from '../zoned-time.mjs';
 import { minutes } from '../calendar-store.mjs';
 import { createHash, randomBytes } from 'node:crypto';
+import { deadlineReminders } from '../deadline-reminders.mjs';
 
 export function pushReceipt(db, user, key) {
   const receipt = db.prepare('SELECT received,display_requested,error FROM push_receipts WHERE user_id=? AND key=?').get(user, key);
@@ -40,6 +41,16 @@ export function reminderJobs(snapshot, at = new Date()) {
         jobs.push({ key, due, start, expires: start + (lead === 0 ? 60000 : 0), title: item.title, date, activityId: item.taskId || item.id, quiet });
       } catch { /* A nonexistent or ambiguous wall time is shown as unscheduled by the center. No guessed delivery. */ }
     }
+  }
+  for (const item of deadlineReminders(snapshot)) {
+    if (item.date < today || item.date > addDays(today, 31)) continue;
+    try {
+      const due = wallToInstant(item.date, item.start, settings.timeZone);
+      const localDue = minutes(item.start), a = minutes(settings.quietStart), b = minutes(settings.quietEnd);
+      const quiet = a !== b && (a < b ? localDue >= a && localDue < b : localDue >= a || localDue < b);
+      const key = createHash('sha256').update(`${item.key}|${settings.timeZone}`).digest('hex');
+      jobs.push({ key, due, start: due, expires: due + 5 * 60000, title: item.title, date: item.date, activityId: item.activityId, quiet });
+    } catch { /* Ambiguous DST times require a different reminder time. */ }
   }
   return jobs;
 }

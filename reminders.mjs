@@ -1,6 +1,7 @@
 import { addDays } from './calendar-view.mjs';
 import { dayNumber } from './clock.mjs';
 import { minutes } from './calendar-store.mjs';
+import { deadlineReminders } from './deadline-reminders.mjs';
 
 export function isQuiet(minute, settings) {
   const start = minutes(settings.quietStart), end = minutes(settings.quietEnd);
@@ -20,5 +21,6 @@ export function upcomingReminders(model, now) {
       result.push({ key: `${item.id}|${date}|${item.start}|${lead}`, title: item.title, date, start: item.start, due: start - lead, startStamp: start, lead });
     }
   }
+  result.push(...deadlineReminders(model.snapshot()).filter(r => r.startStamp >= timestamp && r.date <= addDays(now.date, 7)));
   return result.sort((a, b) => a.due - b.due);
 }

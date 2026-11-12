@@ -172,3 +172,9 @@ The frontend remains HTML/CSS/JavaScript modules. `availability.mjs` merges busy
 Small exercise: plan 08:00-18:00 with school 08:00-15:00 and a 15-minute travel buffer. Predict the first afternoon gap, then find its calculation in `availability.mjs`. Understand and test this stage before extending integrations.
 
 Code, tests and documentation were produced with AI assistance. Keep that attribution accurate. Verify the specific Hack Club/TRMNT program's current AI/originality/time rules before submitting; never fabricate coding hours or present generated text as your own work log.
+# Deadline task helper
+
+The floating **Task helper** saves a flexible task without booking a calendar slot. It uses free, local text rules (not an AI model). Supported date phrases include today, tomorrow, weekdays, and `YYYY-MM-DD`. A phrase such as “next week” asks for a specific date in the review form. Review the title, deadline, estimated minutes, and optional reminder before adding it.
+
+A task's optional `deadlineReminder: { date, time }` is separate from its calendar start time. The suggested reminder is 09:00 on the deadline date, in the planner timezone, and can be changed before saving or in **Edit → Deadline notification**. Clear the reminder date to remove that alert. Completion, deletion, or Reminder → Off cancels future alerts. Background delivery requires an enabled account/device, running Node server, and awake/network-connected device; quiet hours apply. Deadline alerts have a five-minute dispatch window and are attempted once. Tests verify dispatch with a mocked push service; real device delivery must still be tested.
+

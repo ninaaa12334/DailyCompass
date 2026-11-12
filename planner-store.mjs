@@ -51,6 +51,12 @@ export function validatePlanner(state) {
     validateActivity(task);
     ensure(!ids.has(task.id), 'Duplicate task IDs in saved data.'); ids.add(task.id);
     ensure((task.date === '' || validDate(task.date)) && (task.deadline === '' || validDate(task.deadline)), 'Invalid task date or deadline.');
+    if (task.deadlineReminder !== undefined) {
+      ensure(task.deadlineReminder && validDate(task.deadline) && validDate(task.deadlineReminder.date) && task.deadlineReminder.date <= task.deadline, 'A deadline reminder needs a date on or before the deadline.');
+      minutes(task.deadlineReminder.time);
+      ensure(/^([01]\d|2[0-3]):[0-5]\d$/.test(task.deadlineReminder.time), 'Choose a valid deadline reminder time.');
+      wallToInstant(task.deadlineReminder.date, task.deadlineReminder.time, state.settings.timeZone);
+    }
     ensure(Number.isInteger(task.duration) && task.duration > 0 && task.duration <= 1440 && Number.isInteger(task.spent) && task.spent >= 0 && task.spent <= task.duration, 'Duration must be 1–1440 minutes; time already worked cannot exceed it.');
   }
   for (const [date, day] of Object.entries(state.days)) {
@@ -158,7 +164,7 @@ export function createPlannerStore(storage) {
           if (source?.seriesId && scope === 'one') { item.repeat = 'none'; item.repeatUntil = ''; }
           else if (source && scope === 'series' && validDate(item.repeatUntil)) item.repeatUntil = addDays(item.repeatUntil, seriesShift);
           if (kind === 'task') {
-            item.deadline = input.deadline ? addDays(occurrence.date, dayNumber(input.deadline) - dayNumber(input.date)) : '';
+            item.deadline = input.deadline ? (input.date ? addDays(occurrence.date, dayNumber(input.deadline) - dayNumber(input.date)) : input.deadline) : '';
             next.tasks.push(normalizeTask(item));
             // Keep existing schedule positions on a details edit. Replanning previews timing changes.
             if (source) for (const [date, entries] of Object.entries(state.plans)) {

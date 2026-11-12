@@ -57,6 +57,8 @@ export async function startApp() {
     const data = source ? { ...source, date: source.date || date, kind } : { kind, title, date, category: 'Study', priority: 'Medium', start: timeLabel(start ?? 9 * 60), end: timeLabel(end ?? Math.min(1439, (start ?? 9 * 60) + 60)), duration: 30, spent: 0, deadline: '', notes: '', repeat: 'none', repeatUntil: '', reminder: 'default', dstChoice: '' };
     if (source) original = { id: source.id, kind, date: source.date || date };
     for (const name of ['kind', 'title', 'date', 'category', 'priority', 'start', 'end', 'duration', 'spent', 'deadline', 'notes', 'repeat', 'repeatUntil', 'reminder']) if (data[name] !== undefined) field(name).value = data[name];
+    field('deadlineAlertDate').value = source?.deadlineReminder?.date || '';
+    field('deadlineAlertTime').value = source?.deadlineReminder?.time || '09:00';
     field('dstChoice').value = data.dstChoice || '';
     field('kind').disabled = Boolean(original); field('repeat').disabled = Boolean(original);
     $('#series-controls').hidden = !source?.seriesId;
@@ -82,7 +84,7 @@ export async function startApp() {
       check.addEventListener('change', () => { attempt(() => model.toggle('task', task.id)); const replacement = [...list.querySelectorAll('input')].find(node => node.dataset.taskId === task.id); (replacement || $('#task-filter')).focus(); });
       const content = document.createElement('div'); content.className = 'task-content';
       const title = document.createElement('span'); title.className = 'task-title'; title.textContent = task.title;
-      const detail = document.createElement('p'); detail.className = 'task-details'; detail.textContent = `${task.category} · ${task.duration - task.spent} min remaining · ${task.priority} priority${task.deadline ? ` · Due ${task.deadline}` : ''}`;
+      const detail = document.createElement('p'); detail.className = 'task-details'; detail.textContent = `${task.category} · ${task.duration - task.spent} min remaining · ${task.priority} priority${task.deadline ? ` · Due ${task.deadline}` : ''}${task.deadlineReminder && task.reminder !== 'off' ? ` · Deadline reminder ${task.deadlineReminder.date} at ${task.deadlineReminder.time}` : ''}`;
       content.append(title, detail); li.append(check, content);
       const actions = document.createElement('div'); actions.className = 'task-actions';
       for (const label of ['Edit', 'Delete']) {
@@ -163,6 +165,7 @@ export async function startApp() {
     const data = {};
     for (const name of ['kind', 'title', 'category', 'priority', 'date', 'start', 'end', 'deadline', 'notes', 'repeat', 'repeatUntil', 'reminder']) data[name] = field(name).value;
     data.title = data.title.trim(); data.duration = Number(field('duration').value); data.spent = Number(field('spent').value); data.id = original?.id || crypto.randomUUID(); data.locked = false;
+    if (data.kind === 'task' && field('deadlineAlertDate').value) data.deadlineReminder = { date: field('deadlineAlertDate').value, time: field('deadlineAlertTime').value };
     if (!['default', 'off'].includes(data.reminder)) data.reminder = Number(data.reminder);
     data.dstChoice = field('dstChoice').value;
     if (attempt(() => { if (data.kind === 'fixed') { wallToInstant(data.date, data.start, model.snapshot().settings.timeZone, data.dstChoice); wallToInstant(data.date, data.end, model.snapshot().settings.timeZone, data.dstChoice); } model.saveActivity(data, original, field('scope').value); }, '#activity-error')) { calendar.selectDate(data.date); $('#activity-dialog').close(); feedback(data.kind === 'task' ? 'Task saved. Generate or replan your day to preview where it fits.' : 'Activity saved. Undo is available.'); }

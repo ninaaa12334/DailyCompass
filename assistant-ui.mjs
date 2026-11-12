@@ -171,6 +171,7 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   initSettings({ account });
   initPrivateCalendar({ account, sync });
   initReminderSettings({ model, account, sync, pushStatus });
+  initTaskChat({ model, account, sync });
   $('#push-open-page-fallback').addEventListener('click', guard('#push-operation-status', async () => {
     storage.setItem('day-compass.open-page-fallback.v1', 'true'); model.saveSettings({ remindersEnabled: true }); await sync.flush();
     $('#push-operation-status').textContent = 'Page-open reminders are enabled on this browser. Keep Day Compass open and the computer awake. Quiet hours still apply. This is not background push; no reminders can fire from this page after it closes.';
@@ -178,3 +179,4 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   initNotificationDiagnostics({ account });
   return { render() { render(); workspace.render(); }, openSetup };
 }
+import { initTaskChat } from './task-chat.mjs';
