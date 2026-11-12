@@ -7,8 +7,8 @@ for (const width of [360, 390, 1440]) test(`new account setup precedes calendar,
   const response = await page.request.post('/api/register', { headers: { Origin: 'http://127.0.0.1:8081' }, data: { name, password: 'test-password-long', timeZone: 'Europe/Budapest' } });
   expect((await response.json()).onboardingRequired).toBe(true);
   await page.goto('/dashboard.html'); await expect(page).toHaveURL(/onboarding\.html/);
-  await page.locator('input[name=theme][value=aurora-night]').check();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'aurora-night');
+  await page.locator('input[name=theme][value=dusk]').check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dusk');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `qa-artifacts/onboarding-${width}.png`, fullPage: true });
   await page.locator('#onboarding-next').click();
@@ -21,13 +21,13 @@ for (const width of [360, 390, 1440]) test(`new account setup precedes calendar,
   await expect(page.locator('.welcome-connections')).toBeVisible();
   await expect(page.locator('.welcome-connections a')).toHaveAttribute('href', 'dashboard.html#connections');
   const doc = await (await page.request.get('/api/planner')).json();
-  expect(doc.state.settings.onboardingComplete).toBe(true); expect(doc.state.settings.appearance.preset).toBe('aurora-night');
+  expect(doc.state.settings.onboardingComplete).toBe(true); expect(doc.state.settings.appearance.preset).toBe('dusk');
   expect(doc.state.settings.planningStart).toBe('09:00'); expect(doc.state.settings.reminderMinutes).toBe(15); expect(doc.state.settings.backgroundReminders).not.toBe(true);
   await page.getByRole('button', { name: 'Not now', exact: true }).click(); await expect(page.locator('.welcome-connections')).toHaveCount(0);
-  await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.'); await expect(page.locator('html')).toHaveAttribute('data-theme', 'aurora-night');
+  await page.goto('/dashboard.html'); await expect(page.locator('#startup-status')).toHaveText('Planner ready.'); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dusk');
   if (width === 1440) {
     const other = await browser.newContext({ baseURL: 'http://127.0.0.1:8081' }); await other.addCookies(await page.context().cookies());
-    const fresh = await other.newPage(); await fresh.goto('/dashboard.html'); await expect(fresh.locator('#startup-status')).toHaveText('Planner ready.'); await expect(fresh.locator('html')).toHaveAttribute('data-theme', 'aurora-night'); await other.close();
+    const fresh = await other.newPage(); await fresh.goto('/dashboard.html'); await expect(fresh.locator('#startup-status')).toHaveText('Planner ready.'); await expect(fresh.locator('html')).toHaveAttribute('data-theme', 'dusk'); await other.close();
   }
 });
 
@@ -84,6 +84,7 @@ test('older account with no completion marker must finish setup before opening c
   await page.route('**/api/planner', async route => { if (route.request().method() === 'PUT') state = route.request().postDataJSON().state; await route.fulfill({ json: { state, version: 1 } }); });
   await page.goto('/dashboard.html#calendar-heading'); await expect(page).toHaveURL(/onboarding.html/);
   await expect(page.locator('#onboarding-themes')).toBeVisible();
+  await page.locator('#onboarding-other-palettes summary').click();
   await page.locator('input[name=theme][value=pistachio]').check(); await page.locator('#onboarding-next').click();
   await page.locator('#onboarding-zone').fill('UTC'); await expect(page.locator('#onboarding-zone-preview')).toContainText('Does that match your local time');
   await page.locator('#onboarding-next').click(); await page.locator('#onboarding-interests').fill('School, football');

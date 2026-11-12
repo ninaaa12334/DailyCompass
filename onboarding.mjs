@@ -23,14 +23,15 @@ try {
     }
     $('#onboarding-zone').addEventListener('input', zonePreview); zonePreview();
     const locationPicker = initLocationPicker(settings, zonePreview);
-    for (const preset of ['aurora', 'linen', 'pistachio', 'lavender', 'ocean', 'sunset', 'dusk', 'aurora-night', 'space']) {
+    for (const preset of ['linen', 'stone', 'clay', 'dusk', 'aurora', 'pistachio', 'lavender', 'ocean', 'sunset', 'aurora-night', 'space']) {
       const label = PRESETS[preset].label;
       const choice = document.createElement('label'), radio = document.createElement('input'), art = document.createElement('span');
       radio.type = 'radio'; radio.name = 'theme'; radio.value = preset; radio.required = true; radio.checked = currentAppearance().preset === preset;
       art.className = 'onboarding-theme-art'; art.style.background = `linear-gradient(135deg, ${PRESETS[preset].background} 0 45%, ${PRESETS[preset].tint} 45% 75%, ${PRESETS[preset].accent} 75%)`; art.setAttribute('aria-hidden', 'true');
-      choice.append(radio, art, document.createTextNode(label)); $('#onboarding-themes').append(choice);
+      choice.append(radio, art, document.createTextNode(label)); $(['linen', 'stone', 'clay', 'dusk'].includes(preset) ? '#onboarding-themes' : '#onboarding-other-themes').append(choice);
       radio.addEventListener('change', () => { selectPreset(preset); $('#onboarding-error').textContent = ''; });
     }
+    $('#onboarding-other-palettes').open = !['linen', 'stone', 'clay', 'dusk'].includes(currentAppearance().preset);
     function show(next) {
       step = next;
       document.querySelectorAll('.onboarding-step').forEach((fieldset, index) => { fieldset.hidden = index !== step; fieldset.disabled = index !== step; });

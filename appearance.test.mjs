@@ -33,6 +33,16 @@ test('all preset and custom accent/button text combinations meet 4.5:1 contrast'
   }
 });
 
+test('warm minimal palettes retain readable primary and secondary text', () => {
+  for (const preset of ['linen', 'stone', 'clay', 'dusk']) {
+    const theme = resolveAppearance({ ...DEFAULT_APPEARANCE, preset });
+    for (const surface of [theme.surface, theme.surfaceAlt, theme.background]) {
+      assert.ok(contrastRatio(theme.text, surface) >= 4.5, `${preset}: primary text`);
+      assert.ok(contrastRatio(theme.muted, surface) >= 4.5, `${preset}: secondary text`);
+    }
+  }
+});
+
 test('system theme responds to OS mode and corrupt preferences remain untouched', () => {
   const value = { ...DEFAULT_APPEARANCE, preset: 'system' };
   assert.equal(resolveAppearance(value, true).dark, true);

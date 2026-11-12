@@ -21,6 +21,45 @@ html { scrollbar-gutter: stable; }
 .dashboard-page .dialog-heading button { border-radius: 999px; font-size: .75rem; }
 .dashboard-page .task-chat-launch { border-radius: 999px; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 20%, transparent); }
 @keyframes soft-dialog-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* One coherent warm palette, from the welcome screen to the timetable. */
+:root[data-palette=warm] body { background: var(--background); }
+:root[data-palette=warm] .compass-workspace { --workspace-glass: var(--surface); --workspace-line: var(--border); background: var(--background); }
+:root[data-palette=warm] .compass-workspace .widget { background: var(--surface); border: 1px solid color-mix(in srgb, var(--border) 65%, transparent); box-shadow: 0 3px 14px -10px #3e3b3020; }
+:root[data-palette=warm] .compass-workspace .now-widget,
+:root[data-palette=warm] .compass-workspace .free-widget { background: var(--surface); }
+:root[data-palette=warm] .compass-workspace .assistant-tabs { background: var(--background); backdrop-filter: none; }
+:root[data-palette=warm] .compass-workspace .assistant-tabs button[aria-pressed=true] { background: var(--tint); color: var(--text); border-color: transparent; }
+:root[data-palette=warm] .compass-workspace .productivity-toggle { background: var(--surface); box-shadow: none; }
+:root[data-palette=warm] .compass-workspace .dashboard-heading h1 { font-weight: 550; letter-spacing: -.045em; }
+:root[data-palette=warm] .brand-icon { background: var(--accent); box-shadow: none; }
+:root[data-palette=warm] .compass-workspace [data-activity] { --event-fill: #e9e5dc; --event-line: #a3947d; --event-ink: #4f4a41; }
+:root[data-palette=warm] .compass-workspace [data-activity=exercise],
+:root[data-palette=warm] .compass-workspace [data-activity=football],
+:root[data-palette=warm] .compass-workspace [data-activity=volleyball] { --event-fill: #e1e7d8; --event-line: #879872; --event-ink: #3d4933; }
+:root[data-palette=warm] .compass-workspace [data-activity=study],
+:root[data-palette=warm] .compass-workspace [data-activity=creative] { --event-fill: #eee2d6; --event-line: #ae8d73; --event-ink: #5b4637; }
+:root[data-palette=warm] .dashboard-page button:hover,
+:root[data-palette=warm] .dashboard-page .button:hover { transform: none; }
+:root[data-palette=warm] .dashboard-page .secondary { background: var(--surface-alt); border-color: transparent; }
+:root[data-palette=warm] .compass-workspace .calendar-view-switch button,
+:root[data-palette=warm] .compass-workspace .productivity-switch button,
+:root[data-palette=warm] .compass-workspace .period-controls button { background: transparent; }
+:root[data-palette=warm] .compass-workspace .calendar-view-switch button[aria-pressed=true],
+:root[data-palette=warm] .compass-workspace .productivity-switch button[aria-pressed=true] { background: var(--surface); color: var(--text); }
+:root[data-palette=warm] .dashboard-page input:not([type=checkbox]):not([type=radio]):not([type=color]),
+:root[data-palette=warm] .dashboard-page select,
+:root[data-palette=warm] .dashboard-page textarea { background: var(--surface-alt); border-color: transparent; }
+:root[data-palette=warm] .dashboard-page input:focus-visible,
+:root[data-palette=warm] .dashboard-page select:focus-visible,
+:root[data-palette=warm] .dashboard-page textarea:focus-visible { border-color: var(--accent); }
+:root[data-palette=warm] .scene-theme-art::after { display: none; }
+:root[data-palette=warm] .scene-theme { border-radius: 12px; box-shadow: none; }
+:root[data-palette=warm] .dashboard-page dialog::backdrop { backdrop-filter: blur(4px); }
+#other-palettes { margin-top: .8rem; }
+#other-palettes summary { min-height: 44px; padding: .65rem 0; font-size: .8rem; color: var(--muted); cursor: pointer; }
+#appearance-dialog #theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#appearance-dialog #other-theme-options { margin-top: .6rem; }
 @media(hover:hover) and (pointer:fine) {
   .dashboard-page button:hover, .dashboard-page .button:hover { transform: translateY(-1px); }
   .dashboard-page button:active, .dashboard-page .button:active { transform: scale(.97); }

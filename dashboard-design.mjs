@@ -31,7 +31,7 @@ export function initDashboardDesign({ model, openActivity, now }) {
   collapse.addEventListener('click', () => { document.body.dataset.sidebarAnimated = 'true'; compact = !compact; sidebarState(); try { storage.setItem('day-compass.sidebar-compact.v1', String(compact)); } catch {} });
   brand.after(collapse); sidebarState();
   const sidecar = node('aside', undefined, 'workspace-sidecar'); sidecar.setAttribute('aria-label', 'Upcoming events');
-  sidecar.innerHTML = '<section class="widget workspace-upcoming"><h2>Upcoming events</h2><p class="fine-print">Next activities from today, over the next seven days.</p><ul id="workspace-upcoming-list"></ul></section><section class="widget scene-themes"><p class="widget-label">A SPACE THAT FEELS LIKE YOU</p><h2>Choose a mood</h2><div class="scene-theme-grid"></div><button type="button" class="secondary calm-theme" data-scene-theme="aurora">Back to Calm</button></section>';
+  sidecar.innerHTML = '<section class="widget workspace-upcoming"><h2>Upcoming events</h2><p class="fine-print">Next activities from today, over the next seven days.</p><ul id="workspace-upcoming-list"></ul></section><section class="widget scene-themes"><p class="widget-label">A SPACE THAT FEELS LIKE YOU</p><h2>Choose a mood</h2><div class="scene-theme-grid"></div><button type="button" class="secondary calm-theme" data-open-full-themes>All themes</button></section>';
   $('.calendar-widget').after(sidecar);
   const dayDetails = node('details', undefined, 'day-details');
   dayDetails.append(node('summary', 'Day details'), $('.timeline-widget'));
@@ -41,12 +41,13 @@ export function initDashboardDesign({ model, openActivity, now }) {
   themeDetails.append(node('summary', 'Choose a mood'));
   themes.querySelector('h2').remove(); themes.querySelector('.widget-label').remove();
   themeDetails.append(...themes.children); themes.append(themeDetails);
-  for (const [preset, label] of [['linen', 'Linen'], ['pistachio', 'Pistachio'], ['lavender', 'Lavender'], ['dusk', 'Soft dusk'], ['aurora-night', 'Aurora'], ['ocean', 'Ocean'], ['sunset', 'Sunset'], ['space', 'Space']]) {
+  for (const [preset, label] of [['linen', 'Linen'], ['stone', 'Stone'], ['clay', 'Clay'], ['dusk', 'Soft dusk']]) {
     const button = node('button', undefined, `scene-theme scene-${preset}`); button.type = 'button'; button.dataset.sceneTheme = preset; button.setAttribute('aria-label', `${label} workspace theme`);
     const art = node('span', undefined, 'scene-theme-art'); art.setAttribute('aria-hidden', 'true');
-    if (['linen', 'pistachio', 'lavender', 'dusk'].includes(preset)) { art.style.background = `linear-gradient(135deg, ${PRESETS[preset].tint}, ${PRESETS[preset].accent})`; }
+    if (['linen', 'stone', 'clay', 'dusk'].includes(preset)) { art.style.background = `linear-gradient(135deg, ${PRESETS[preset].tint}, ${PRESETS[preset].accent})`; }
     button.append(art, node('span', label, 'scene-theme-name'), node('span', '\u2713', 'scene-theme-check')); $('.scene-theme-grid').append(button);
   }
+  $('[data-open-full-themes]').addEventListener('click', () => $('[data-open-appearance]').click());
   document.querySelectorAll('[data-scene-theme]').forEach(button => button.addEventListener('click', () => { try { selectPreset(button.dataset.sceneTheme); } catch { $('#planner-feedback').textContent = 'This theme could not be saved. Check browser storage permissions.'; } }));
   function themeState() { document.querySelectorAll('[data-scene-theme]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.sceneTheme === document.documentElement.dataset.theme))); }
   document.addEventListener('appearance-changed', themeState);

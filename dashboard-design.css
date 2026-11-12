@@ -49,7 +49,7 @@
 .scene-theme-check { display: none; position: absolute; right: .3rem; top: .3rem; color: #18362c; background: #a6f5dc; border-radius: 50%; width: 1.2rem; height: 1.2rem; font-size: .7rem; text-align: center; line-height: 1.2rem; }
 .scene-theme[aria-pressed="true"] .scene-theme-check { display: block; }
 .calm-theme { width: 100%; margin-top: .75rem; min-height: 44px; font-size: .7rem; }
-:root[data-mode="dark"] .compass-workspace { --border: #454561; --text: #f1f0fa; --muted: #bfc4da; --lilac-card: #302b4d; --peach-card: #362c43; --workspace-glass: color-mix(in srgb, var(--surface) 94%, transparent); --workspace-line: #a69aca40; background: radial-gradient(ellipse at 70% 0%, #7051ad30, transparent 48%), var(--background); }
+:root[data-mode="dark"] .compass-workspace { --lilac-card: #302b4d; --peach-card: #362c43; --workspace-glass: color-mix(in srgb, var(--surface) 94%, transparent); --workspace-line: #a69aca40; background: radial-gradient(ellipse at 70% 0%, #7051ad30, transparent 48%), var(--background); }
 :root[data-mode="dark"] .compass-workspace .week-event, :root[data-mode="dark"] .compass-workspace .month-event { background: linear-gradient(140deg, color-mix(in srgb, var(--event-line, #9584c3) 32%, var(--surface)), color-mix(in srgb, var(--event-line, #9584c3) 18%, var(--surface))); color: var(--text); border-color: color-mix(in srgb, var(--event-line, #9584c3) 65%, transparent); }
 :root[data-mode="dark"] .compass-workspace .upcoming-mark { background: color-mix(in srgb, var(--event-line, #9584c3) 22%, var(--surface)); }
 :root[data-theme="aurora-night"] .compass-workspace::before, :root[data-theme="space"] .compass-workspace::before { content: ''; position: fixed; z-index: -1; inset: 0; pointer-events: none; background: linear-gradient(180deg, #17172d22, #17172d44), url('aurora-scene.svg') center bottom / cover; opacity: .68; }
@@ -68,7 +68,7 @@
   .compass-workspace .assistant-tabs button { justify-content: flex-start; padding: .9rem 1rem; min-height: 52px; font-size: .85rem; gap: .8rem; background: transparent; color: var(--muted); }
   .compass-workspace .assistant-tabs button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 13%, var(--surface)); color: var(--text); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); }
   .workspace-appearance { display: flex; align-items: center; gap: .8rem; font-size: .8rem; text-decoration: none; padding: 1rem; margin-top: auto; min-height: 48px; }
-  .workspace-appearance > span { font-size: 1.2rem; }
+  .workspace-appearance > span:first-child { font-size: 1.2rem; }
   .workspace-sidebar-note { display: block; color: var(--muted); font-size: .65rem; padding: .8rem .6rem 0; margin: 0; border-top: 1px solid var(--border); }
   .compass-workspace .dashboard-heading { padding-top: 1.2rem; }
   .compass-workspace .local-banner { border: 0; padding-bottom: 0; }

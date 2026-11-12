@@ -1,9 +1,11 @@
 export const APPEARANCE_KEY = 'day-compass.appearance.v1';
 export const PRESETS = {
   aurora: { label: 'Daylight', accent: '#6554cf', busy: '#6554cf', background: '#faf8f5', tint: '#ede6fb' },
-  linen: { label: 'Linen', accent: '#73574c', busy: '#73574c', background: '#f8f5ef', tint: '#ece2d3', surface: '#fffcf7', surfaceAlt: '#f3eee5' },
+  linen: { label: 'Linen', accent: '#52604a', busy: '#52604a', background: '#f5f3ed', tint: '#e3e7da', surface: '#fffefa', surfaceAlt: '#eeece5', text: '#30342c', muted: '#686b61', border: '#deded4', warm: true },
+  stone: { label: 'Stone', accent: '#6a6055', busy: '#6a6055', background: '#f2f0eb', tint: '#e6e0d7', surface: '#fdfcf9', surfaceAlt: '#eae7e0', text: '#37322c', muted: '#645d54', border: '#dcd7cf', warm: true },
+  clay: { label: 'Clay', accent: '#8b5e49', busy: '#8b5e49', background: '#f7f2eb', tint: '#efdfd2', surface: '#fffcf7', surfaceAlt: '#eee5dc', text: '#3b312c', muted: '#6e5f55', border: '#e0d5c9', warm: true },
   pistachio: { label: 'Pistachio', accent: '#46613a', busy: '#46613a', background: '#f5f7ef', tint: '#e0ebce', surface: '#fdfef9', surfaceAlt: '#eff3e6' },
-  dusk: { label: 'Soft dusk', accent: '#dfbda8', busy: '#c4b5e8', background: '#24232a', tint: '#3f3543', surface: '#2d2b33', surfaceAlt: '#35313c', dark: true },
+  dusk: { label: 'Soft dusk', accent: '#c4c9ac', busy: '#c4c9ac', background: '#252621', tint: '#3c4033', surface: '#30312b', surfaceAlt: '#383930', text: '#f2f0e7', muted: '#c0bfb1', border: '#4c4d42', dark: true, warm: true },
   'aurora-night': { label: 'Night aurora', accent: '#8bf0d6', busy: '#bea5ff', background: '#14152c', tint: '#31244c', dark: true },
   sunset: { label: 'Sunset', accent: '#96513e', busy: '#96513e', background: '#fff5ef', tint: '#f6dbd8' },
   space: { label: 'Space', accent: '#c9b8ff', busy: '#c9b8ff', background: '#101422', tint: '#292540', dark: true },
@@ -15,7 +17,7 @@ export const PRESETS = {
   midnight: { label: 'Midnight', accent: '#b5cdbf', busy: '#b5cdbf', background: '#141e23', tint: '#263b35' },
   system: { label: 'Follow system' }
 };
-export const DEFAULT_APPEARANCE = { preset: 'aurora', customAccent: false, accent: '#6554cf', customBusy: false, busy: '#6554cf' };
+export const DEFAULT_APPEARANCE = { preset: 'linen', customAccent: false, accent: '#52604a', customBusy: false, busy: '#52604a' };
 const validHex = value => typeof value === 'string' && /^#[\da-f]{6}$/i.test(value);
 
 export function validateAppearance(value) {
@@ -44,7 +46,7 @@ export function resolveAppearance(value, systemDark = false) {
   const accent = value.customAccent ? value.accent : preset.accent;
   const busy = value.customBusy ? value.busy : preset.busy;
   const dark = Boolean(preset.dark || key === 'midnight');
-  return { surface: dark ? '#252734' : '#ffffff', surfaceAlt: dark ? '#2c2e3b' : '#f8f7fb', ...preset, dark, accent, accentText: textOn(accent), busy, busyText: textOn(busy) };
+  return { surface: dark ? '#252734' : '#ffffff', surfaceAlt: dark ? '#2c2e3b' : '#f8f7fb', text: dark ? '#f1f0fa' : '#27273d', muted: dark ? '#bfc4da' : '#5d6076', border: dark ? '#454561' : '#e4e4ef', ...preset, dark, accent, accentText: textOn(accent), busy, busyText: textOn(busy) };
 }
 
 export function createAppearanceStore(storage) {

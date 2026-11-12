@@ -7,11 +7,11 @@ test('combined workspace preserves calendar navigation, real activity badges and
   await expect(page.locator('#productivity-dialog')).not.toBeVisible();
   await expect(page.locator('.workspace-brand')).toBeVisible(); await expect(page.locator('.week-event[data-activity=school] .activity-mark')).toBeVisible();
   await page.locator('[data-panel=calendar]').click(); await expect(page.locator('[data-panel=calendar]')).toHaveAttribute('aria-pressed', 'true'); await expect(page.locator('.calendar-widget')).toBeVisible();
-  await page.locator('.mood-details summary').click(); await page.locator('[data-scene-theme=aurora-night]').click(); await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark'); await expect(page.locator('html')).toHaveAttribute('data-theme', 'aurora-night');
-  await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ path: 'qa-artifacts/combined-aurora.png' });
-  await page.reload(); await expect(page.locator('html')).toHaveAttribute('data-theme', 'aurora-night');
+  await page.locator('.mood-details summary').click(); await page.locator('[data-scene-theme=dusk]').click(); await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark'); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dusk');
+  await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ animations: 'disabled', path: 'qa-artifacts/combined-aurora.png' });
+  await page.reload(); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dusk');
   await page.locator('.mood-details summary').click();
-  await page.locator('[data-scene-theme=aurora]').click(); await expect(page.locator('html')).toHaveAttribute('data-mode', 'light'); await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ path: 'qa-artifacts/combined-calm.png' });
+  await page.locator('[data-scene-theme=linen]').click(); await expect(page.locator('html')).toHaveAttribute('data-mode', 'light'); await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ animations: 'disabled', path: 'qa-artifacts/combined-calm.png' });
   await page.locator('[data-panel=ai]').click(); await expect(page.locator('#ai-panel')).toBeVisible(); await expect(page.locator('.workspace-sidecar')).toBeHidden();
 });
 for (const width of [360, 390, 430]) test(`combined workspace remains usable on ${width}px phones`, async ({ page }) => {
@@ -19,8 +19,8 @@ for (const width of [360, 390, 430]) test(`combined workspace remains usable on 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator('.workspace-brand')).toBeHidden();
   await page.locator('[data-panel=calendar]').click(); await expect(page.locator('.time-day-column')).toHaveCount(1);
-  await page.locator('.mood-details summary').click(); await page.locator('[data-scene-theme=aurora-night]').click(); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  if (width === 390) { await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ path: 'qa-artifacts/combined-phone.png' }); }
+  await page.locator('.mood-details summary').click(); await page.locator('[data-scene-theme=dusk]').click(); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  if (width === 390) { await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ animations: 'disabled', path: 'qa-artifacts/combined-phone.png' }); }
 });
 test('simple calendar keeps upcoming event editing and tasks without duplicate recommendation cards', async ({ page }) => {
   await ready(page);
@@ -42,7 +42,7 @@ test('sidebar collapse frees calendar space, persists, and leaves phone navigati
   await page.getByRole('button', { name: 'Calendar', exact: true }).click();
   await expect(page.locator('.calendar-widget')).toBeVisible();
   await page.evaluate(() => scrollTo(0, 0));
-  await page.screenshot({ path: 'qa-artifacts/compact-sidebar.png' });
+  await page.screenshot({ animations: 'disabled', path: 'qa-artifacts/compact-sidebar.png' });
   await page.reload(); await expect(page.locator('#startup-status')).toContainText('ready');
   await expect(page.getByRole('button', { name: 'Expand sidebar', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
