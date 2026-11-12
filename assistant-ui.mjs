@@ -1,4 +1,5 @@
 import { initDashboardDesign } from './dashboard-design.mjs';
+import { pushPreference } from './push-preference.mjs';
 import { initSettings } from './settings-ui.mjs';
 import { initPrivateCalendar } from './ical-ui.mjs';
 import { initReminderSettings } from './reminder-settings.mjs';
@@ -126,13 +127,15 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
     const source = node('a', 'View source email'); source.href = review.source; source.target = '_blank'; source.rel = 'noopener'; card.append(source); const accept = node('button', 'Confirm & add event'); card.append(accept, button('Dismiss', guard('#connection-message', async () => { await api('gmail/dismiss', 'POST', { id: review.id }); card.remove(); $('#connection-message').textContent = 'Suggestion dismissed.'; })));
     card.addEventListener('submit', guard('#connection-message', async event => { event.preventDefault(); await sync.flush(); await sync.replace(await api('gmail/accept', 'POST', { id: review.id, event: Object.fromEntries(new FormData(card)) })); card.remove(); $('#connection-message').textContent = 'Reviewed event added.'; })); list.append(card);
   } $('#connection-message').textContent = reviews.length ? 'Nothing is added until you confirm it.' : 'No new candidates in the last 20 matching emails. HTML-only emails and attachments are not parsed.'; }));
-  async function pushStatus() { const permission = 'Notification' in window ? Notification.permission : 'unsupported'; const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null; const subscribed = Boolean(await registration?.pushManager?.getSubscription()); $('#push-status').textContent = `Permission: ${permission}. This device: ${subscribed ? 'subscribed' : 'not subscribed'}. Server: ${account.features.push ? 'configured' : 'not configured'}. Background reminders: ${model.snapshot().settings.backgroundReminders ? 'enabled' : 'off'}. A subscription is not proof of device delivery.`; }
-  $('#push-enable').addEventListener('click', guard('#push-operation-status', async () => {
+  const deviceChoice = account.user ? pushPreference(account.user.id) : null;
+  let pushConnected = false;
+  async function pushStatus() { const permission = 'Notification' in window ? Notification.permission : 'unsupported'; const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null; const subscribed = Boolean(await registration?.pushManager?.getSubscription()); const active = pushConnected && permission === 'granted' && subscribed && model.snapshot().settings.backgroundReminders && deviceChoice?.get() !== 'disabled'; $('#push-status').textContent = `Permission: ${permission}. This device: ${subscribed ? 'subscribed' : 'not subscribed'}. Server: ${account.features.push ? 'configured' : 'not configured'}. Background reminders: ${model.snapshot().settings.backgroundReminders ? 'enabled' : 'off'}. A subscription is not proof of device delivery.`; $('#push-enable').textContent = active ? 'Enabled on this device' : 'Enable background reminders'; $('#push-enable').disabled = Boolean(active); }
+  async function enablePush(automatic = false) {
     requireAccount();
     if (!account.features.push) throw new Error('Background reminders need VAPID keys configured on the server. Refresh this page if the server was just configured.');
     if (!window.isSecureContext || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) throw new Error('This browser cannot enable Web Push here. Open Day Compass in normal Chrome or Edge at http://127.0.0.1:8080. A hosted site needs HTTPS.');
     $('#push-operation-status').textContent = 'Waiting for browser notification permission?';
-    const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    const permission = Notification.permission === 'granted' ? 'granted' : automatic ? Notification.permission : await Notification.requestPermission();
     if (permission === 'denied') throw new Error('Notifications are blocked by the browser. Use the site controls beside the address bar ? Site settings ? Notifications ? Allow, reload Day Compass, then try again.');
     if (permission !== 'granted') throw new Error('The permission request was dismissed. Click Enable background reminders again, then choose Allow in the browser prompt.');
     $('#push-operation-status').textContent = 'Preparing this browser for background reminders?';
@@ -153,18 +156,30 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
       throw error;
     }
     $('#push-operation-status').textContent = 'Saving this device to your private account?';
-    await api('push/subscribe', 'POST', subscription.toJSON()); storage.setItem('day-compass.open-page-fallback.v1', 'false'); model.saveSettings({ backgroundReminders: true }); await sync.flush(); await pushStatus();
-    $('#push-operation-status').textContent = 'Background reminders are enabled for this account and device. Press Send test notification to check Windows delivery.';
-  }));
+    await api('push/subscribe', 'POST', subscription.toJSON());
+    deviceChoice.set(true); storage.setItem('day-compass.open-page-fallback.v1', 'false');
+    if (!model.snapshot().settings.backgroundReminders) model.saveSettings({ backgroundReminders: true });
+    await sync.flush(); pushConnected = true; await pushStatus();
+    $('#push-operation-status').textContent = 'Background reminders are enabled for this account and device. This choice stays on when you return, until you disable it. Press Send test notification to check Windows delivery.';
+  }
+  $('#push-enable').addEventListener('click', async event => { await guard('#push-operation-status', async () => { await enablePush(); })(event); await pushStatus().catch(() => {}); });
   $('#push-disable').addEventListener('click', guard('#push-operation-status', async () => {
     requireAccount(); const registration = await navigator.serviceWorker.getRegistration(), subscription = await registration?.pushManager.getSubscription();
+    deviceChoice.set(false);
+    pushConnected = false;
     if (subscription) { await api('push/unsubscribe', 'POST', { endpoint: subscription.endpoint }); await subscription.unsubscribe(); }
     await pushStatus(); $('#push-operation-status').textContent = 'Background reminders are disconnected on this device.';
   }));
   $('#history-view').addEventListener('click', guard('#account-message', async () => { requireAccount(); const history = await api('history'), list = $('#history-list'); list.replaceChildren(); for (const item of history) list.append(node('li', `${item.date} · ${item.action}: ${item.title} (${item.category})`)); if (!history.length) list.append(node('li', 'No history recorded. Add interests and goals in setup instead of guessing patterns.')); $('#account-message').textContent = 'History shown below. You can disable future recording in Availability & routines.'; }));
   $('#history-delete').addEventListener('click', guard('#account-message', async () => { requireAccount(); await api('history', 'DELETE'); $('#history-list').replaceChildren(); $('#account-message').textContent = 'Personalization history deleted. Turn recording off in setup to keep it empty.'; }));
   const exportButton = button('Save this activity to Google', guard('#activity-status', async () => { requireAccount(); await sync.flush(); const f = $('#activity-form'), date = f.elements.date.value; const item = model.getDay(date).commitments.find(e => e.title === f.elements.title.value && e.start === f.elements.start.value && e.end === f.elements.end.value); if (!item) throw new Error('Save this event first, then reopen it to export. Flexible tasks need a scheduled time.'); await api('google/export', 'POST', { id: item.id, date }); $('#activity-status').textContent = 'Saved to your Day Compass Google calendar. Repeat this action to update an exported event.'; })); $('#activity-status').after(exportButton);
-  pushStatus().catch(() => {}); render();
+  function restorePush() {
+    const rememberedPush = deviceChoice?.get();
+    if (account.user && account.features.push && 'Notification' in window && Notification.permission === 'granted' && (rememberedPush === 'enabled' || (rememberedPush !== 'disabled' && model.snapshot().settings.backgroundReminders))) {
+      enablePush(true).catch(error => { $('#push-operation-status').textContent = `Your enabled preference is saved, but this device could not reconnect: ${error.message}`; $('#push-enable').disabled = false; $('#push-enable').textContent = 'Reconnect background reminders'; });
+    } else pushStatus().catch(() => {});
+  }
+  render();
   const params = new URLSearchParams(location.search); if (params.get('date')) { try { calendar.selectDate(params.get('date')); const item = model.getDay(params.get('date')).commitments.find(e => e.id === params.get('activity') || e.taskId === params.get('activity')); if (item) openActivity({ date: params.get('date'), item }); } catch {} }
   if (['#connections', '#notifications'].includes(location.hash)) tab('settings');
   const workspace = initDashboardDesign({ model, openActivity, now });
@@ -173,10 +188,12 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   initReminderSettings({ model, account, sync, pushStatus });
   initTaskChat({ model, account, sync });
   $('#push-open-page-fallback').addEventListener('click', guard('#push-operation-status', async () => {
+    deviceChoice?.set(false);
     storage.setItem('day-compass.open-page-fallback.v1', 'true'); model.saveSettings({ remindersEnabled: true }); await sync.flush();
     $('#push-operation-status').textContent = 'Page-open reminders are enabled on this browser. Keep Day Compass open and the computer awake. Quiet hours still apply. This is not background push; no reminders can fire from this page after it closes.';
   }));
   initNotificationDiagnostics({ account });
+  restorePush();
   return { render() { render(); workspace.render(); }, openSetup };
 }
 import { initTaskChat } from './task-chat.mjs';

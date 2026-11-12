@@ -210,6 +210,15 @@ test('test push HTTP route requires authentication, ownership and a cooldown', a
   assert.equal(sent, 1);
 });
 
+test('reconnecting an existing push device is idempotent at the subscription limit', async t => {
+  const app = await server(t, { VAPID_PUBLIC_KEY: 'test', VAPID_PRIVATE_KEY: 'test', VAPID_SUBJECT: 'mailto:test@example.com' });
+  const user = await app.register('persistentpush');
+  const subscription = i => ({ endpoint: `https://fcm.googleapis.com/fcm/send/limit-${i}`, keys: { auth: 'test', p256dh: 'test' } });
+  for (let i = 0; i < 10; i++) assert.equal((await app.call('push/subscribe', 'POST', subscription(i), user)).response.status, 200);
+  assert.equal((await app.call('push/subscribe', 'POST', subscription(0), user)).response.status, 200);
+  assert.equal((await app.call('push/subscribe', 'POST', subscription(10), user)).response.status, 400);
+});
+
 test('scheduled push receipts are account scoped and never claim confirmed Windows display', () => {
   const db = database(':memory:').db; db.prepare('INSERT INTO users VALUES(?,?,?)').run('u', 'student', 'test');
   const key = 'a'.repeat(64); db.prepare("INSERT INTO deliveries VALUES(?,?,?,?,?,'sending',NULL)").run('u', key, '{}', 1, 2);
