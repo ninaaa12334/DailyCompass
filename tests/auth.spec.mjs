@@ -21,3 +21,14 @@ for (const width of [360, 390, 430]) test(`account forms fit ${width}px phone sc
   for (const element of ['#google-signin', '#account-submit']) expect((await page.locator(element).boundingBox()).height).toBeGreaterThanOrEqual(44);
   if (width === 390) await page.screenshot({ path: 'qa-artifacts/signup-phone.png', fullPage: true });
 });
+
+test('login form remains available with an existing session and validates credentials', async ({ page }) => {
+  await page.route('**/api/session', route => route.fulfill({ json: { user: { id: 'existing', name: 'planner_internal_id' }, features: {} } }));
+  await page.route('**/api/login', route => route.fulfill({ status: 401, json: { error: 'Incorrect username or password.' } }));
+  await page.goto('/auth.html?mode=login');
+  await expect(page.locator('#account-name')).toBeVisible(); await expect(page.locator('#account-password')).toBeVisible();
+  await expect(page.getByText(/You are signed in as/)).toHaveCount(0);
+  await page.locator('#account-name').fill('another-user'); await page.locator('#account-password').fill('wrong-password-long');
+  await page.locator('#account-submit').click(); await expect(page.locator('#auth-error')).toContainText('Incorrect username or password');
+  await expect(page).toHaveURL(/auth.html\?mode=login/);
+});
