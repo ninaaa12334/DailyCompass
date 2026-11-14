@@ -23,8 +23,8 @@ export function clerkSignIn(db, config, dependencies = {}) {
       new Intl.DateTimeFormat('en', { timeZone }).format();
       let claims;
       try {
-        claims = await verifier(token, { secretKey: config.CLERK_SECRET_KEY, issuer: settings.frontendOrigin, authorizedParties: [config.APP_ORIGIN] });
-        if (!claims.sub || !claims.sid || claims.azp !== config.APP_ORIGIN || claims.sts === 'pending') throw new Error('Incomplete session.');
+        claims = await verifier(token, { secretKey: config.CLERK_SECRET_KEY, issuer: settings.frontendOrigin, authorizedParties: config.allowedOrigins || [config.APP_ORIGIN] });
+        if (!claims.sub || !claims.sid || !(config.allowedOrigins || [config.APP_ORIGIN]).includes(claims.azp) || claims.sts === 'pending') throw new Error('Incomplete session.');
         const session = await client.sessions.getSession(claims.sid);
         if (session.status !== 'active' || session.userId !== claims.sub) throw new Error('Inactive session.');
       } catch { throw Object.assign(new Error('Clerk sign-in expired or could not be verified. Please try again.'), { status: 401 }); }

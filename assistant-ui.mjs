@@ -1,3 +1,4 @@
+import { newId } from './uuid.mjs';
 import { initDashboardDesign } from './dashboard-design.mjs';
 import { pushPreference } from './push-preference.mjs';
 import { initSettings } from './settings-ui.mjs';
@@ -60,7 +61,7 @@ export function initAssistant({ model, account, calendar, openActivity, now }) {
   const availabilityCard = node('section', undefined, 'widget opportunities-widget'); availabilityCard.innerHTML = '<div class="section-heading"><div><h2>Availability details</h2></div><button type="button" class="secondary" id="availability-open">Set up my week</button></div><p id="availability-summary"></p><ul id="opportunity-list"></ul><details class="opportunity-details"><summary>Your week & upcoming deadlines</summary><ul id="week-availability"></ul><h3>Due soon</h3><ul id="due-soon"></ul></details>';
   settingsPanel.append(availabilityCard);
   function routineRow(value = {}) {
-    const row = node('fieldset', undefined, 'routine-row'); row.dataset.id = value.id || crypto.randomUUID();
+    const row = node('fieldset', undefined, 'routine-row'); row.dataset.id = value.id || newId();
     const legend = node('legend', 'Weekly routine'); row.append(legend);
     for (const [key, label, type, fallback] of [['title', 'Activity', 'text', ''], ['start', 'Starts', 'time', '08:00'], ['end', 'Ends', 'time', '09:00']]) { const wrap = node('label', label), input = node('input'); Object.assign(input, { name: key, type, required: true, value: value[key] || fallback }); if (key === 'title') input.maxLength = 120; wrap.append(input); row.append(wrap); }
     const days = node('div', undefined, 'routine-days'); days.setAttribute('role', 'group'); days.setAttribute('aria-label', 'Repeats on');

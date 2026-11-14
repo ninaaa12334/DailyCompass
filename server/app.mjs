@@ -17,6 +17,7 @@ import { calendarFeeds } from './ical.mjs';
 const scrypt = promisify(rawScrypt), hash = value => createHash('sha256').update(value).digest('hex');
 export function createApplication(options = {}) {
   const config = { ...process.env, APP_ORIGIN: 'http://127.0.0.1:8080', ...options.config };
+  config.allowedOrigins = [config.APP_ORIGIN, ...String(config.ALLOWED_ORIGINS || '').split(',').map(origin => origin.trim().replace(/\/+$/, '')).filter(Boolean)];
   if (config.NODE_ENV === 'production' && (!config.APP_ORIGIN.startsWith('https://') || !config.TOKEN_ENCRYPTION_KEY)) throw new Error('Production needs HTTPS APP_ORIGIN and TOKEN_ENCRYPTION_KEY.');
   const store = database(options.database || config.DATABASE_PATH || 'data/compass.sqlite', config.TOKEN_ENCRYPTION_KEY), { db } = store;
   const integration = google(store, config, options.fetcher), push = pushWorker(db, config, options.pushSender);
@@ -104,7 +105,7 @@ export function createApplication(options = {}) {
         const file = await readFile(path.join(root, relative)).catch(() => { throw Object.assign(new Error('Not found'), { status: 404 }); });
         response.writeHead(200, { 'Content-Type': `${mime}; charset=utf-8`, ...(name === '/sw.js' ? { 'Service-Worker-Allowed': '/' } : {}) }); response.end(request.method === 'HEAD' ? undefined : file); return;
       }
-      if (!['GET', 'HEAD'].includes(request.method)) assert(request.headers.origin === config.APP_ORIGIN, 'Request origin is not allowed.', 403);
+      if (!['GET', 'HEAD'].includes(request.method)) assert(config.allowedOrigins.includes(request.headers.origin), 'Request origin is not allowed.', 403);
       const user = await session(request);
       if (route === '/api/auth/provider' && request.method === 'GET') return json(response, clerkLogin.settings ? { provider: 'clerk', ...clerkLogin.settings } : { provider: googleLogin.configured ? 'google' : 'none' });
       if (route === '/api/auth/clerk/session' && request.method === 'POST') {

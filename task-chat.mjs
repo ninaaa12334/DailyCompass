@@ -1,3 +1,4 @@
+import { newId } from './uuid.mjs';
 import { zonedNow, validDate } from './clock.mjs';
 import { addDays } from './calendar-view.mjs';
 
@@ -61,7 +62,7 @@ export function initTaskChat({ model, account, sync }) {
       const { wallToInstant } = await import('./zoned-time.mjs');
       const settings = model.snapshot().settings;
       if (f.notify.checked && (f.reminderDate.value > f.deadline.value || wallToInstant(f.reminderDate.value, f.reminderTime.value, settings.timeZone) <= Date.now())) throw Error('Choose a future reminder on or before the deadline. No task has been added.');
-      model.saveActivity({ id: crypto.randomUUID(), kind: 'task', title: f.title.value.trim(), date: '', deadline: f.deadline.value, notes: draft.notes, duration: Number(f.duration.value), spent: 0, completed: false, locked: false, category: 'Study', priority: 'Medium', repeat: 'none', repeatUntil: '', reminder: 'default', ...(f.notify.checked ? { deadlineReminder: { date: f.reminderDate.value, time: f.reminderTime.value } } : {}) });
+      model.saveActivity({ id: newId(), kind: 'task', title: f.title.value.trim(), date: '', deadline: f.deadline.value, notes: draft.notes, duration: Number(f.duration.value), spent: 0, completed: false, locked: false, category: 'Study', priority: 'Medium', repeat: 'none', repeatUntil: '', reminder: 'default', ...(f.notify.checked ? { deadlineReminder: { date: f.reminderDate.value, time: f.reminderTime.value } } : {}) });
       saved = true; review.hidden = true;
       $('#task-chat-status').textContent = 'Added to tasks & deadlines. No calendar work time was booked. Saving…';
       await sync.flush();

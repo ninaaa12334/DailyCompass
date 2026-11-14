@@ -1,4 +1,5 @@
-﻿import { createPlannerStore, PLANNER_KEY } from './planner-store.mjs';
+﻿import { newId } from './uuid.mjs';
+import { createPlannerStore, PLANNER_KEY } from './planner-store.mjs';
 import { initCalendar } from './calendar-ui.mjs';
 import { minutes } from './calendar-store.mjs';
 import { generatePlan, planningCapacity } from './scheduler.mjs';
@@ -165,7 +166,7 @@ export async function startApp() {
     event.preventDefault(); if (saving) return; saving = true; $('#save-activity').disabled = true;
     const data = {};
     for (const name of ['kind', 'title', 'category', 'priority', 'date', 'start', 'end', 'deadline', 'notes', 'repeat', 'repeatUntil', 'reminder']) data[name] = field(name).value;
-    data.title = data.title.trim(); data.duration = Number(field('duration').value); data.spent = Number(field('spent').value); data.id = original?.id || crypto.randomUUID(); data.locked = false;
+    data.title = data.title.trim(); data.duration = Number(field('duration').value); data.spent = Number(field('spent').value); data.id = original?.id || newId(); data.locked = false;
     if (data.kind === 'task' && field('deadlineAlertDate').value) data.deadlineReminder = { date: field('deadlineAlertDate').value, time: field('deadlineAlertTime').value };
     if (!['default', 'off'].includes(data.reminder)) data.reminder = Number(data.reminder);
     data.dstChoice = field('dstChoice').value;
