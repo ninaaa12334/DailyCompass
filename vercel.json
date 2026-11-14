@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://daily-compass-api.onrender.com/api/:path*" }
+  ]
+}

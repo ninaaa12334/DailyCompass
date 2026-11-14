@@ -1,0 +1,43 @@
+# Render Blueprint for the Day Compass account server (accounts, sync, reminders).
+# The Vercel site forwards /api/* here (see vercel.json), so users keep using the Vercel link.
+services:
+  - type: web
+    name: daily-compass-api
+    runtime: node
+    plan: starter            # a persistent disk needs a paid instance
+    region: frankfurt
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/session
+    disk:
+      name: compass-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 24.15.0
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      # Browsers talk to the Vercel address; requests are proxied from there.
+      - key: APP_ORIGIN
+        value: https://daily-compass1.vercel.app
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DATABASE_PATH
+        value: /var/data/compass.sqlite
+      # Generated once by Render and kept. Back it up: without it, stored tokens can't be read.
+      - key: TOKEN_ENCRYPTION_KEY
+        generateValue: true
+      # Secrets: Render asks for these when the Blueprint is created. Copy them from your private .env.
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false

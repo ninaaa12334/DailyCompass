@@ -89,6 +89,10 @@ export function createApplication(options = {}) {
     return { ...user, sessionHash, provider: external ? 'clerk' : 'local' };
   }
   const cookie = token => `compass_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${token ? 2592000 : 0}${config.APP_ORIGIN.startsWith('https:') ? '; Secure' : ''}`;
+  // Behind a hosting proxy (e.g. Vercel -> Render) every request comes from the proxy, so sign-in
+  // rate limits would lump all visitors together. With TRUST_PROXY=1 use the original client
+  // address that the proxy puts first in X-Forwarded-For.
+  const clientAddress = request => (config.TRUST_PROXY === '1' && String(request.headers['x-forwarded-for'] || '').split(',')[0].trim()) || request.socket.remoteAddress;
   const json = (response, data, status = 200) => { response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); response.end(JSON.stringify(data)); };
   const server = http.createServer(async (request, response) => {
     response.setHeader('Cache-Control', 'no-store'); response.setHeader('X-Content-Type-Options', 'nosniff'); response.setHeader('Referrer-Policy', 'same-origin'); response.setHeader('X-Frame-Options', 'DENY');
@@ -117,7 +121,7 @@ export function createApplication(options = {}) {
       }
       if (route === '/api/auth/google/start' && request.method === 'POST') {
         assert(!user, 'You are already signed in. Sign out before switching accounts.', 409);
-        const key = `google:${request.socket.remoteAddress}`, rate = failures.get(key) || { count: 0, until: Date.now() + 900000 };
+        const key = `google:${clientAddress(request)}`, rate = failures.get(key) || { count: 0, until: Date.now() + 900000 };
         if (rate.until < Date.now()) { rate.count = 0; rate.until = Date.now() + 900000; } assert(rate.count < 20, 'Too many Google sign-in attempts. Try again later.', 429); rate.count++; failures.set(key, rate);
         const input = await body(request), result = googleLogin.start(input.timeZone || 'UTC'); response.setHeader('Set-Cookie', result.cookie); return json(response, { url: result.url });
       }
@@ -133,7 +137,7 @@ export function createApplication(options = {}) {
       if (route === '/api/session' && request.method === 'GET') return json(response, { user: user ? { id: user.id, name: user.name, provider: user.provider } : null, features: { ai: Boolean(config.OPENAI_API_KEY && config.OPENAI_MODEL), google: integration.configured(), push: push.configured, pushKey: config.VAPID_PUBLIC_KEY || null } });
       if (['/api/register', '/api/login'].includes(route) && request.method === 'POST') {
         const input = await body(request), name = String(input.name || '').trim().toLowerCase(), password = String(input.password || '');
-        const address = request.socket.remoteAddress, rate = failures.get(address) || { count: 0, until: Date.now() + 900000 };
+        const address = clientAddress(request), rate = failures.get(address) || { count: 0, until: Date.now() + 900000 };
         if (rate.until < Date.now()) { rate.count = 0; rate.until = Date.now() + 900000; }
         assert(rate.count < 15, 'Too many sign-in attempts. Try again in 15 minutes.', 429); rate.count++; failures.set(address, rate);
         assert(/^[a-z0-9_-]{3,40}$/.test(name) && password.length >= 10 && password.length <= 200, 'Use a 3–40 character username (letters/numbers/_/-) and a 10–200 character password.');

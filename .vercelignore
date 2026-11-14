@@ -1,0 +1,10 @@
+# Vercel only serves the website files. Keep server code, tests and tooling off the public site.
+server/
+scripts/
+tests/
+*.test.mjs
+playwright.config.mjs
+render.yaml
+.env*
+.htaccess
+data/
