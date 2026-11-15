@@ -15,6 +15,7 @@ import { initProductivity } from './productivity.mjs';
 import { bindAccountAppearance } from './theme-ui.mjs';
 import { initInterfaceMotion } from './interface-motion.mjs';
 import { initWorkspaceHub } from './workspace-hub.mjs';
+import { initReminderBanner } from './reminder-banner.mjs';
 
 export async function startApp() {
   const $ = selector => document.querySelector(selector);
@@ -26,6 +27,7 @@ export async function startApp() {
   const form = $('#activity-form');
   let calendar, assistant, productivity, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
   const displayedNotifications = new Map();
+  const banner = initReminderBanner({ model, now: () => zonedNow(new Date(), model.getSettings().timeZone), openActivity: (...args) => openActivity(...args), openTasks: () => document.querySelector('.hub-tile-tasks')?.click() });
   const now = () => zonedNow(new Date(), model.getSettings().timeZone);
   const field = name => form.elements.namedItem(name);
   const showError = (id, error) => { $(id).hidden = false; $(id).textContent = error.message || String(error); };
@@ -135,7 +137,8 @@ export async function startApp() {
     const validKeys = new Set(reminders.map(item => item.key));
     if (activeAlertKey && !validKeys.has(activeAlertKey)) { $('#reminder-alert').textContent = ''; activeAlertKey = null; }
     for (const [key, notification] of displayedNotifications) if (!validKeys.has(key)) { notification.close(); displayedNotifications.delete(key); }
-    for (const reminder of reminders.slice(0, 20)) { const li = document.createElement('li'), dueDate = new Date(Math.floor(reminder.due / 1440) * 86400000).toISOString().slice(0, 10); li.textContent = `${reminder.title}: activity ${reminder.date} at ${reminder.start} · reminder ${dueDate} at ${timeLabel(reminder.due % 1440)} (${reminder.lead} min before)`; list.append(li); }
+    banner.forget(validKeys); banner.tick(validKeys);
+    for (const reminder of reminders.slice(0, 20)) { const li = document.createElement('li'); li.textContent = `${reminder.title} · ${dateLabel(reminder.date)} at ${reminder.start}${reminder.lead ? ` — reminder at ${timeLabel(((reminder.due % 1440) + 1440) % 1440)} (${reminder.lead >= 60 && reminder.lead % 60 === 0 ? `${reminder.lead / 60} h` : `${reminder.lead} min`} before)` : ' — reminder when it starts'}`; list.append(li); }
     if (!reminders.length) { const li = document.createElement('li'); li.textContent = 'No upcoming reminders. Add an activity or apply a schedule to create them.'; list.append(li); }
   }
   function previewPlan() {
@@ -194,13 +197,15 @@ export async function startApp() {
       if (!model.claimReminder(reminder.key)) continue;
       $('#reminder-alert').textContent = `Reminder: ${reminder.title} starts at ${reminder.start}.`;
       activeAlertKey = reminder.key;
-      if ('Notification' in window && Notification.permission === 'granted') { try { displayedNotifications.set(reminder.key, new Notification('Day Compass', { body: `${reminder.title} starts at ${reminder.start}`, tag: reminder.key })); } catch { /* In-app alert stays available. */ }
+      banner.show(reminder);
+      // A system pop-up only helps when the page isn't being looked at; otherwise the banner is enough.
+      if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { displayedNotifications.set(reminder.key, new Notification('Day Compass', { body: `${reminder.title} starts at ${reminder.start}`, tag: reminder.key })); } catch { /* In-app alert stays available. */ }
       }
     } };
     try { if (navigator.locks) await navigator.locks.request(`day-compass-reminders-${isDemo}`, send); else send(); }
     catch (error) { $('#reminder-alert').textContent = `Reminder delivery paused: ${error.message}`; }
   }
-  setInterval(() => { renderSummary(); tickReminders(); }, 15000);
+  setInterval(() => { renderSummary(); tickReminders(); banner.tick(); }, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderSummary(); tickReminders(); } });
   window.addEventListener('storage', event => { if (event.key === PLANNER_KEY && !isDemo) attempt(() => model.reload()); });
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }
@@ -213,5 +218,5 @@ export async function startApp() {
     welcome.querySelector('button').addEventListener('click', () => welcome.remove()); $('.dashboard-heading').after(welcome);
   }
   renderTasks(); renderSummary(); tickReminders(); initInterfaceMotion();
-  initWorkspaceHub({ model, now, feedback, account });
+  initWorkspaceHub({ model, now, feedback, account, banner });
 }

@@ -1,6 +1,7 @@
 import { newId } from './uuid.mjs';
 import { parseSchedule, scheduleInputs, describeSchedule } from './schedule-request.mjs';
 import { interpretPlanningRequest } from './planning-request.mjs';
+import { reminderSound } from './reminder-banner.mjs';
 import { dateLabel } from './clock.mjs';
 
 // Calendar-centred workspace: the calendar fills the middle of the screen and every other
@@ -21,7 +22,7 @@ const ICONS = {
 };
 const icon = name => { const span = node('span', undefined, 'hub-icon'); span.setAttribute('aria-hidden', 'true'); span.innerHTML = ICONS[name]; return span; };
 
-export function initWorkspaceHub({ model, now, feedback, account }) {
+export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   const $ = selector => document.querySelector(selector);
   const main = $('#planner');
   if (!main || !$('.calendar-widget')) return null;
@@ -109,7 +110,32 @@ export function initWorkspaceHub({ model, now, feedback, account }) {
 
   const remindersWidget = $('.reminders-widget');
   const remindersTile = tile('reminders', 'bell', 'Reminders', () => openSheet('reminders'));
-  sheet('reminders', 'Reminders', remindersWidget);
+  // Simple controls on top; the detailed (technical) notification settings stay one tap away.
+  const controls = node('div', undefined, 'reminder-controls');
+  controls.innerHTML = `
+    <label class="hub-switch"><span><strong>Remind me</strong><small>A banner and soft chime while Day Compass is open</small></span><input type="checkbox" role="switch" data-reminder="enabled"></label>
+    <label class="hub-switch"><span><strong>Play a sound</strong><small>Soft two-note chime</small></span><input type="checkbox" role="switch" data-reminder="sound"></label>
+    <label class="hub-row"><span><strong>Default reminder</strong><small>Each event can change this in its edit form</small></span>
+      <select data-reminder="lead"><option value="0">When it starts</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="15">15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option><option value="1440">1 day before</option></select></label>
+    <div class="reminder-controls-actions"><button type="button" class="hub-primary" data-reminder="test">Try it</button><button type="button" class="secondary" data-reminder="more">More settings</button></div>
+    <p class="fine-print reminder-controls-note">Reminders appear while this page is open in a tab. Snooze brings one back in 5 minutes.</p>`;
+  const control = name => controls.querySelector(`[data-reminder=${name}]`);
+  function syncControls() {
+    const settings = model.getSettings();
+    control('enabled').checked = Boolean(settings.remindersEnabled);
+    control('sound').checked = reminderSound.enabled();
+    const lead = String(settings.reminderMinutes);
+    if (![...control('lead').options].some(option => option.value === lead)) control('lead').append(Object.assign(node('option', `${lead} min before`), { value: lead }));
+    control('lead').value = lead;
+  }
+  control('enabled').addEventListener('change', event => { try { model.saveSettings({ remindersEnabled: event.target.checked }); feedback(event.target.checked ? 'Reminders are on.' : 'Reminders are off.'); } catch (problem) { feedback(problem.message); syncControls(); } });
+  control('sound').addEventListener('change', event => { reminderSound.set(event.target.checked); });
+  control('lead').addEventListener('change', event => { try { model.saveSettings({ reminderMinutes: Number(event.target.value) }); } catch (problem) { feedback(problem.message); syncControls(); } });
+  control('test').addEventListener('click', () => banner?.test());
+  control('more').addEventListener('click', () => $('#open-reminder-settings')?.click());
+  remindersWidget.prepend(controls);
+  sheet('reminders', 'Reminders', remindersWidget, syncControls);
+  model.subscribe(syncControls); syncControls();
 
   const aiPanel = $('#ai-panel');
   const aiTile = tile('ai', 'spark', 'Plan with AI', () => openSheet('ai'));

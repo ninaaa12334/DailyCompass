@@ -115,7 +115,7 @@ function parseTimes(text) {
       length = Math.round(amount * (/^h/.test(duration[2]) ? 60 : 1));
     }
     if (length < 5 || a + length > 1439) return { error: 'Please choose at least 5 minutes, ending before midnight.' };
-    return { start: timeLabel(a), end: timeLabel(a + length), match: single[0] + (duration ? ` ${duration[0]}` : ''), guessedLength: !duration };
+    return { start: timeLabel(a), end: timeLabel(a + length), match: [single[0], duration?.[0]], guessedLength: !duration };
   }
   return null;
 }
@@ -167,7 +167,7 @@ export function parseScheduleRequest(prompt, settings = {}, at = new Date()) {
   const times = parseTimes(text);
   if (times?.error) return ask(times.error);
   if (!times) return ask('What time? For example “from 8 to 2”, “5–7 pm” or “at 6 pm for 1 hour”.');
-  text = text.replace(times.match, ' ');
+  for (const piece of [times.match].flat()) if (piece) text = text.replace(piece, ' ');
 
   // End date: "until June 20", "till the end of June", "for 8 weeks".
   let from = today, until = null, m;

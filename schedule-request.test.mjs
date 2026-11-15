@@ -35,6 +35,11 @@ test('every day until end of a month', () => {
   assert.deepEqual([plan.start, plan.end], ['21:00', '21:30']); assert.equal(plan.until, '2026-12-31');
 });
 
+test('times with minutes are removed from the title', () => {
+  assert.equal(parse('team call today at 17:18 for 30 minutes').title, 'Team call');
+  assert.equal(parse('dentist tomorrow at 3:30pm').title, 'Dentist');
+});
+
 test('one-off event tomorrow', () => {
   const plan = parse('dentist tomorrow at 3pm for 1 hour');
   assert.equal(plan.recurring, false); assert.equal(plan.from, '2026-11-16');
