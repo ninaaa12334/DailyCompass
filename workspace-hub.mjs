@@ -2,6 +2,7 @@ import { newId } from './uuid.mjs';
 import { parseSchedule, scheduleInputs, describeSchedule } from './schedule-request.mjs';
 import { interpretPlanningRequest } from './planning-request.mjs';
 import { reminderSound } from './reminder-banner.mjs';
+import { buildCalendarFile, downloadCalendarFile } from './ics-export.mjs';
 import { dateLabel } from './clock.mjs';
 
 // Calendar-centred workspace: the calendar fills the middle of the screen and every other
@@ -118,7 +119,18 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     <label class="hub-row"><span><strong>Default reminder</strong><small>Each event can change this in its edit form</small></span>
       <select data-reminder="lead"><option value="0">When it starts</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="15">15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option><option value="1440">1 day before</option></select></label>
     <div class="reminder-controls-actions"><button type="button" class="hub-primary" data-reminder="test">Try it</button><button type="button" class="secondary" data-reminder="more">More settings</button></div>
-    <p class="fine-print reminder-controls-note">Reminders appear while this page is open in a tab. Snooze brings one back in 5 minutes.</p>`;
+    <p class="fine-print reminder-controls-note">Reminders appear while this page is open in a tab. Snooze brings one back in 5 minutes.</p>
+    <div class="reminder-export">
+      <strong>Reminders when Day Compass is closed</strong>
+      <p>Send your upcoming events to your phone's calendar. The phone then reminds you itself, even when this site is closed.</p>
+      <button type="button" class="hub-primary" data-reminder="export">Send to my calendar</button>
+      <details><summary>How to add it</summary>
+        <p><b>iPhone:</b> open this site in Safari on the phone, tap the button, then <i>Add All</i>.</p>
+        <p><b>Android / Google Calendar:</b> on a computer go to calendar.google.com → Settings → Import, and choose the downloaded file.</p>
+        <p><b>Windows / Outlook:</b> open the downloaded file and choose <i>Import</i>.</p>
+        <p>It's a copy: if you change events here, send it again. Events keep the same ID, so most calendars update them instead of adding duplicates.</p>
+      </details>
+    </div>`;
   const control = name => controls.querySelector(`[data-reminder=${name}]`);
   function syncControls() {
     const settings = model.getSettings();
@@ -133,6 +145,14 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   control('lead').addEventListener('change', event => { try { model.saveSettings({ reminderMinutes: Number(event.target.value) }); } catch (problem) { feedback(problem.message); syncControls(); } });
   control('test').addEventListener('click', () => banner?.test());
   control('more').addEventListener('click', () => $('#open-reminder-settings')?.click());
+  control('export').addEventListener('click', () => {
+    try {
+      const { text, count } = buildCalendarFile(model.snapshot(), { fromDate: now().date });
+      if (!count) { feedback('There are no upcoming events to send yet.'); return; }
+      downloadCalendarFile(text);
+      feedback(`Saved day-compass.ics with ${count} event${count === 1 ? '' : 's'} and their reminders. Open it to add them to your calendar.`);
+    } catch (problem) { feedback(`Could not create the calendar file: ${problem.message}`); }
+  });
   remindersWidget.prepend(controls);
   sheet('reminders', 'Reminders', remindersWidget, syncControls);
   model.subscribe(syncControls); syncControls();

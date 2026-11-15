@@ -225,6 +225,13 @@ body.hub-layout .workspace-sidecar, body.hub-layout .scene-themes, body.hub-layo
 .reminder-controls-actions .hub-primary { flex: 1; min-height: 42px; }
 .reminder-controls-actions .secondary { min-height: 42px; border-radius: 14px; }
 .reminder-controls-note { margin: 0; padding: 0 14px 12px; background: var(--surface); }
+.reminder-export { display: grid; gap: 8px; padding: 14px; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.reminder-export strong { font-size: .92rem; }
+.reminder-export p { margin: 0; font-size: .82rem; color: var(--muted); }
+.reminder-export .hub-primary { min-height: 42px; }
+.reminder-export details { font-size: .82rem; }
+.reminder-export summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; padding: 4px 0; }
+.reminder-export details p { margin: 4px 0; color: var(--text); }
 .hub-sheet-body .reminders-widget #reminder-mode, .hub-sheet-body .reminders-widget #reminder-mode-help, .hub-sheet-body .reminders-widget #open-reminder-settings { display: none; }
 .hub-sheet-body .reminders-widget #reminder-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
 .hub-sheet-body .reminders-widget #reminder-list li { padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 4%, transparent); font-size: .85rem; }
