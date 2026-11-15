@@ -53,9 +53,10 @@ test('asks instead of guessing', () => {
   assert.match(parse('gym every monday 6-7pm starting 2026-01-01 until june').clarification, /passed/);
 });
 
-test('long repeats are capped at one year', () => {
-  const plan = parse('work every weekday 9-17 until 2028-01-01');
-  assert.equal(plan.capped, true); assert.equal(plan.until, '2027-11-15');
+test('long repeats are capped at three years', () => {
+  assert.equal(parse('work every weekday 9-17 until 2028-06-30').capped, false);
+  const plan = parse('work every weekday 9-17 until 2031-01-01');
+  assert.equal(plan.capped, true); assert.equal(plan.until, '2029-11-15');
 });
 
 test('saving creates every occurrence as a single undoable change', () => {

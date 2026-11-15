@@ -1,5 +1,12 @@
+// Building a date formatter is slow, so keep one per time zone (big repeating series convert thousands of times).
+const zoneFormatters = new Map();
+function zoneFormatter(timeZone) {
+  let formatter = zoneFormatters.get(timeZone);
+  if (!formatter) { formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); zoneFormatters.set(timeZone, formatter); }
+  return formatter;
+}
 export function zonedNow(now = new Date(), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(part => [part.type, part.value]));
+  const parts = Object.fromEntries(zoneFormatter(timeZone).formatToParts(now).map(part => [part.type, part.value]));
   return { date: `${parts.year}-${parts.month}-${parts.day}`, minute: Number(parts.hour) * 60 + Number(parts.minute) };
 }
 export function dateLabel(date, options = {}) {

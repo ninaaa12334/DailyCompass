@@ -84,6 +84,8 @@ export function validatePlanner(state) {
 }
 const validate = validatePlanner;
 
+// Repeats can run for up to three years. Each occurrence is stored, so this keeps saves small enough to sync.
+export const MAX_REPEAT_DAYS = 1096;
 export function createPlannerStore(storage) {
   const saved = storage.getItem(PLANNER_KEY);
   let state;
@@ -137,7 +139,7 @@ export function createPlannerStore(storage) {
           removeMatching(next, kind, item => item.seriesId === source.seriesId);
         } else if (source) removeMatching(next, kind, item => item.id === source.id);
         else if (input.repeat !== 'none') {
-          ensure(validDate(input.repeatUntil) && input.repeatUntil >= input.date && dayNumber(input.repeatUntil) - dayNumber(input.date) <= 365, 'Choose a recurrence end date within one year.');
+          ensure(validDate(input.repeatUntil) && input.repeatUntil >= input.date && dayNumber(input.repeatUntil) - dayNumber(input.date) <= MAX_REPEAT_DAYS, 'Choose a recurrence end date within three years.');
           occurrences = [];
           for (let date = input.date; date <= input.repeatUntil; date = addDays(date, input.repeat === 'daily' ? 1 : 7)) occurrences.push({ date, id: `${id}-${date}`, seriesId: id, completed: false });
         }

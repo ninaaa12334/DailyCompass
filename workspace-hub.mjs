@@ -215,7 +215,7 @@ export function initWorkspaceHub({ model, now, feedback, account }) {
       if (clashes.length > 3) list.append(node('li', `and ${clashes.length - 3} more`));
       warning.append(list, node('p', count ? 'Those days will be skipped. Everything else is added as normal.' : 'Every day clashes, so nothing can be added. Try a different time.'));
     }
-    if (plans.some(plan => plan.capped)) note.textContent += ' Repeats are limited to one year, so it stops on the last date shown.';
+    if (plans.some(plan => plan.capped)) note.textContent += ' Repeats are limited to three years, so it stops on the last date shown.';
     const error = node('p', '', 'hub-review-error'); error.setAttribute('role', 'alert');
     const add = node('button', count === 1 ? 'Add event' : `Add ${count} events${clashDates.size ? `, skip ${clashDates.size}` : ''}`, 'hub-primary'); add.type = 'button';
     add.disabled = count === 0;

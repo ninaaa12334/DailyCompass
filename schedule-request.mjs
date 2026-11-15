@@ -1,3 +1,4 @@
+import { MAX_REPEAT_DAYS } from './planner-store.mjs';
 import { zonedNow, validDate, dayNumber } from './clock.mjs';
 import { addDays, timeLabel } from './calendar-view.mjs';
 
@@ -12,7 +13,7 @@ const DAY_SHORT = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 const MONTH_RE = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
 const DAY_RE = '(sun(?:day)?|mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?)';
-const MAX_DAYS = 365;
+const MAX_DAYS = MAX_REPEAT_DAYS;
 
 const weekday = date => new Date(`${date}T12:00:00Z`).getUTCDay();
 const dayIndex = word => DAY_SHORT.indexOf(word.slice(0, 3));
