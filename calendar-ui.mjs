@@ -2,7 +2,7 @@
 import { storage } from './runtime.mjs';
 import { addDays, weekDates, monthDates } from './calendar-view.mjs';
 import { renderTimetable, updateNowLines } from './timetable-ui.mjs';
-import { zonedNow, dateLabel } from './clock.mjs';
+import { zonedNow, dateLabel, durationLabel } from './clock.mjs';
 import { planningCapacity } from './scheduler.mjs';
 import { activityVisual } from './activity-visuals.mjs';
 
@@ -12,8 +12,8 @@ export function initCalendar(model, handlers) {
   let selected = now().date;
   const compactScreen = window.matchMedia('(max-width: 580px)');
   let view = compactScreen.matches ? 'day' : 'week';
-  try { const saved = storage.getItem('day-compass.calendar-view.v1'); if (['day', 'week', 'month'].includes(saved)) view = saved; } catch {}
-  let focusHour = 9, lastTimedKey = '';
+  try { const saved = storage.getItem('day-compass.calendar-view.v1'); if (['day', 'week', 'month', 'year'].includes(saved)) view = saved; } catch {}
+  let focusHour = 9, lastTimedKey = '', yearKey = '';
   function choose(date) { selected = date; render(); handlers.onSelection?.(); }
   function open(date, item, start) { choose(date); if (item?.kind !== 'break') handlers.onActivity({ date, item, start }); }
   function renderMonth() {
@@ -40,6 +40,52 @@ export function initCalendar(model, handlers) {
       if (events.length > 3) { const more = document.createElement('button'); more.type = 'button'; more.className = 'month-more'; more.textContent = `+${events.length - 3} more`; more.addEventListener('click', () => { view = 'day'; choose(date); }); cell.append(more); }
       if (due) { const note = document.createElement('small'); note.className = 'month-due'; note.textContent = `${due} due`; cell.append(note); }
       grid.append(cell);
+    }
+  }
+  // Whole year: twelve small months. Shading shows how booked each day is; tap a day to open it.
+  function renderYear() {
+    const host = $('#year-view'), year = selected.slice(0, 4), today = now().date, settings = model.snapshot().settings;
+    // The title becomes a year picker: jump to any year from two years back to ten years ahead.
+    const picker = document.createElement('select'); picker.className = 'year-picker'; picker.setAttribute('aria-label', 'Choose a year');
+    const thisYear = Number(today.slice(0, 4)), years = new Set([Number(year)]);
+    for (let y = thisYear - 2; y <= thisYear + 10; y++) years.add(y);
+    for (const y of [...years].sort((a, b) => a - b)) { const option = document.createElement('option'); option.value = option.textContent = String(y); option.selected = String(y) === year; picker.append(option); }
+    picker.addEventListener('change', () => {
+      const next = Number(picker.value), last = new Date(Date.UTC(next, Number(selected.slice(5, 7)), 0)).getUTCDate();
+      selected = `${next}-${selected.slice(5, 7)}-${String(Math.min(Number(selected.slice(8, 10)), last)).padStart(2, '0')}`;
+      render(); handlers.onSelection?.(); $('#calendar-month select')?.focus();
+    });
+    $('#calendar-month').replaceChildren(picker);
+    const dueDates = new Set(model.getTasks().filter(task => !task.completed && task.deadline).map(task => task.deadline));
+    host.replaceChildren();
+    for (let month = 1; month <= 12; month++) {
+      const first = `${year}-${String(month).padStart(2, '0')}-01`;
+      const box = document.createElement('section'); box.className = 'year-month';
+      const title = document.createElement('button'); title.type = 'button'; title.className = 'year-month-title';
+      title.textContent = dateLabel(first, { weekday: undefined, month: 'long', day: undefined, year: undefined });
+      title.setAttribute('aria-label', `Open ${dateLabel(first, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' })}`);
+      title.addEventListener('click', () => { view = 'month'; try { storage.setItem('day-compass.calendar-view.v1', view); } catch {} choose(first); });
+      if (first.slice(0, 7) === today.slice(0, 7)) box.classList.add('current');
+      const grid = document.createElement('div'); grid.className = 'year-days';
+      for (const letter of ['M', 'T', 'W', 'T', 'F', 'S', 'S']) { const head = document.createElement('span'); head.className = 'year-weekday'; head.textContent = letter; head.setAttribute('aria-hidden', 'true'); grid.append(head); }
+      for (const date of monthDates(first)) {
+        if (date.slice(0, 7) !== first.slice(0, 7)) { const blank = document.createElement('span'); blank.className = 'year-blank'; grid.append(blank); continue; }
+        const day = model.getDay(date), { ratio } = planningCapacity(day, settings);
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'year-day'; button.textContent = Number(date.slice(-2));
+        Object.assign(button.dataset, { date, load: !day.commitments.length ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3', due: dueDates.has(date) ? 'true' : 'false' });
+        button.setAttribute('aria-label', `${dateLabel(date, { year: 'numeric' })}, ${day.commitments.length} activities${dueDates.has(date) ? ', deadline' : ''}. Open day.`);
+        if (date === today) button.setAttribute('aria-current', 'date');
+        if (date === selected) button.setAttribute('aria-pressed', 'true');
+        button.addEventListener('click', () => { view = 'day'; try { storage.setItem('day-compass.calendar-view.v1', view); } catch {} lastTimedKey = ''; choose(date); });
+        grid.append(button);
+      }
+      box.append(title, grid); host.append(box);
+    }
+    // When the year view opens, start at the selected month rather than January.
+    if (yearKey !== year) {
+      yearKey = year;
+      const target = host.children[Number(selected.slice(5, 7)) - 1];
+      requestAnimationFrame(() => { if (target) host.scrollTop += target.getBoundingClientRect().top - host.getBoundingClientRect().top - 6; });
     }
   }
   function renderMobileWeek() {
@@ -78,17 +124,19 @@ export function initCalendar(model, handlers) {
     const compact = compactScreen.matches;
     const dates = view === 'day' ? [selected] : weekDates(selected);
     const shortDate = date => dateLabel(date, { weekday: undefined, year: undefined });
-    $('#calendar-month').textContent = view === 'month' ? dateLabel(selected, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' }) : view === 'day' ? dateLabel(selected, { year: compact ? undefined : 'numeric' }) : compact ? `${shortDate(dates[0])} – ${shortDate(dates[6])}` : `${dateLabel(dates[0])} – ${dateLabel(dates[6], { year: 'numeric' })}`;
+    $('#calendar-month').textContent = view === 'year' ? selected.slice(0, 4) : view === 'month' ? dateLabel(selected, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' }) : view === 'day' ? dateLabel(selected, { year: compact ? undefined : 'numeric' }) : compact ? `${shortDate(dates[0])} – ${shortDate(dates[6])}` : `${dateLabel(dates[0])} – ${dateLabel(dates[6], { year: 'numeric' })}`;
     $('#previous-period').setAttribute('aria-label', `Previous ${view}`); $('#next-period').setAttribute('aria-label', `Next ${view}`);
     document.querySelectorAll('[data-calendar-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.calendarView === view)));
-    $('#month-view').hidden = view !== 'month'; $('#week-view').hidden = view === 'month';
-    $('#mobile-week-days').hidden = !compact || view === 'month';
-    $('#mobile-month-agenda').hidden = !compact || view === 'week';
+    $('#month-view').hidden = view !== 'month'; $('#year-view').hidden = view !== 'year'; $('#week-view').hidden = view === 'month' || view === 'year';
+    $('#mobile-week-days').hidden = !compact || view === 'month' || view === 'year';
+    $('#mobile-month-agenda').hidden = !compact || view === 'week' || view === 'year';
     $('#calendar-timezone').textContent = `Times in ${model.snapshot().settings.timeZone}`;
     $('#calendar-instructions').textContent = compact ? view === 'month' ? 'Tap a date to see its activities below. Dots mark activities.' : view === 'week' ? 'Choose a day above its timeline. Tap a time to add an activity.' : 'Tap a time to add, or an activity to edit.' : view === 'month' ? 'Select a date for its agenda. Click an activity to edit it.' : 'Click a time to add an activity. Arrow keys move between slots. Hatched areas are outside planning hours.';
-    if (compact && view !== 'month') renderMobileWeek();
-    if (compact && view !== 'week') { renderMobileAgenda(); if (view === 'day') $('#week-view').before($('#mobile-month-agenda')); else $('#month-view').after($('#mobile-month-agenda')); }
+    if (compact && !['month', 'year'].includes(view)) renderMobileWeek();
+    if (compact && !['week', 'year'].includes(view)) { renderMobileAgenda(); if (view === 'day') $('#week-view').before($('#mobile-month-agenda')); else $('#month-view').after($('#mobile-month-agenda')); }
     if (view === 'month') renderMonth();
+    else if (view === 'year') renderYear();
+    if (view !== 'year') yearKey = '';
     else {
       renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, timeZone: model.snapshot().settings.timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.snapshot().settings),
         onSelect: date => choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
@@ -105,7 +153,7 @@ export function initCalendar(model, handlers) {
     const day = model.getDay(selected), stats = planningCapacity(day, model.snapshot().settings);
     $('#selected-day').textContent = dateLabel(selected, { year: 'numeric' });
     $('#day-hours').textContent = `Planning: ${day.start}–${day.end} · ${model.snapshot().settings.timeZone}`;
-    $('#day-capacity').textContent = `${stats.booked} min booked · ${stats.free} min free${stats.blockedSleep ? ` · ${stats.blockedSleep} min reserved for sleep` : ''}`;
+    $('#day-capacity').textContent = `${durationLabel(stats.booked)} booked · ${durationLabel(stats.free)} free${stats.blockedSleep ? ` · ${durationLabel(stats.blockedSleep)} reserved for sleep` : ''}`;
     $('#capacity-fill').style.width = `${stats.ratio * 100}%`;
     const list = $('#day-commitments'); list.replaceChildren();
     for (const item of [...day.commitments].sort((a, b) => minutes(a.start) - minutes(b.start))) {
@@ -123,13 +171,14 @@ export function initCalendar(model, handlers) {
   $('#edit-day-hours').addEventListener('click', () => handlers.onHours(selected));
   document.querySelectorAll('[data-calendar-view]').forEach(button => button.addEventListener('click', () => { view = button.dataset.calendarView; render(); try { storage.setItem('day-compass.calendar-view.v1', view); } catch { $('#calendar-status').textContent = 'View changed but the preference could not be saved.'; } }));
   for (const [id, direction] of [['#previous-period', -1], ['#next-period', 1]]) $(id).addEventListener('click', () => {
-    if (view === 'month') { const d = new Date(`${selected}T12:00:00`), last = new Date(d.getFullYear(), d.getMonth() + direction + 1, 0).getDate(); selected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d.getDate(), last)).padStart(2, '0')}`; const moved = new Date(d.getFullYear(), d.getMonth() + direction, Math.min(d.getDate(), last), 12); selected = `${moved.getFullYear()}-${String(moved.getMonth() + 1).padStart(2, '0')}-${String(moved.getDate()).padStart(2, '0')}`; }
+    if (view === 'year') { const year = Number(selected.slice(0, 4)) + direction, last = new Date(Date.UTC(year, Number(selected.slice(5, 7)), 0)).getUTCDate(); selected = `${year}-${selected.slice(5, 7)}-${String(Math.min(Number(selected.slice(8, 10)), last)).padStart(2, '0')}`; }
+    else if (view === 'month') { const d = new Date(`${selected}T12:00:00`), last = new Date(d.getFullYear(), d.getMonth() + direction + 1, 0).getDate(); selected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d.getDate(), last)).padStart(2, '0')}`; const moved = new Date(d.getFullYear(), d.getMonth() + direction, Math.min(d.getDate(), last), 12); selected = `${moved.getFullYear()}-${String(moved.getMonth() + 1).padStart(2, '0')}-${String(moved.getDate()).padStart(2, '0')}`; }
     else selected = addDays(selected, direction * (view === 'week' ? 7 : 1));
     render(); handlers.onSelection?.();
   });
   $('#calendar-today').addEventListener('click', () => choose(now().date));
   compactScreen.addEventListener('change', () => { lastTimedKey = ''; render(); });
-  setInterval(() => { if (!document.hidden && view !== 'month') updateNowLines($('#week-grid')); }, 60000);
+  setInterval(() => { if (!document.hidden && !['month', 'year'].includes(view)) updateNowLines($('#week-grid')); }, 60000);
   render();
   return { getSelectedDate: () => selected, selectDate: choose, refresh: render };
 }

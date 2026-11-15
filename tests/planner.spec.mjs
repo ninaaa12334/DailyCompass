@@ -145,7 +145,7 @@ test('an overfull day keeps tasks visible with an honest unscheduled reason', as
   await expect(page.locator('#plan-preview')).toContainText('No remaining slot fits');
   await page.locator('#apply-plan').click();
   await expect(page.locator('#task-list')).toContainText('Cannot fit');
-  await expect(page.locator('#free-minutes')).toHaveText('0');
+  await expect(page.locator('#free-minutes')).toHaveText('0 h');
   await page.reload(); await expect(page.locator('#day-unscheduled')).toContainText('Cannot fit');
 });
 

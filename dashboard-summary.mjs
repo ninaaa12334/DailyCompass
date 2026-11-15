@@ -1,3 +1,4 @@
+import { durationLabel } from './clock.mjs';
 import { dateKey, minutes, capacity } from './calendar-store.mjs';
 
 export function summarizeCommitments(day, time) {
@@ -21,7 +22,7 @@ export function initDashboard(getTasks, calendar, tasksAvailable = () => true) {
     $('#now-detail').textContent = current ? `Until ${current.end}` : 'No fixed commitment right now.';
     $('#next-activity').textContent = next ? `Next: ${next.title} · ${next.start}` : 'No more fixed commitments today.';
     const selected = calendar.getSelectedDate();
-    $('#free-minutes').textContent = capacity(calendar.getDay(selected)).free;
+    $('#free-minutes').textContent = durationLabel(capacity(calendar.getDay(selected)).free);
     $('#free-date').textContent = `Unbooked on ${new Date(`${selected}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
     } else {
       $('#now-heading').textContent = 'Calendar unavailable';

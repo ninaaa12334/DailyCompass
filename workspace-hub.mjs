@@ -1,5 +1,6 @@
 import { newId } from './uuid.mjs';
-import { parseScheduleRequest, scheduleInputs, describeSchedule } from './schedule-request.mjs';
+import { parseSchedule, scheduleInputs, describeSchedule } from './schedule-request.mjs';
+import { interpretPlanningRequest } from './planning-request.mjs';
 import { dateLabel } from './clock.mjs';
 
 // Calendar-centred workspace: the calendar fills the middle of the screen and every other
@@ -13,13 +14,14 @@ const ICONS = {
   spark: '<svg viewBox="0 0 24 24"><path d="M12 3.5 13.8 9 19.5 11 13.8 13 12 18.5 10.2 13 4.5 11 10.2 9Z"/><path d="M19 3v3M17.5 4.5h3"/></svg>',
   chat: '<svg viewBox="0 0 24 24"><path d="M5 17.5V7a2.5 2.5 0 0 1 2.5-2.5h9A2.5 2.5 0 0 1 19 7v6a2.5 2.5 0 0 1-2.5 2.5H9Z"/><path d="M9 9.5h6M9 12h4"/></svg>',
   palette: '<svg viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 1.8-.9 1.4-1.9-.5-1.1.2-2.3 1.4-2.3H17a3.5 3.5 0 0 0 3.5-3.5c0-5.2-3.8-9.3-8.5-9.3Z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="8.5" r="1"/></svg>',
-  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg>',
+  // Cog outline (Feather "settings" icon, MIT licence).
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
   send: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'
 };
 const icon = name => { const span = node('span', undefined, 'hub-icon'); span.setAttribute('aria-hidden', 'true'); span.innerHTML = ICONS[name]; return span; };
 
-export function initWorkspaceHub({ model, now, feedback }) {
+export function initWorkspaceHub({ model, now, feedback, account }) {
   const $ = selector => document.querySelector(selector);
   const main = $('#planner');
   if (!main || !$('.calendar-widget')) return null;
@@ -172,57 +174,95 @@ export function initWorkspaceHub({ model, now, feedback }) {
   // ---------- Ask bar: add events to the calendar from a sentence ----------
   const review = node('div', undefined, 'hub-review');
   const reviewDialog = sheet('add', 'Add to calendar', review);
-  let pending = null;
-  function showPlan(plan, text) {
-    pending = plan; review.replaceChildren();
-    const { dayText, count } = describeSchedule(plan);
-    const card = node('div', undefined, 'hub-review-card');
-    const title = node('input', undefined, 'hub-review-title'); title.value = plan.title; title.maxLength = 120; title.setAttribute('aria-label', 'Event title');
-    title.addEventListener('input', () => { pending.title = title.value.trim() || plan.title; });
-    const rows = node('dl', undefined, 'hub-review-rows');
-    const row = (label, value) => { rows.append(node('dt', label), node('dd', value)); };
-    if (dayText) row('Repeats', dayText);
-    row('Time', `${plan.start} – ${plan.end}${plan.guessedLength ? ' (1 hour, change in the event)' : ''}`);
+  const aiConfigured = Boolean(account?.user && account?.features?.ai);
+  let pending = [], lastText = '', askedFrom = 'bar';
+  function showPlans(plans, text) {
+    pending = plans.map(plan => ({ ...plan })); review.replaceChildren();
     const full = date => dateLabel(date, { year: 'numeric' });
-    if (plan.recurring) row('Dates', `${full(plan.dates[0])} → ${full(plan.dates.at(-1))}`);
-    else row('Date', full(plan.from));
-    row('Category', plan.category);
-    card.append(title, rows);
-    const note = node('p', plan.recurring ? `Adds ${count} event${count === 1 ? '' : 's'} to your calendar.` : 'Adds one event to your calendar.', 'hub-review-note');
-    if (plan.capped) note.textContent += ' Repeats are limited to one year, so it stops on the last date shown.';
+    const title = node('input', undefined, 'hub-review-title'); title.value = plans[0].title; title.maxLength = 120; title.setAttribute('aria-label', 'Event title');
+    title.addEventListener('input', () => { for (const plan of pending) plan.title = title.value.trim() || plans[0].title; });
+    const card = node('div', undefined, 'hub-review-card'); card.append(title);
+    for (const plan of plans) {
+      const { dayText } = describeSchedule(plan);
+      const rows = node('dl', undefined, 'hub-review-rows');
+      const row = (label, value) => { rows.append(node('dt', label), node('dd', value)); };
+      if (dayText) row(plans.length > 1 ? 'Days' : 'Repeats', dayText.replace(/^Every /, plans.length > 1 ? '' : 'Every '));
+      row('Time', `${plan.start} – ${plan.end}${plan.guessedLength ? ' (1 hour, change in the event)' : ''}`);
+      if (!plan.recurring) row('Date', full(plan.from));
+      card.append(rows);
+    }
+    const dates = plans.flatMap(plan => plan.dates).sort();
+    const info = node('dl', undefined, 'hub-review-rows hub-review-shared');
+    if (plans[0].recurring) info.append(node('dt', 'Dates'), node('dd', `${full(dates[0])} → ${full(dates.at(-1))}`));
+    info.append(node('dt', 'Category'), node('dd', plans[0].category));
+    card.append(info);
+    // Fixed events can't overlap, so find days where something is already booked at that time.
+    const toMin = value => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+    const clashes = [];
+    for (const plan of plans) for (const date of plan.dates) {
+      const hit = model.getDay(date).commitments.find(item => !item.sourceRoutine && !item.sourceImport && toMin(item.start) < toMin(plan.end) && toMin(item.end) > toMin(plan.start));
+      if (hit) clashes.push({ date, hit });
+    }
+    const clashDates = new Set(clashes.map(clash => clash.date));
+    const count = dates.length - clashDates.size;
+    const note = node('p', count === 1 ? 'Adds one event to your calendar.' : `Adds ${count} events to your calendar.`, 'hub-review-note');
+    let warning = null;
+    if (clashes.length) {
+      warning = node('div', undefined, 'hub-review-clash');
+      warning.append(node('strong', `${clashDates.size} day${clashDates.size === 1 ? '' : 's'} already ${clashDates.size === 1 ? 'has' : 'have'} something at this time`));
+      const list = node('ul');
+      for (const { date, hit } of clashes.slice(0, 3)) list.append(node('li', `${dateLabel(date)} · ${hit.title} ${hit.start}–${hit.end}`));
+      if (clashes.length > 3) list.append(node('li', `and ${clashes.length - 3} more`));
+      warning.append(list, node('p', count ? 'Those days will be skipped. Everything else is added as normal.' : 'Every day clashes, so nothing can be added. Try a different time.'));
+    }
+    if (plans.some(plan => plan.capped)) note.textContent += ' Repeats are limited to one year, so it stops on the last date shown.';
     const error = node('p', '', 'hub-review-error'); error.setAttribute('role', 'alert');
-    const add = node('button', plan.recurring ? `Add ${count} events` : 'Add event', 'hub-primary'); add.type = 'button';
+    const add = node('button', count === 1 ? 'Add event' : `Add ${count} events${clashDates.size ? `, skip ${clashDates.size}` : ''}`, 'hub-primary'); add.type = 'button';
+    add.disabled = count === 0;
     add.addEventListener('click', () => {
       try {
-        model.saveActivities(scheduleInputs(pending, newId));
-        closeSheet(reviewDialog); askInput.value = '';
-        feedback(`Added “${pending.title}” to your calendar${plan.recurring ? ` (${count} days)` : ''}. Undo is at the top if you change your mind.`);
+        const keep = pending.map(plan => ({ ...plan, dates: plan.dates.filter(date => !clashDates.has(date)) })).filter(plan => plan.dates.length);
+        model.saveActivities(keep.flatMap(plan => scheduleInputs(plan, newId)));
+        closeSheet(reviewDialog); askInput.value = ''; const prompt = $('#ai-prompt'); if (prompt && askedFrom === 'ai') prompt.value = '';
+        feedback(`Added “${pending[0].title}” to your calendar${count > 1 ? ` (${count} days)` : ''}. Undo is at the top if you change your mind.`);
       } catch (problem) { error.textContent = problem.message || String(problem); }
     });
-    const echo = node('p', `“${text}”`, 'hub-review-echo');
-    review.append(echo, card, note, error, add);
+    review.append(...[node('p', `“${text}”`, 'hub-review-echo'), card, note, warning, error, add].filter(Boolean));
     openSheet('add');
     setTimeout(() => add.focus(), 80);
   }
   function showQuestion(message, text) {
     review.replaceChildren(node('p', `“${text}”`, 'hub-review-echo'), node('p', message, 'hub-review-question'));
     const fix = node('button', 'Edit my request', 'hub-primary'); fix.type = 'button';
-    fix.addEventListener('click', () => { closeSheet(reviewDialog); setTimeout(() => askInput.focus(), 240); });
-    const ai = node('button', 'Ask the AI planner instead', 'secondary'); ai.type = 'button';
-    ai.addEventListener('click', () => { const prompt = $('#ai-prompt'); if (prompt) prompt.value = text; openSheet('ai'); });
-    review.append(fix, ai); openSheet('add');
+    fix.addEventListener('click', () => {
+      if (askedFrom === 'ai') { openSheet('ai'); setTimeout(() => $('#ai-prompt')?.focus(), 240); }
+      else { closeSheet(reviewDialog); askInput.value = text; setTimeout(() => askInput.focus(), 240); }
+    });
+    review.append(fix);
+    if (aiConfigured && askedFrom === 'bar') {
+      const ai = node('button', 'Ask the AI planner instead', 'secondary'); ai.type = 'button';
+      ai.addEventListener('click', () => { const prompt = $('#ai-prompt'); if (prompt) prompt.value = text; openSheet('ai'); });
+      review.append(ai);
+    }
+    openSheet('add');
+  }
+  function handle(text, from) {
+    lastText = text; askedFrom = from;
+    const result = parseSchedule(text, model.snapshot().settings);
+    if (result.clarification) showQuestion(result.clarification, text); else showPlans(result.plans, text);
   }
   ask.addEventListener('submit', event => {
     event.preventDefault();
     const text = askInput.value.trim(); if (!text) { askInput.focus(); return; }
-    const plan = parseScheduleRequest(text, model.snapshot().settings);
-    if (plan.clarification) showQuestion(plan.clarification, text); else showPlan(plan, text);
+    handle(text, 'bar');
   });
-  // The AI planner handles one-day suggestions; repeating requests go through the same review.
+  // "Plan with AI": requests to put things in the calendar always go through the same review.
+  // Only one-day suggestion requests reach the paid AI planner, and only when it is configured.
   $('#ai-form')?.addEventListener('submit', event => {
-    const text = $('#ai-prompt').value.trim();
-    const plan = parseScheduleRequest(text, model.snapshot().settings);
-    if (!plan.clarification && plan.recurring) { event.preventDefault(); event.stopImmediatePropagation(); showPlan(plan, text); }
+    const text = $('#ai-prompt').value.trim(); if (!text) return;
+    const result = parseSchedule(text, model.snapshot().settings);
+    const repeating = result.plans?.some(plan => plan.recurring) || interpretPlanningRequest(text, model.snapshot().settings).action === 'routines';
+    if (!aiConfigured || repeating) { event.preventDefault(); event.stopImmediatePropagation(); handle(text, 'ai'); }
   }, { capture: true });
 
   // ---------- Live tile details ----------

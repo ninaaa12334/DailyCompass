@@ -7,3 +7,9 @@ export function dateLabel(date, options = {}) {
 }
 export function dayNumber(date) { return Math.floor(Date.parse(`${date}T12:00:00Z`) / 86400000); }
 export function validDate(date) { return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T12:00:00Z`)) && new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) === date; }
+// 270 -> "4 h 30 min", 240 -> "4 h", 45 -> "45 min", 0 -> "0 h".
+export function durationLabel(total) {
+  const value = Math.max(0, Math.round(Number(total) || 0)), hours = Math.floor(value / 60), rest = value % 60;
+  if (!hours) return rest ? `${rest} min` : '0 h';
+  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+}

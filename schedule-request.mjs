@@ -22,7 +22,7 @@ const iso = (year, month, day) => `${year}-${String(month + 1).padStart(2, '0')}
 
 const CATEGORY_WORDS = [
   ['Study', /\b(school|class(es)?|lesson|lecture|study|homework|exam|revision|tutor(ing)?|course|uni(versity)?|college)\b/],
-  ['Exercise', /\b(gym|football|soccer|basketball|training|practice|run(ning)?|swim(ming)?|tennis|yoga|workout|sport|dance|match)\b/],
+  ['Exercise', /\b(gym|football|soccer|basketball|volleyball|handball|hockey|training|practice|run(ning)?|jog(ging)?|swim(ming)?|tennis|padel|yoga|pilates|workout|sport|dance|dancing|match|cycling|bike|walk(ing)?|hike|hiking|boxing|karate|judo|martial arts|climbing|stretching|fitness)\b/],
   ['Work', /\b(work|job|shift|meeting|office)\b/],
   ['Appointments', /\b(doctor|dentist|appointment|therapy|checkup|haircut)\b/],
   ['Social', /\b(friends?|party|birthday|dinner|family|date)\b/],
@@ -119,14 +119,8 @@ function parseTimes(text) {
   return null;
 }
 
-export function parseScheduleRequest(prompt, settings = {}, at = new Date()) {
-  const original = String(prompt || '').trim();
-  let text = ` ${original.toLowerCase().replace(/\b(a|p)\.\s?m\.?/g, '$1m').replace(/[,!?]+/g, ' ').replace(/\s+/g, ' ')} `;
-  const today = zonedNow(at, settings.timeZone || 'UTC').date;
-  const ask = clarification => ({ clarification });
-  if (original.length < 3) return ask('Tell me what to add, for example “school every weekday from 8 to 2 until June 20”.');
-
-  // Days of the week.
+// Finds which weekdays a request repeats on. With anyDay, a single plain day ("on tuesday") counts too.
+export function readDays(text, anyDay = false) {
   let days = null, recurring = false;
   const take = pattern => { const m = text.match(pattern); if (m) text = text.replace(m[0], ' '); return m; };
   if (take(/\b(every\s?day|each day|daily|every single day|all week)\b/)) { days = [0, 1, 2, 3, 4, 5, 6]; recurring = true; }
@@ -147,13 +141,26 @@ export function parseScheduleRequest(prompt, settings = {}, at = new Date()) {
     if (list) {
       const words = list[2].match(new RegExp(DAY_RE + 's?', 'g'));
       const plural = words.some(w => /s$/.test(w) && !/^(tues|thurs)$/.test(w) || /days$/.test(w));
-      if (list[1] === 'every' || list[1] === 'each' || plural || words.length > 1 || /\b(weekly|every week|each week)\b/.test(text)) {
+      if (anyDay || list[1] === 'every' || list[1] === 'each' || plural || words.length > 1 || /\b(weekly|every week|each week)\b/.test(text)) {
         days = [...new Set(words.map(w => dayIndex(w.replace(/s$/, ''))))].sort();
         recurring = true; text = text.replace(list[0], ' ');
       }
     }
   }
   take(/\b(every week|each week|weekly)\b/);
+  return { days, recurring, text };
+}
+
+export function parseScheduleRequest(prompt, settings = {}, at = new Date()) {
+  const original = String(prompt || '').trim();
+  let text = ` ${original.toLowerCase().replace(/\b(a|p)\.\s?m\.?/g, '$1m').replace(/[,!?]+/g, ' ').replace(/\s+/g, ' ')} `;
+  const today = zonedNow(at, settings.timeZone || 'UTC').date;
+  const ask = clarification => ({ clarification });
+  if (original.length < 3) return ask('Tell me what to add, for example “school every weekday from 8 to 2 until June 20”.');
+
+  // Days of the week.
+  let days, recurring;
+  ({ days, recurring, text } = readDays(text));
 
   // Times.
   const times = parseTimes(text);
@@ -223,9 +230,17 @@ export function parseScheduleRequest(prompt, settings = {}, at = new Date()) {
 export function scheduleInputs(plan, makeId) {
   const base = { kind: 'fixed', title: plan.title, category: plan.category, priority: 'Medium', start: plan.start, end: plan.end, notes: '', reminder: 'default', completed: false, locked: false };
   if (!plan.recurring) return [{ ...base, id: makeId(), date: plan.from, repeat: 'none', repeatUntil: '' }];
-  if (plan.days.length === 7) return [{ ...base, id: makeId(), date: plan.dates[0], repeat: 'daily', repeatUntil: plan.until }];
-  return plan.days.map(day => plan.dates.find(date => weekday(date) === day)).filter(Boolean)
-    .map(first => ({ ...base, id: makeId(), date: first, repeat: 'weekly', repeatUntil: plan.until }));
+  // Built from the actual dates, so days that were skipped (e.g. clashes) leave a gap in the series.
+  const step = plan.days.length === 7 ? 1 : 7;
+  const groups = step === 1 ? [plan.dates] : plan.days.map(day => plan.dates.filter(date => weekday(date) === day));
+  const inputs = [];
+  for (const group of groups) {
+    let run = [];
+    const flush = () => { if (run.length) inputs.push({ ...base, id: makeId(), date: run[0], repeat: run.length === 1 ? 'none' : step === 1 ? 'daily' : 'weekly', repeatUntil: run.length === 1 ? '' : run.at(-1) }); run = []; };
+    for (const date of [...group].sort()) { if (run.length && addDays(run.at(-1), step) !== date) flush(); run.push(date); }
+    flush();
+  }
+  return inputs;
 }
 
 export function describeSchedule(plan) {
@@ -233,4 +248,61 @@ export function describeSchedule(plan) {
   const order = [1, 2, 3, 4, 5, 6, 0].filter(d => plan.days.includes(d));
   const dayText = !plan.recurring ? null : plan.days.length === 7 ? 'Every day' : order.join() === '1,2,3,4,5' ? 'Every weekday (Mon–Fri)' : order.join() === '6,0' ? 'Every weekend' : `Every ${order.map(d => names[d]).join(', ')}`;
   return { dayText, count: plan.dates.length };
+}
+
+// Whole requests, including exceptions:
+//   "school every weekday from 8 to 2 until June 20, but on tuesdays until 3"
+//   "work mon-fri 9-17 until march except fridays 9-13"
+//   "gym every day 7-8am for 6 weeks except sundays"
+// Returns { plans: [...] } (each plan as from parseScheduleRequest) or { clarification }.
+export function parseSchedule(prompt, settings = {}, at = new Date()) {
+  const text = String(prompt || '').trim();
+  const [mainText, ...exceptions] = text.split(/\s*[,;.]?\s*\b(?:but|except(?:\s+for|\s+on)?|apart\s+from|other\s+than)\b\s*/i);
+  const main = parseScheduleRequest(mainText, settings, at);
+  if (main.clarification || !exceptions.length) return main.clarification ? main : { plans: [main] };
+  if (!main.recurring) return { clarification: 'Exceptions work with repeating events. Try “school every weekday from 8 to 2 until June 20, but on Tuesdays until 3”.' };
+  const plans = [main];
+  for (const raw of exceptions) {
+    let rest = ` ${raw.toLowerCase().replace(/\b(a|p)\.\s?m\.?/g, '$1m').replace(/[,!?]+/g, ' ').replace(/\s+/g, ' ')} `;
+    const found = readDays(rest, true);
+    if (!found.days) return { clarification: `Which days are different in “${raw}”? Name the days, for example “but on Tuesdays until 3”.` };
+    rest = found.text;
+    main.days = main.days.filter(day => !found.days.includes(day));
+    if (/\b(off|free|no\s+\w+|none|not|nothing|skip)\b/.test(rest) || !/\d/.test(rest)) continue; // those days are simply left out
+    const span = exceptionTimes(rest, main);
+    if (span.clarification) return span;
+    plans.push({ ...main, days: found.days, start: span.start, end: span.end });
+  }
+  // Recompute which dates each plan covers now that days have been split.
+  const result = [];
+  for (const plan of plans) {
+    const dates = [];
+    for (let d = plan.from; d <= plan.until; d = addDays(d, 1)) if (plan.days.includes(weekday(d))) dates.push(d);
+    if (dates.length) result.push({ ...plan, dates });
+  }
+  if (!result.length) return { clarification: 'With those exceptions, no days are left to add. Check the days you mentioned.' };
+  return { plans: result };
+}
+
+// Times for an exception, relative to the main event: "until 3" keeps the start and ends at 15:00.
+function exceptionTimes(text, main) {
+  const full = parseTimes(text);
+  if (full?.error) return { clarification: full.error };
+  if (full && !full.guessedLength) return { start: full.start, end: full.end };
+  const toMinutes = value => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+  const start = toMinutes(main.start), end = toMinutes(main.end);
+  const pick = (h, m, period, after, before) => {
+    h = Number(h); m = Number(m || 0);
+    if (m > 59 || h > 23) return null;
+    const options = period ? [(h % 12 + (period === 'pm' ? 12 : 0)) * 60 + m] : h <= 12 ? [h * 60 + m, (h % 12 + 12) * 60 + m] : [h * 60 + m];
+    return options.find(value => value > after && value < before) ?? null;
+  };
+  const time = /(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/.source;
+  const until = text.match(new RegExp(String.raw`\b(?:until|till|til|to|ends?(?:\s+at)?|finish(?:es)?(?:\s+at)?|out\s+at|done\s+at)\s+` + time));
+  const from = text.match(new RegExp(String.raw`\b(?:from|starts?(?:\s+at)?|begins?(?:\s+at)?|at)\s+` + time));
+  let a = start, b = end;
+  if (from) { a = pick(from[1], from[2], from[3], -1, until ? 1440 : end); if (a === null) return { clarification: 'What time does it start on those days?' }; }
+  if (until) { b = pick(until[1], until[2], until[3], a, 1440); if (b === null) return { clarification: 'What time does it end on those days?' }; }
+  if (!from && !until) return { clarification: 'What time is it on those days? For example “but on Tuesdays until 3” or “but on Fridays 8–1”.' };
+  return { start: timeLabel(a), end: timeLabel(b) };
 }

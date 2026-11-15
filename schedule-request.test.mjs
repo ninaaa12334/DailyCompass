@@ -69,3 +69,38 @@ test('saving creates every occurrence as a single undoable change', () => {
   model.undo();
   assert.equal(Object.values(model.snapshot().days).flatMap(day => day.commitments).length, 0);
 });
+
+import { parseSchedule } from './schedule-request.mjs';
+const full = text => parseSchedule(text, settings, at);
+
+test('exception with a different end time on some days', () => {
+  const { plans } = full('I have school every weekday from 8 to 2 until June 20, but on tuesdays until 3');
+  assert.equal(plans.length, 2);
+  assert.deepEqual(plans[0].days, [1, 3, 4, 5]); assert.deepEqual([plans[0].start, plans[0].end], ['08:00', '14:00']);
+  assert.deepEqual(plans[1].days, [2]); assert.deepEqual([plans[1].start, plans[1].end], ['08:00', '15:00']);
+  assert.equal(plans[1].title, 'School');
+});
+
+test('exception with its own time range, and days left out', () => {
+  const work = full('work mon-fri 9-17 until march except fridays 9-13').plans;
+  assert.deepEqual(work[1].days, [5]); assert.deepEqual([work[1].start, work[1].end], ['09:00', '13:00']);
+  const gym = full('gym every day 7-8am for 6 weeks except sundays').plans;
+  assert.equal(gym.length, 1); assert.ok(!gym[0].days.includes(0));
+});
+
+test('plain requests still work and unclear exceptions ask', () => {
+  assert.equal(full('football on tuesdays 5-7pm for 4 weeks').plans.length, 1);
+  assert.match(full('school every weekday 8-2 until june but sometimes later').clarification, /Which days/);
+});
+
+test('skipped dates leave gaps in the saved series', () => {
+  const data = new Map(), storage = { getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, v) };
+  const model = createPlannerStore(storage);
+  const plan = parse('pilates everyday from 4 pm to 5pm until 31 december');
+  assert.equal(plan.category, 'Exercise');
+  const skipped = ['2026-11-15', '2026-11-20'];
+  let n = 0; model.saveActivities(scheduleInputs({ ...plan, dates: plan.dates.filter(d => !skipped.includes(d)) }, () => `p-${n++}`));
+  const days = model.snapshot().days;
+  assert.equal(Object.values(days).flatMap(d => d.commitments).length, plan.dates.length - 2);
+  for (const date of skipped) assert.equal(days[date]?.commitments.length ?? 0, 0);
+});

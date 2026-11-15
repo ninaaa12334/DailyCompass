@@ -3,7 +3,7 @@ import { createPlannerStore, PLANNER_KEY } from './planner-store.mjs';
 import { initCalendar } from './calendar-ui.mjs';
 import { minutes } from './calendar-store.mjs';
 import { generatePlan, planningCapacity } from './scheduler.mjs';
-import { zonedNow, dateLabel, dayNumber } from './clock.mjs';
+import { zonedNow, dateLabel, dayNumber, durationLabel } from './clock.mjs';
 import { upcomingReminders, isQuiet } from './reminders.mjs';
 import { storage, isDemo } from './runtime.mjs';
 import { seedDemo } from './demo.mjs';
@@ -115,7 +115,7 @@ export async function startApp() {
     $('#now-heading').textContent = current?.title || 'A little breathing room';
     $('#now-detail').textContent = current ? `Until ${current.end}` : 'No activity scheduled right now.';
     $('#next-activity').textContent = next ? `Next: ${next.title} at ${next.start}${nextDate !== currentTime.date ? ` on ${dateLabel(nextDate)}` : ''}` : 'No upcoming activities scheduled.';
-    $('#free-minutes').textContent = planningCapacity(day, model.snapshot().settings).free; $('#free-date').textContent = `${model.snapshot().settings.setupConfirmed ? 'Unbooked' : 'Estimate — finish availability setup'} on ${dateLabel(date)}`;
+    $('#free-minutes').textContent = durationLabel(planningCapacity(day, model.snapshot().settings).free); $('#free-date').textContent = `${model.snapshot().settings.setupConfirmed ? 'Unbooked' : 'Estimate — finish availability setup'} on ${dateLabel(date)}`;
     productivity?.render();
     $('#undo-action').disabled = !model.snapshot().undo;
     const unplaced = $('#day-unscheduled'); unplaced.replaceChildren();
@@ -214,5 +214,5 @@ export async function startApp() {
     welcome.querySelector('button').addEventListener('click', () => welcome.remove()); $('.dashboard-heading').after(welcome);
   }
   renderTasks(); renderSummary(); tickReminders(); initInterfaceMotion();
-  initWorkspaceHub({ model, now, feedback });
+  initWorkspaceHub({ model, now, feedback, account });
 }
