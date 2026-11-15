@@ -9,8 +9,13 @@ export function zonedNow(now = new Date(), timeZone = Intl.DateTimeFormat().reso
   const parts = Object.fromEntries(zoneFormatter(timeZone).formatToParts(now).map(part => [part.type, part.value]));
   return { date: `${parts.year}-${parts.month}-${parts.day}`, minute: Number(parts.hour) * 60 + Number(parts.minute) };
 }
+// One formatter per option set: building formatters is slow and the year view labels 365 days.
+const labelFormatters = new Map();
 export function dateLabel(date, options = {}) {
-  return new Date(`${date}T12:00:00Z`).toLocaleDateString(undefined, { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', ...options });
+  const key = JSON.stringify(options);
+  let formatter = labelFormatters.get(key);
+  if (!formatter) { formatter = new Intl.DateTimeFormat(undefined, { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', ...options }); labelFormatters.set(key, formatter); }
+  return formatter.format(new Date(`${date}T12:00:00Z`));
 }
 export function dayNumber(date) { return Math.floor(Date.parse(`${date}T12:00:00Z`) / 86400000); }
 export function validDate(date) { return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T12:00:00Z`)) && new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) === date; }

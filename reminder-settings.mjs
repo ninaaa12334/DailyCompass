@@ -18,7 +18,7 @@ export function initReminderSettings({ model, account, sync, pushStatus }) {
   const form = $('#reminder-preferences-form');
   function quietFields() { const enabled = $('#reminder-use-quiet').checked; $('#reminder-quiet-fields').hidden = !enabled; for (const id of ['#reminder-quiet-start', '#reminder-quiet-end']) $(id).disabled = !enabled; }
   function loadPreferences() {
-    const s = model.snapshot().settings;
+    const s = model.getSettings();
     $('#reminder-lead').value = s.reminderMinutes;
     const quiet = s.quietStart !== s.quietEnd; $('#reminder-use-quiet').checked = quiet;
     $('#reminder-quiet-start').value = quiet ? s.quietStart : '22:00'; $('#reminder-quiet-end').value = quiet ? s.quietEnd : '07:00';
@@ -33,7 +33,7 @@ export function initReminderSettings({ model, account, sync, pushStatus }) {
       $('#scheduled-reminders').replaceChildren(); $('#notification-center').replaceChildren();
       if (!account.user) { $('#reminder-center-status').textContent = 'Sign in under Account and enable background reminders on this device to receive scheduled notifications.'; return; }
       await sync.flush();
-      const records = await api('reminders'), timeZone = model.snapshot().settings.timeZone;
+      const records = await api('reminders'), timeZone = model.getSettings().timeZone;
       const pending = records.filter(r => r.status === 'pending').sort((a, b) => a.due - b.due);
       function row(r) {
         const li = document.createElement('li'), title = document.createElement('strong'), detail = document.createElement('span');
@@ -43,7 +43,7 @@ export function initReminderSettings({ model, account, sync, pushStatus }) {
       }
       for (const r of pending.slice(0, 8)) $('#scheduled-reminders').append(row(r));
       for (const r of records.filter(r => r.status !== 'pending').sort((a, b) => b.due - a.due).slice(0, 12)) $('#notification-center').append(row(r));
-      $('#reminder-center-status').textContent = storage.getItem('day-compass.open-page-fallback.v1') === 'true' && model.snapshot().settings.remindersEnabled ? 'Page-open reminders are active on this browser. Keep Day Compass open and the computer awake. Background push is not enabled on this device; its subscription error is separate from page-open alerts.' : !model.snapshot().settings.backgroundReminders ? 'Background reminders are off. Enable this device above to schedule them.' : pending.length ? `${pending.length} upcoming reminder${pending.length === 1 ? '' : 's'}. A scheduled reminder still needs a subscribed device and a running server.` : 'No upcoming reminders. Add a deadline notification to a task, or give an activity a calendar time and set its reminder to Default or a lead time.';
+      $('#reminder-center-status').textContent = storage.getItem('day-compass.open-page-fallback.v1') === 'true' && model.getSettings().remindersEnabled ? 'Page-open reminders are active on this browser. Keep Day Compass open and the computer awake. Background push is not enabled on this device; its subscription error is separate from page-open alerts.' : !model.getSettings().backgroundReminders ? 'Background reminders are off. Enable this device above to schedule them.' : pending.length ? `${pending.length} upcoming reminder${pending.length === 1 ? '' : 's'}. A scheduled reminder still needs a subscribed device and a running server.` : 'No upcoming reminders. Add a deadline notification to a task, or give an activity a calendar time and set its reminder to Default or a lead time.';
       await pushStatus();
     } catch (error) { $('#reminder-center-status').textContent = error.message; }
     finally { refreshing = false; }

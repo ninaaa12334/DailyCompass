@@ -48,19 +48,19 @@ export function initTaskChat({ model, account, sync }) {
   f.notify.addEventListener('change', reminderFields);
   f.deadline.addEventListener('change', () => { if (validDate(f.deadline.value)) f.reminderDate.value = f.deadline.value; });
   $('#task-chat-message').addEventListener('submit', event => {
-    event.preventDefault(); saved = false; draft = taskDraft($('#task-chat-text').value, model.snapshot().settings);
+    event.preventDefault(); saved = false; draft = taskDraft($('#task-chat-text').value, model.getSettings());
     review.hidden = false; f.title.value = draft.title; f.deadline.value = draft.deadline;
-    f.deadline.min = zonedNow(new Date(), model.snapshot().settings.timeZone).date;
+    f.deadline.min = zonedNow(new Date(), model.getSettings().timeZone).date;
     f.reminderDate.value = draft.deadline; f.notify.checked = true; reminderFields();
     $('#task-chat-status').textContent = draft.note;
-    $('#task-chat-delivery').textContent = `Reminder times use ${model.snapshot().settings.timeZone}. Suggested: 9 AM on the deadline date; change it below. Quiet hours apply. ${account.user && model.snapshot().settings.backgroundReminders ? 'Background reminders are enabled; the server must be running.' : 'To receive background notifications, sign in and enable this device in Settings → Notifications.'}`;
+    $('#task-chat-delivery').textContent = `Reminder times use ${model.getSettings().timeZone}. Suggested: 9 AM on the deadline date; change it below. Quiet hours apply. ${account.user && model.getSettings().backgroundReminders ? 'Background reminders are enabled; the server must be running.' : 'To receive background notifications, sign in and enable this device in Settings → Notifications.'}`;
   });
   review.addEventListener('submit', async event => {
     event.preventDefault(); if (saved) return;
     const button = review.querySelector('button'); button.disabled = true;
     try {
       const { wallToInstant } = await import('./zoned-time.mjs');
-      const settings = model.snapshot().settings;
+      const settings = model.getSettings();
       if (f.notify.checked && (f.reminderDate.value > f.deadline.value || wallToInstant(f.reminderDate.value, f.reminderTime.value, settings.timeZone) <= Date.now())) throw Error('Choose a future reminder on or before the deadline. No task has been added.');
       model.saveActivity({ id: newId(), kind: 'task', title: f.title.value.trim(), date: '', deadline: f.deadline.value, notes: draft.notes, duration: Number(f.duration.value), spent: 0, completed: false, locked: false, category: 'Study', priority: 'Medium', repeat: 'none', repeatUntil: '', reminder: 'default', ...(f.notify.checked ? { deadlineReminder: { date: f.reminderDate.value, time: f.reminderTime.value } } : {}) });
       saved = true; review.hidden = true;

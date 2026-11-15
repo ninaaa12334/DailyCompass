@@ -26,7 +26,7 @@ export async function startApp() {
   const form = $('#activity-form');
   let calendar, assistant, productivity, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
   const displayedNotifications = new Map();
-  const now = () => zonedNow(new Date(), model.snapshot().settings.timeZone);
+  const now = () => zonedNow(new Date(), model.getSettings().timeZone);
   const field = name => form.elements.namedItem(name);
   const showError = (id, error) => { $(id).hidden = false; $(id).textContent = error.message || String(error); };
   function attempt(callback, errorId = '#planner-feedback') {
@@ -105,21 +105,20 @@ export async function startApp() {
     let next = events.find(item => minutes(item.start) > currentTime.minute);
     let nextDate = currentTime.date;
     if (!next) {
-      const state = model.snapshot();
-      for (const day of [...new Set([...Object.keys(state.days), ...Object.keys(state.plans)])].filter(key => key > currentTime.date).sort()) {
+      for (const day of model.datedKeys().filter(key => key > currentTime.date).sort()) {
         const first = model.getDay(day).commitments.filter(item => !item.completed).sort((a, b) => minutes(a.start) - minutes(b.start))[0];
         if (first) { next = first; nextDate = day; break; }
       }
     }
-    $('#dashboard-date').textContent = `${dateLabel(currentTime.date, { year: 'numeric' })} · ${model.snapshot().settings.timeZone}`;
+    $('#dashboard-date').textContent = `${dateLabel(currentTime.date, { year: 'numeric' })} · ${model.getSettings().timeZone}`;
     $('#now-heading').textContent = current?.title || 'A little breathing room';
     $('#now-detail').textContent = current ? `Until ${current.end}` : 'No activity scheduled right now.';
     $('#next-activity').textContent = next ? `Next: ${next.title} at ${next.start}${nextDate !== currentTime.date ? ` on ${dateLabel(nextDate)}` : ''}` : 'No upcoming activities scheduled.';
-    $('#free-minutes').textContent = durationLabel(planningCapacity(day, model.snapshot().settings).free); $('#free-date').textContent = `${model.snapshot().settings.setupConfirmed ? 'Unbooked' : 'Estimate — finish availability setup'} on ${dateLabel(date)}`;
+    $('#free-minutes').textContent = durationLabel(planningCapacity(day, model.getSettings()).free); $('#free-date').textContent = `${model.getSettings().setupConfirmed ? 'Unbooked' : 'Estimate — finish availability setup'} on ${dateLabel(date)}`;
     productivity?.render();
-    $('#undo-action').disabled = !model.snapshot().undo;
+    $('#undo-action').disabled = !model.canUndo();
     const unplaced = $('#day-unscheduled'); unplaced.replaceChildren();
-    for (const item of model.snapshot().unscheduled?.[date] || []) if (model.getTasks().some(task => task.id === item.taskId && !task.completed)) {
+    for (const item of model.getUnscheduled(date)) if (model.getTasks().some(task => task.id === item.taskId && !task.completed)) {
       const title = model.getTasks().find(task => task.id === item.taskId).title;
       const row = document.createElement('li'); row.textContent = `Last plan left ${title} unscheduled: ${item.reason} Generate a fresh preview after changing the day or task.`; unplaced.append(row);
     }
@@ -129,7 +128,7 @@ export async function startApp() {
   function renderReminders() {
     const list = $('#reminder-list'); list.replaceChildren();
     const reminders = upcomingReminders(model, now());
-    const settings = model.snapshot().settings;
+    const settings = model.getSettings();
     const fallback = storage.getItem('day-compass.open-page-fallback.v1') === 'true';
     $('#reminder-mode').textContent = settings.remindersEnabled && fallback ? 'Page-open reminders are enabled on this browser. Keep this page open and the computer awake, outside quiet hours.' : account.user && settings.backgroundReminders ? 'Background reminders are enabled for this account. Check Notifications for this device’s subscription and delivery status.' : settings.remindersEnabled ? 'Open-page alerts are enabled while this page remains open, outside quiet hours.' : 'Notifications are off for this planner. Enable background reminders on this device in Notifications.';
     $('#reminder-mode-help').textContent = !fallback && account.user && settings.backgroundReminders ? 'The server must stay running. Device permission and subscription are checked in Notifications; this list alone does not confirm delivery.' : 'Page-open reminders cannot run after the page closes and browser suspension may delay them. Times use your configured timezone.';
@@ -171,7 +170,7 @@ export async function startApp() {
     if (data.kind === 'task' && field('deadlineAlertDate').value) data.deadlineReminder = { date: field('deadlineAlertDate').value, time: field('deadlineAlertTime').value };
     if (!['default', 'off'].includes(data.reminder)) data.reminder = Number(data.reminder);
     data.dstChoice = field('dstChoice').value;
-    if (attempt(() => { if (data.kind === 'fixed') { wallToInstant(data.date, data.start, model.snapshot().settings.timeZone, data.dstChoice); wallToInstant(data.date, data.end, model.snapshot().settings.timeZone, data.dstChoice); } model.saveActivity(data, original, field('scope').value); }, '#activity-error')) { calendar.selectDate(data.date); $('#activity-dialog').close(); feedback(data.kind === 'task' ? 'Task saved. Generate or replan your day to preview where it fits.' : 'Activity saved. Undo is available.'); }
+    if (attempt(() => { if (data.kind === 'fixed') { wallToInstant(data.date, data.start, model.getSettings().timeZone, data.dstChoice); wallToInstant(data.date, data.end, model.getSettings().timeZone, data.dstChoice); } model.saveActivity(data, original, field('scope').value); }, '#activity-error')) { calendar.selectDate(data.date); $('#activity-dialog').close(); feedback(data.kind === 'task' ? 'Task saved. Generate or replan your day to preview where it fits.' : 'Activity saved. Undo is available.'); }
     saving = false; $('#save-activity').disabled = false;
   });
   $('#complete-activity').addEventListener('click', () => { if (attempt(() => model.toggle(original.kind, original.id, original.date), '#activity-error')) $('#activity-dialog').close(); });
@@ -183,12 +182,12 @@ export async function startApp() {
   $('#undo-action').addEventListener('click', () => { if (attempt(() => model.undo())) feedback('Last change undone.'); });
   for (const id of ['#generate-day', '#replan-day']) $(id).addEventListener('click', previewPlan);
   $('#apply-plan').addEventListener('click', () => { if (attempt(() => model.applyPlan(preview.date, preview.proposed, preview.revision), '#plan-error')) { $('#plan-dialog').close(); feedback('Plan applied. Undo is available.'); } });
-  $('#open-planning-settings').addEventListener('click', () => { const settings = model.snapshot().settings; for (const [name, value] of Object.entries(settings)) { const input = $('#planning-form').elements.namedItem(name); if (!input) continue; if (typeof value === 'boolean') input.checked = value; else input.value = value; } $('#planning-error').hidden = true; $('#planning-dialog').showModal(); });
+  $('#open-planning-settings').addEventListener('click', () => { const settings = model.getSettings(); for (const [name, value] of Object.entries(settings)) { const input = $('#planning-form').elements.namedItem(name); if (!input) continue; if (typeof value === 'boolean') input.checked = value; else input.value = value; } $('#planning-error').hidden = true; $('#planning-dialog').showModal(); });
   $('#planning-form').addEventListener('submit', event => { event.preventDefault(); const settings = Object.fromEntries(new FormData(event.target)); for (const name of ['breakMinutes', 'reminderMinutes']) settings[name] = Number(settings[name]); settings.remindersEnabled = event.target.elements.namedItem('remindersEnabled').checked; if (attempt(() => model.saveSettings(settings), '#planning-error')) { $('#planning-dialog').close(); feedback('Preferences saved. Existing per-day hours remain; use Edit day hours to change them.'); } });
   $('#hours-form').addEventListener('submit', event => { event.preventDefault(); if (attempt(() => model.setHours(calendar.getSelectedDate(), Object.fromEntries(new FormData(event.target))), '#hours-error')) $('#hours-dialog').close(); });
   $('#enable-notifications').addEventListener('click', async () => { if (!('Notification' in window)) { $('#notification-status').textContent = 'Browser notifications are unavailable here. In-app reminders still work.'; return; } const permission = await Notification.requestPermission(); $('#notification-status').textContent = permission === 'granted' ? 'Permission granted. Enable reminders and save preferences to receive open-page alerts.' : 'Notifications not enabled. In-app reminders remain available.'; });
   async function tickReminders() {
-    const settings = model.snapshot().settings, time = now();
+    const settings = model.getSettings(), time = now();
     if (!settings.remindersEnabled || (account.user && settings.backgroundReminders && storage.getItem('day-compass.open-page-fallback.v1') !== 'true') || isQuiet(time.minute, settings)) return;
     const stamp = dayNumber(time.date) * 1440 + time.minute;
     const send = () => { for (const reminder of upcomingReminders(model, time).filter(item => item.due <= stamp && item.startStamp >= stamp)) {

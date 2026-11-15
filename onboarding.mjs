@@ -13,7 +13,7 @@ try {
   else {
     const model = createPlannerStore(storage); bindAccountAppearance(model);
     let step = 0, version = account.document.version, saving = false;
-    const settings = model.snapshot().settings;
+    const settings = model.getSettings();
     $('#onboarding-start').value = settings.planningStart; $('#onboarding-end').value = settings.planningEnd;
     $('#onboarding-zone').value = settings.timeZone; $('#onboarding-reminder').value = settings.reminderMinutes;
     $('#onboarding-interests').value = settings.interests || '';

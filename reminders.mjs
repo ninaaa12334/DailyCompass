@@ -8,7 +8,7 @@ export function isQuiet(minute, settings) {
   return start === end ? false : start < end ? minute >= start && minute < end : minute >= start || minute < end;
 }
 export function upcomingReminders(model, now) {
-  const settings = model.snapshot().settings;
+  const settings = model.getSettings();
   const timestamp = dayNumber(now.date) * 1440 + now.minute;
   const result = [];
   for (let offset = 0; offset < 8; offset++) {

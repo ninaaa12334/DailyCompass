@@ -22,15 +22,15 @@ apply(saved);
 export function currentAppearance() { return { ...saved }; }
 export function bindAccountAppearance(model) {
   try { store = createAppearanceStore(storage); }
-  catch { storage.setItem(APPEARANCE_KEY, JSON.stringify(model.snapshot().settings.appearance || DEFAULT_APPEARANCE)); store = createAppearanceStore(storage); }
-  saved = model.snapshot().settings.appearance || store.get();
+  catch { storage.setItem(APPEARANCE_KEY, JSON.stringify(model.getSettings().appearance || DEFAULT_APPEARANCE)); store = createAppearanceStore(storage); }
+  saved = model.getSettings().appearance || store.get();
   store.save(saved); apply(saved);
   model.subscribe(() => {
-    const remote = model.snapshot().settings.appearance;
+    const remote = model.getSettings().appearance;
     if (remote && JSON.stringify(remote) !== JSON.stringify(saved)) { saved = { ...remote }; store.save(saved); apply(saved); }
   });
   document.addEventListener('appearance-changed', () => {
-    if (JSON.stringify(model.snapshot().settings.appearance) !== JSON.stringify(saved)) model.saveSettings({ appearance: { ...saved } });
+    if (JSON.stringify(model.getSettings().appearance) !== JSON.stringify(saved)) model.saveSettings({ appearance: { ...saved } });
   });
 }
 media.addEventListener('change', () => apply(saved));

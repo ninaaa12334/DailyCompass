@@ -165,6 +165,13 @@ export function createPlannerStore(storage) {
   }
   return {
     snapshot: () => clone(state),
+    // Reading settings must not copy the whole planner (thousands of repeating events).
+    getSettings: () => clone(state.settings),
+    // Small read-only views so screens don't copy every stored event on each click.
+    canUndo: () => Boolean(state.undo),
+    datedKeys: () => [...new Set([...Object.keys(state.days), ...Object.keys(state.plans)])],
+    getUnscheduled: date => clone(state.unscheduled?.[date] || []),
+    getPlanning: () => clone({ plans: state.plans, tasks: state.tasks }),
     subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); },
     getTasks: () => clone(state.tasks),
     getDay(date) {

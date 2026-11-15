@@ -8,7 +8,7 @@ import { activityVisual } from './activity-visuals.mjs';
 
 export function initCalendar(model, handlers) {
   const $ = selector => document.querySelector(selector);
-  const now = () => zonedNow(new Date(), model.snapshot().settings.timeZone);
+  const now = () => zonedNow(new Date(), model.getSettings().timeZone);
   let selected = now().date;
   const compactScreen = window.matchMedia('(max-width: 580px)');
   let view = compactScreen.matches ? 'day' : 'week';
@@ -19,7 +19,7 @@ export function initCalendar(model, handlers) {
   function renderMonth() {
     const grid = $('#calendar-days'); grid.replaceChildren();
     for (const date of monthDates(selected)) {
-      const day = model.getDay(date), { ratio, booked } = planningCapacity(day, model.snapshot().settings);
+      const day = model.getDay(date), { ratio, booked } = planningCapacity(day, model.getSettings());
       const due = model.getTasks().filter(task => !task.completed && task.deadline === date).length;
       const cell = document.createElement('div'); cell.className = 'month-cell';
       if (date.slice(0, 7) !== selected.slice(0, 7)) cell.classList.add('other-month');
@@ -44,7 +44,7 @@ export function initCalendar(model, handlers) {
   }
   // Whole year: twelve small months. Shading shows how booked each day is; tap a day to open it.
   function renderYear() {
-    const host = $('#year-view'), year = selected.slice(0, 4), today = now().date, settings = model.snapshot().settings;
+    const host = $('#year-view'), year = selected.slice(0, 4), today = now().date;
     // The title becomes a year picker: jump to any year from two years back to ten years ahead.
     const picker = document.createElement('select'); picker.className = 'year-picker'; picker.setAttribute('aria-label', 'Choose a year');
     const thisYear = Number(today.slice(0, 4)), years = new Set([Number(year)]);
@@ -70,7 +70,8 @@ export function initCalendar(model, handlers) {
       for (const letter of ['M', 'T', 'W', 'T', 'F', 'S', 'S']) { const head = document.createElement('span'); head.className = 'year-weekday'; head.textContent = letter; head.setAttribute('aria-hidden', 'true'); grid.append(head); }
       for (const date of monthDates(first)) {
         if (date.slice(0, 7) !== first.slice(0, 7)) { const blank = document.createElement('span'); blank.className = 'year-blank'; grid.append(blank); continue; }
-        const day = model.getDay(date), { ratio } = planningCapacity(day, settings);
+        const day = model.getDay(date), span = Math.max(60, minutes(day.end) - minutes(day.start));
+        const ratio = Math.min(1, day.commitments.reduce((sum, item) => sum + Math.max(0, minutes(item.end) - minutes(item.start)), 0) / span);
         const button = document.createElement('button'); button.type = 'button'; button.className = 'year-day'; button.textContent = Number(date.slice(-2));
         Object.assign(button.dataset, { date, load: !day.commitments.length ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3', due: dueDates.has(date) ? 'true' : 'false' });
         button.setAttribute('aria-label', `${dateLabel(date, { year: 'numeric' })}, ${day.commitments.length} activities${dueDates.has(date) ? ', deadline' : ''}. Open day.`);
@@ -91,7 +92,7 @@ export function initCalendar(model, handlers) {
   function renderMobileWeek() {
     const strip = $('#mobile-week-days'); strip.replaceChildren();
     for (const date of weekDates(selected)) {
-      const day = model.getDay(date), stats = planningCapacity(day, model.snapshot().settings);
+      const day = model.getDay(date), stats = planningCapacity(day, model.getSettings());
       const button = document.createElement('button'); button.type = 'button'; button.className = 'mobile-week-day';
       Object.assign(button.dataset, { date, color: day.color, load: stats.ratio === 0 ? '0' : stats.ratio <= 1 / 3 ? '1' : stats.ratio <= 2 / 3 ? '2' : '3' });
       button.setAttribute('aria-pressed', String(date === selected));
@@ -130,7 +131,7 @@ export function initCalendar(model, handlers) {
     $('#month-view').hidden = view !== 'month'; $('#year-view').hidden = view !== 'year'; $('#week-view').hidden = view === 'month' || view === 'year';
     $('#mobile-week-days').hidden = !compact || view === 'month' || view === 'year';
     $('#mobile-month-agenda').hidden = !compact || view === 'week' || view === 'year';
-    $('#calendar-timezone').textContent = `Times in ${model.snapshot().settings.timeZone}`;
+    $('#calendar-timezone').textContent = `Times in ${model.getSettings().timeZone}`;
     $('#calendar-instructions').textContent = compact ? view === 'month' ? 'Tap a date to see its activities below. Dots mark activities.' : view === 'week' ? 'Choose a day above its timeline. Tap a time to add an activity.' : 'Tap a time to add, or an activity to edit.' : view === 'month' ? 'Select a date for its agenda. Click an activity to edit it.' : 'Click a time to add an activity. Arrow keys move between slots. Hatched areas are outside planning hours.';
     if (compact && !['month', 'year'].includes(view)) renderMobileWeek();
     if (compact && !['week', 'year'].includes(view)) { renderMobileAgenda(); if (view === 'day') $('#week-view').before($('#mobile-month-agenda')); else $('#month-view').after($('#mobile-month-agenda')); }
@@ -138,7 +139,7 @@ export function initCalendar(model, handlers) {
     else if (view === 'year') renderYear();
     if (view !== 'year') yearKey = '';
     else {
-      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, timeZone: model.snapshot().settings.timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.snapshot().settings),
+      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, timeZone: model.getSettings().timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.getSettings()),
         onSelect: date => choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
         onNavigate: (date, hour) => { focusHour = hour; choose(date); [...document.querySelectorAll('.time-slot')].find(node => node.dataset.date === date && Number(node.dataset.hour) === hour)?.focus(); }
       });
@@ -150,9 +151,9 @@ export function initCalendar(model, handlers) {
         $('#week-view').scrollTop = target; lastTimedKey = timedKey;
       }
     }
-    const day = model.getDay(selected), stats = planningCapacity(day, model.snapshot().settings);
+    const day = model.getDay(selected), stats = planningCapacity(day, model.getSettings());
     $('#selected-day').textContent = dateLabel(selected, { year: 'numeric' });
-    $('#day-hours').textContent = `Planning: ${day.start}–${day.end} · ${model.snapshot().settings.timeZone}`;
+    $('#day-hours').textContent = `Planning: ${day.start}–${day.end} · ${model.getSettings().timeZone}`;
     $('#day-capacity').textContent = `${durationLabel(stats.booked)} booked · ${durationLabel(stats.free)} free${stats.blockedSleep ? ` · ${durationLabel(stats.blockedSleep)} reserved for sleep` : ''}`;
     $('#capacity-fill').style.width = `${stats.ratio * 100}%`;
     const list = $('#day-commitments'); list.replaceChildren();

@@ -50,7 +50,7 @@ export function initProductivity({ model, storage, selectedDate }) {
   let period = 'day';
   try { const saved = storage.getItem('day-compass.productivity-period.v1'); if (['day', 'week', 'month'].includes(saved)) period = saved; } catch {}
   function render() {
-    const date = selectedDate(), result = taskProductivity(model.snapshot(), date, period);
+    const date = selectedDate(), result = taskProductivity(model.getPlanning(), date, period);
     const ring = $('#task-progress');
     ring.setAttribute('aria-valuenow', result.percent);
     ring.setAttribute('aria-valuetext', result.total ? `${result.done} of ${result.total} tasks complete, ${result.percent}%` : 'No tasks in this period');

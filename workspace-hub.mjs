@@ -248,7 +248,7 @@ export function initWorkspaceHub({ model, now, feedback, account }) {
   }
   function handle(text, from) {
     lastText = text; askedFrom = from;
-    const result = parseSchedule(text, model.snapshot().settings);
+    const result = parseSchedule(text, model.getSettings());
     if (result.clarification) showQuestion(result.clarification, text); else showPlans(result.plans, text);
   }
   ask.addEventListener('submit', event => {
@@ -260,8 +260,8 @@ export function initWorkspaceHub({ model, now, feedback, account }) {
   // Only one-day suggestion requests reach the paid AI planner, and only when it is configured.
   $('#ai-form')?.addEventListener('submit', event => {
     const text = $('#ai-prompt').value.trim(); if (!text) return;
-    const result = parseSchedule(text, model.snapshot().settings);
-    const repeating = result.plans?.some(plan => plan.recurring) || interpretPlanningRequest(text, model.snapshot().settings).action === 'routines';
+    const result = parseSchedule(text, model.getSettings());
+    const repeating = result.plans?.some(plan => plan.recurring) || interpretPlanningRequest(text, model.getSettings()).action === 'routines';
     if (!aiConfigured || repeating) { event.preventDefault(); event.stopImmediatePropagation(); handle(text, 'ai'); }
   }, { capture: true });
 
