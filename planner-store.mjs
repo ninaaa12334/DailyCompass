@@ -122,27 +122,7 @@ export function createPlannerStore(storage) {
       for (const date of Object.keys(next.plans)) next.plans[date] = next.plans[date].filter(item => !removed.has(item.taskId));
     } else for (const day of Object.values(next.days)) day.commitments = day.commitments.filter(item => !predicate(item));
   }
-  return {
-    snapshot: () => clone(state),
-    subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); },
-    getTasks: () => clone(state.tasks),
-    getDay(date) {
-      ensure(validDate(date), 'Choose a valid date.');
-      const day = clone(state.days[date] || { start: state.settings.planningStart, end: state.settings.planningEnd, color: 'theme', commitments: [] }); day.date = date;
-      const planned = (state.plans[date] || []).map(entry => {
-        const task = entry.kind === 'task' ? state.tasks.find(task => task.id === entry.taskId) : null;
-        return { ...entry, ...(task ? { title: task.title, category: task.category, priority: task.priority, notes: task.notes, reminder: task.reminder, completed: task.completed || entry.completed } : {}), date };
-      });
-      if (importSource !== state.imports || importZone !== state.settings.timeZone || !importCache) { importCache = importedDays(state.imports || [], state.settings.timeZone); importSource = state.imports; importZone = state.settings.timeZone; }
-      day.commitments = [...day.commitments.map(item => ({ ...item, date })), ...planned, ...routineEvents(date, state.settings), ...(importCache[date] || []).map(e => ({ ...e, kind: 'fixed', sourceImport: true, reminder: 'off' }))];
-      return day;
-    },
-    saveSettings(settings) { commit(next => { next.settings = { ...next.settings, ...settings }; }); },
-    setImports(events) { commit(next => { next.imports = clone(events); }); },
-    replaceSnapshot(value) { validate(value); storage.setItem(PLANNER_KEY, JSON.stringify(value)); state = clone(value); notify(); },
-    setHours(date, settings) { commit(next => { Object.assign(ensureDay(next, date), settings); }); },
-    saveActivity(input, original = null, scope = 'one') {
-      commit(next => {
+  function applyActivity(next, input, original = null, scope = 'one') {
         const kind = input.kind;
         const source = original?.kind === 'task' ? next.tasks.find(task => task.id === original.id) : original ? next.days[original.date]?.commitments.find(item => item.id === original.id) : null;
         ensure(!original || source, 'This activity no longer exists.');
@@ -180,8 +160,30 @@ export function createPlannerStore(storage) {
             day.commitments.push(normalizeEvent(item));
           }
         }
+  }
+  return {
+    snapshot: () => clone(state),
+    subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); },
+    getTasks: () => clone(state.tasks),
+    getDay(date) {
+      ensure(validDate(date), 'Choose a valid date.');
+      const day = clone(state.days[date] || { start: state.settings.planningStart, end: state.settings.planningEnd, color: 'theme', commitments: [] }); day.date = date;
+      const planned = (state.plans[date] || []).map(entry => {
+        const task = entry.kind === 'task' ? state.tasks.find(task => task.id === entry.taskId) : null;
+        return { ...entry, ...(task ? { title: task.title, category: task.category, priority: task.priority, notes: task.notes, reminder: task.reminder, completed: task.completed || entry.completed } : {}), date };
       });
+      if (importSource !== state.imports || importZone !== state.settings.timeZone || !importCache) { importCache = importedDays(state.imports || [], state.settings.timeZone); importSource = state.imports; importZone = state.settings.timeZone; }
+      day.commitments = [...day.commitments.map(item => ({ ...item, date })), ...planned, ...routineEvents(date, state.settings), ...(importCache[date] || []).map(e => ({ ...e, kind: 'fixed', sourceImport: true, reminder: 'off' }))];
+      return day;
     },
+    saveSettings(settings) { commit(next => { next.settings = { ...next.settings, ...settings }; }); },
+    setImports(events) { commit(next => { next.imports = clone(events); }); },
+    replaceSnapshot(value) { validate(value); storage.setItem(PLANNER_KEY, JSON.stringify(value)); state = clone(value); notify(); },
+    setHours(date, settings) { commit(next => { Object.assign(ensureDay(next, date), settings); }); },
+    saveActivity(input, original = null, scope = 'one') { commit(next => applyActivity(next, input, original, scope)); },
+    // Several new activities as one change (one undo step), e.g. school on Mon–Fri.
+    saveActivities(inputs) { commit(next => { for (const input of inputs) applyActivity(next, input); }); },
+
     toggle(kind, id, date) { commit(next => {
       const item = kind === 'task' ? next.tasks.find(task => task.id === id) : next.days[date]?.commitments.find(event => event.id === id);
       ensure(item, 'Activity not found.'); item.completed = !item.completed;

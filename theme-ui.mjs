@@ -14,7 +14,7 @@ function apply(value) {
   root.dataset.mode = theme.dark ? 'dark' : 'light';
   root.dataset.theme = value.preset;
   root.dataset.palette = theme.warm ? 'warm' : 'colour';
-  for (const [key, color] of Object.entries({ accent: theme.accent, 'accent-ink': theme.accentText, busy: theme.busy, 'busy-ink': theme.busyText, background: theme.background, tint: theme.tint, surface: theme.surface, 'surface-alt': theme.surfaceAlt, text: theme.text, muted: theme.muted, border: theme.border, 'ring-start': theme.accent, 'ring-end': theme.accent, 'ring-track': theme.tint, 'lilac-card': theme.tint, 'peach-card': theme.surfaceAlt, 'blue-wash': theme.tint, 'pink-wash': theme.background })) {
+  for (const [key, color] of Object.entries({ accent: theme.accent, 'accent-ink': theme.accentText, busy: theme.busy, 'busy-ink': theme.busyText, background: theme.background, tint: theme.tint, surface: theme.surface, 'surface-alt': theme.surfaceAlt, text: theme.text, muted: theme.muted, border: theme.border, 'ring-start': theme.accent, 'ring-end': theme.accent, 'ring-track': theme.tint, 'lilac-card': theme.tint, 'peach-card': theme.surfaceAlt, 'blue-wash': theme.tint, 'pink-wash': theme.background, wallpaper: theme.wallpaper || 'none' })) {
     root.style.setProperty(`--${key}`, color);
   }
 }
@@ -48,7 +48,7 @@ dialog.innerHTML = `
   <div class="dialog-heading"><div><p class="widget-label">MAKE YOURSELF AT HOME</p><h2 id="appearance-title">Your colours, your space.</h2></div><button type="button" class="secondary" id="close-appearance">Close</button></div>
   <p class="muted">Soft daylight or a quieter evening. Find what feels comfortable.</p>
   <form id="appearance-form">
-    <fieldset><legend>Theme</legend><div class="theme-options" id="theme-options"></div><details id="other-palettes"><summary>More palettes</summary><div class="theme-options" id="other-theme-options"></div></details></fieldset>
+    <fieldset><legend>Theme</legend><p class="theme-group-label">Light</p><div class="theme-options theme-cards" id="theme-light"></div><p class="theme-group-label">Dark</p><div class="theme-options theme-cards" id="theme-dark"></div><details id="other-palettes"><summary>Classic palettes</summary><div class="theme-options" id="theme-options"></div><div class="theme-options" id="other-theme-options"></div></details></fieldset>
     <div class="colour-choice"><label><input type="checkbox" name="customAccent"> Use a custom accent</label><input type="color" name="accent" aria-label="Custom accent colour"></div>
     <div class="colour-choice"><label><input type="checkbox" name="customBusy"> Use a custom busyness colour</label><input type="color" name="busy" aria-label="Calendar busyness colour"></div>
     <p class="fine-print">Button text adjusts for contrast. Dates with their own busy colour keep that override.</p>
@@ -67,10 +67,17 @@ for (const [key, preset] of Object.entries(PRESETS)) {
   const input = document.createElement('input');
   input.type = 'radio'; input.name = 'preset'; input.value = key; input.required = true;
   const swatch = document.createElement('span');
-  swatch.className = 'theme-swatch'; swatch.style.background = preset.background ? `linear-gradient(135deg, ${preset.background} 0 40%, ${preset.tint} 40% 72%, ${preset.accent} 72%)` : 'linear-gradient(90deg,#365d4d 50%,#141e23 50%)';
-  swatch.setAttribute('aria-hidden', 'true');
-  label.append(input, swatch, document.createTextNode(preset.label));
-  dialog.querySelector(['linen', 'stone', 'clay', 'dusk'].includes(key) ? '#theme-options' : '#other-theme-options').append(label);
+  swatch.className = 'theme-swatch'; swatch.setAttribute('aria-hidden', 'true');
+  if (preset.group) {
+    // A tiny "screen" preview: wallpaper, a card and the accent colour.
+    label.classList.add('theme-card');
+    const full = resolveAppearance({ ...DEFAULT_APPEARANCE, preset: key });
+    for (const [name, value] of Object.entries({ bg: full.background, wall: full.wallpaper || 'none', surface: full.surface, accent: full.accent, tint: full.tint, line: full.border })) swatch.style.setProperty(`--sw-${name}`, value);
+    swatch.innerHTML = '<i></i><i></i><i></i>';
+  } else swatch.style.background = preset.background ? `linear-gradient(135deg, ${preset.background} 0 40%, ${preset.tint} 40% 72%, ${preset.accent} 72%)` : 'linear-gradient(90deg,#365d4d 50%,#141e23 50%)';
+  const name = document.createElement('span'); name.className = 'theme-name'; name.textContent = preset.label;
+  label.append(input, swatch, name);
+  dialog.querySelector(preset.group === 'light' ? '#theme-light' : preset.group === 'dark' ? '#theme-dark' : ['linen', 'stone', 'clay', 'dusk'].includes(key) ? '#theme-options' : '#other-theme-options').append(label);
 }
 function read() {
   return { preset: form.elements.namedItem('preset').value, customAccent: form.elements.namedItem('customAccent').checked, accent: form.elements.namedItem('accent').value, customBusy: form.elements.namedItem('customBusy').checked, busy: form.elements.namedItem('busy').value };
@@ -90,13 +97,15 @@ document.querySelectorAll('[data-open-appearance]').forEach(button => button.add
     if (key.startsWith('custom')) control.checked = value;
     else control.value = value;
   }
-  dialog.querySelector('#other-palettes').open = !['linen', 'stone', 'clay', 'dusk'].includes(saved.preset);
+  dialog.querySelector('#other-palettes').open = !PRESETS[saved.preset]?.group;
   error.hidden = !loadError;
   error.textContent = loadError ? 'Saved preferences could not be read. Saving a new choice will replace only appearance preferences; your tasks and calendar stay intact.' : '';
   preview();
   dialog.showModal();
 }));
-form.addEventListener('input', preview);
+// Tapping a theme previews it on the whole page right away; closing without saving restores it.
+form.addEventListener('input', () => { preview(); try { apply(read()); } catch {} });
+dialog.addEventListener('close', () => { try { apply(saved); } catch {} });
 form.addEventListener('submit', event => {
   event.preventDefault();
   const next = read();

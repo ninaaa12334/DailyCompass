@@ -14,6 +14,7 @@ import { wallToInstant } from './zoned-time.mjs';
 import { initProductivity } from './productivity.mjs';
 import { bindAccountAppearance } from './theme-ui.mjs';
 import { initInterfaceMotion } from './interface-motion.mjs';
+import { initWorkspaceHub } from './workspace-hub.mjs';
 
 export async function startApp() {
   const $ = selector => document.querySelector(selector);
@@ -213,4 +214,5 @@ export async function startApp() {
     welcome.querySelector('button').addEventListener('click', () => welcome.remove()); $('.dashboard-heading').after(welcome);
   }
   renderTasks(); renderSummary(); tickReminders(); initInterfaceMotion();
+  initWorkspaceHub({ model, now, feedback });
 }

@@ -34,7 +34,7 @@ test('all preset and custom accent/button text combinations meet 4.5:1 contrast'
 });
 
 test('warm minimal palettes retain readable primary and secondary text', () => {
-  for (const preset of ['linen', 'stone', 'clay', 'dusk']) {
+  for (const preset of ['linen', 'stone', 'clay', 'dusk', ...Object.keys(PRESETS).filter(key => PRESETS[key].group)]) {
     const theme = resolveAppearance({ ...DEFAULT_APPEARANCE, preset });
     for (const surface of [theme.surface, theme.surfaceAlt, theme.background]) {
       assert.ok(contrastRatio(theme.text, surface) >= 4.5, `${preset}: primary text`);
