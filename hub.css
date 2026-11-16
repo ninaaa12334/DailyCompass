@@ -362,3 +362,20 @@ body.hub-layout .welcome-connections { position: fixed; z-index: 25; left: 50%; 
   .hub-sheet[open], .hub-sheet.closing, .hub-sheet::backdrop { animation: none !important; }
   .hub .hub-tile, .hub-toast, .theme-card .theme-swatch { transition: none !important; }
 }
+
+/* Persistent "not saved yet" warning (account-client.mjs) */
+.sync-warning {
+  position: fixed; z-index: 40; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(620px, calc(100vw - 24px)); box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  border-radius: 18px; background: #fff4e5; color: #4a2c00; border: 1px solid #f0b45a; box-shadow: 0 18px 44px -16px rgb(0 0 0 / .35);
+  font-family: var(--hub-font, system-ui); animation: hub-sheet-in .45s var(--hub-spring, ease);
+}
+.sync-warning[hidden] { display: none; }
+.sync-warning-icon { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e8890c; color: #fff; font-weight: 800; }
+.sync-warning-text { flex: 1; min-width: 0; }
+.sync-warning-text strong { display: block; font-size: .92rem; }
+.sync-warning-text p { margin: 2px 0 0; font-size: .8rem; line-height: 1.35; }
+.sync-warning-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.sync-warning-actions button { min-height: 36px; padding: .35rem .9rem; border-radius: 12px; border: 0; font-weight: 650; font-size: .82rem; background: #e8890c; color: #fff; box-shadow: none; }
+.sync-warning-actions button.secondary { background: rgb(0 0 0 / .08); color: #4a2c00; }
+@media (max-width: 560px) { .sync-warning { flex-wrap: wrap; } .sync-warning-actions { width: 100%; } .sync-warning-actions button { flex: 1; } }
