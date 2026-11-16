@@ -1,11 +1,12 @@
 import { clearAccountCache } from './runtime.mjs';
-import { signUp, signIn, sendPasswordReset, setNewPassword, loadPlanner, currentUser } from './cloud.mjs';
+import { signUp, signIn, sendPasswordReset, setNewPassword, loadPlanner, currentUser, providers, signInWithGoogle } from './cloud.mjs';
 
 // Sign up / log in with email + password (accounts are stored in Supabase, so they work on every
 // link and device). Also handles "Forgot password?" and the page the reset email links to.
 export function initAuth(root, { mode = 'signup', onSuccess = result => location.assign(result.onboardingRequired ? 'onboarding.html' : 'dashboard.html') } = {}) {
   root.innerHTML = `<div class="auth-switch" role="group" aria-label="Account access"><button type="button" data-auth-mode="signup">Sign up</button><button type="button" data-auth-mode="login">Log in</button></div>
     <h2 id="auth-title"></h2><p id="auth-description" class="muted"></p>
+    <div id="google-area" hidden><button type="button" id="google-signin" class="secondary google-signin"><svg viewBox="0 0 48 48" aria-hidden="true" width="18" height="18"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.8-2.1 5.1-4.4 6.7v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.2z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.6-3.9-12.3-9.1H4.4v5.7C8 41.1 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.7 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.4C2.9 17.1 2 20.5 2 24s.9 6.9 2.4 9.9l7.3-5.7z"/><path fill="#EA4335" d="M24 10.7c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.2 29.9 2 24 2 15.4 2 8 6.9 4.4 14.1l7.3 5.7c1.7-5.2 6.6-9.1 12.3-9.1z"/></svg> Continue with Google</button><div class="auth-divider"><span>or use your email</span></div></div>
     <form id="account-form">
       <div id="email-field"><label for="account-email">Email</label><input id="account-email" name="email" type="email" autocomplete="email" maxlength="200" required></div>
       <div id="password-field"><label for="account-password">Password</label><input id="account-password" name="password" type="password" minlength="10" maxlength="200" required></div>
@@ -39,6 +40,12 @@ export function initAuth(root, { mode = 'signup', onSuccess = result => location
   }
   root.querySelectorAll('[data-auth-mode]').forEach(button => button.addEventListener('click', () => { if (!busy) { $('#auth-note').textContent = ''; setMode(button.dataset.authMode); } }));
   $('#forgot-password').addEventListener('click', () => { if (!busy) setMode('forgot'); });
+  // Show "Continue with Google" only when Google is switched on in Supabase.
+  providers().then(list => { if (list.google) $('#google-area').hidden = mode === 'reset' || mode === 'forgot'; });
+  $('#google-signin').addEventListener('click', async () => {
+    if (busy) return; setBusy(true); $('#auth-error').textContent = '';
+    try { clearAccountCache(); await signInWithGoogle(); } catch (error) { $('#auth-error').textContent = error.message; setBusy(false); }
+  });
   $('#show-password').addEventListener('change', event => { for (const input of [$('#account-password'), $('#account-confirm')]) input.type = event.target.checked ? 'text' : 'password'; });
   for (const input of [$('#account-confirm'), $('#account-password')]) input.addEventListener('input', () => $('#account-confirm').setCustomValidity(''));
   function setBusy(value) { busy = value; for (const button of root.querySelectorAll('button')) button.disabled = value; }

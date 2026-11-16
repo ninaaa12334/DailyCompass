@@ -379,3 +379,8 @@ body.hub-layout .welcome-connections { position: fixed; z-index: 25; left: 50%; 
 .sync-warning-actions button { min-height: 36px; padding: .35rem .9rem; border-radius: 12px; border: 0; font-weight: 650; font-size: .82rem; background: #e8890c; color: #fff; box-shadow: none; }
 .sync-warning-actions button.secondary { background: rgb(0 0 0 / .08); color: #4a2c00; }
 @media (max-width: 560px) { .sync-warning { flex-wrap: wrap; } .sync-warning-actions { width: 100%; } .sync-warning-actions button { flex: 1; } }
+
+/* Shown instead of the planner when a signed-in account can't be reached */
+.offline-gate { max-width: 460px; margin: 18vh auto 0; padding: 28px; border-radius: 24px; background: var(--surface); border: 1px solid var(--border); text-align: center; font-family: var(--hub-font, system-ui); box-shadow: 0 20px 50px -24px rgb(0 0 0 / .3); }
+.offline-gate h1 { font-size: 1.4rem; margin: 0 0 8px; }
+.offline-gate p { color: var(--muted); margin: 0 0 18px; }

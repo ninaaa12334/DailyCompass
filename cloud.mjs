@@ -60,6 +60,16 @@ export async function signIn(email, password) {
   if (error) throw fail(error);
   return data.user;
 }
+// Which sign-in methods are switched on in Supabase (e.g. Google, once its client ID is added).
+export async function providers() {
+  try { const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_KEY } }); return (await response.json()).external || {}; } catch { return {}; }
+}
+// Goes to Google, then comes back to the sign-in page, which finishes the login.
+export async function signInWithGoogle() {
+  const sb = await cloud();
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/auth.html?mode=login&via=google` } });
+  if (error) throw fail(error);
+}
 export async function signOut() { const sb = await cloud(); await sb.auth.signOut(); }
 export async function sendPasswordReset(email) {
   const sb = await cloud();

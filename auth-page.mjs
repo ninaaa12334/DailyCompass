@@ -5,6 +5,13 @@ const mode = ['login', 'reset', 'forgot'].includes(params.get('mode')) ? params.
 // Loading the account system also finishes email links (confirm / password reset) found in the URL.
 try {
   await cloud();
+  // Back from Google: the account system has finished the login, so continue into the app.
+  if (params.get('via') === 'google' || params.get('error_description')) {
+    const { currentUser, loadPlanner } = await import('./cloud.mjs');
+    const user = await currentUser().catch(() => null);
+    if (user) { const row = await loadPlanner(user.id).catch(() => null); location.replace(!row || row.state?.settings?.onboardingComplete !== true ? 'onboarding.html' : 'dashboard.html'); await new Promise(() => {}); }
+    status.textContent = params.get('error_description') ? `Google sign-in didn’t finish: ${params.get('error_description')}` : 'Google sign-in didn’t finish. Please try again.';
+  }
   initAuth(root, { mode });
   if (params.get('confirmed') === '1') status.textContent = 'Your email is confirmed. Log in below.';
 } catch (error) {

@@ -20,6 +20,17 @@ import { initReminderBanner } from './reminder-banner.mjs';
 export async function startApp() {
   const $ = selector => document.querySelector(selector);
   const account = await loadAccount();
+  // An account is required (the sample demo is the only exception).
+  if (!isDemo && !account.user && !account.unavailable) { location.replace('auth.html?mode=login'); return false; }
+  if (!isDemo && account.unavailable) {
+    // Signed in but the account service can't be reached (e.g. no internet): explain and offer to retry.
+    document.body.dataset.plannerReady = 'true';
+    const box = document.createElement('section'); box.className = 'offline-gate'; box.setAttribute('role', 'alert');
+    box.innerHTML = '<h1>Can’t reach your account</h1><p></p><button type="button">Try again</button> <a class="button secondary" href="auth.html?mode=login">Log in</a>';
+    box.querySelector('p').textContent = `${account.cloudError || 'Check your internet connection.'} Your planner is safe in your account; nothing was lost.`;
+    box.querySelector('button').addEventListener('click', () => location.reload());
+    document.body.replaceChildren(box); return false;
+  }
   if (account.user && account.document.state.settings.onboardingComplete !== true) { location.replace('onboarding.html'); return false; }
   if (isDemo) seedDemo(storage);
   const model = createPlannerStore(storage);
