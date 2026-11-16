@@ -1,4 +1,6 @@
 import { useAccount, clearAccountCache, isDemo } from './runtime.mjs';
+import { currentUser, loadPlanner, savePlanner, signOut } from './cloud.mjs';
+import { createPlannerStore } from './planner-store.mjs';
 let expectedUser = null;
 export async function api(path, method = 'GET', data) {
   const response = await fetch(`/api/${path}`, { method, headers: { 'Content-Type': 'application/json', ...(expectedUser ? { 'X-Compass-User': expectedUser } : {}) }, body: data === undefined ? undefined : JSON.stringify(data), signal: AbortSignal.timeout(path === 'ai/preview' ? 55000 : 30000) });
@@ -13,13 +15,25 @@ const pendingKey = id => `day-compass.pending-account-changes.${id}`;
 export function readPending(id) { try { return JSON.parse(localStorage.getItem(pendingKey(id))) || null; } catch { return null; } }
 function writePending(id, value) { try { if (value) localStorage.setItem(pendingKey(id), JSON.stringify(value)); else localStorage.removeItem(pendingKey(id)); return true; } catch { return false; } }
 
+// A fresh planner for a brand-new account (it then goes through the welcome setup).
+function newPlannerState() {
+  const memory = new Map(), store = createPlannerStore({ getItem: key => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value) });
+  const state = store.snapshot(); state.settings.onboardingComplete = false;
+  try { state.settings.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch {}
+  return state;
+}
+// Accounts live in Supabase, so they work on every link and device.
 export async function loadAccount() {
   if (isDemo) return { user: null, features: {}, demo: true };
-  let session;
-  try { session = await api('session'); } catch { return { user: null, features: {}, unavailable: true }; }
-  if (session.user) {
-    expectedUser = session.user.id;
-    const doc = await api('planner'), pending = readPending(session.user.id);
+  let user;
+  try { user = await currentUser(); } catch { return { user: null, features: {}, unavailable: true }; }
+  if (!user) return { user: null, features: {}, cloud: true };
+  const session = { user: { id: user.id, name: user.email, provider: 'cloud' }, features: {}, cloud: true };
+  {
+    let row;
+    try { row = await loadPlanner(user.id); } catch (error) { return { user: null, features: {}, unavailable: true, cloudError: error.message }; }
+    const doc = row ? { state: row.state, version: row.version } : { state: newPlannerState(), version: 0 };
+    const pending = readPending(user.id);
     let state = doc.state;
     // Changes that never reached the server: if nobody else saved since, continue from them; otherwise ask.
     if (pending?.state && pending.baseVersion === doc.version) { state = pending.state; session.pending = { kind: 'restored', savedAt: pending.savedAt }; }
@@ -32,7 +46,7 @@ export async function loadAccount() {
 // Plain-language reason for a failed save.
 function reason(error) {
   if (error.status === 401) return 'You’re signed out. Sign in again and your changes will be saved.';
-  if (error.status === 403 && /origin/i.test(error.message)) return 'This address isn’t allowed to save to your account. Open Day Compass at the address the server shows (for example http://127.0.0.1:8080), or add this address to ALLOWED_ORIGINS.';
+  if (error.network) return 'Can’t reach the account service. Check your internet connection.';
   if (error.status === 413) return 'Your planner is too large to save in one go.';
   if (!error.status || error.name === 'TimeoutError' || /fetch|network|Backend unavailable/i.test(error.message)) return 'Can’t reach the Day Compass server. Is it running?';
   return error.message;
@@ -73,10 +87,10 @@ export function connectAccount(model, session, status) {
     const snapshot = model.snapshot(); dirty = false;
     sending = (async () => {
       try {
-        const doc = await api('planner', 'PUT', { state: snapshot, version }); version = doc.version;
+        const doc = await savePlanner(snapshot, version); version = doc.version;
         failures = 0; clearTimeout(retryTimer);
         if (!dirty) { writePending(userId, null); clearWarning(); }
-        message(`Saved privately to your account at ${new Date().toLocaleTimeString()}.`);
+        message(`Saved to your account at ${new Date().toLocaleTimeString()}.`);
       } catch (error) {
         dirty = true; failures++;
         if (error.status === 409) { conflict = true; await offerConflict(); }
@@ -94,8 +108,8 @@ export function connectAccount(model, session, status) {
   async function offerConflict(savedAt) {
     const when = savedAt ? ` from ${new Date(savedAt).toLocaleString()}` : '';
     warn('Your planner changed on another device', `You have changes${when} that weren’t saved here. Which version do you want to keep?`, [
-      ['Keep my changes', async () => { try { const doc = await api('planner'); version = doc.version; conflict = false; dirty = true; failures = 0; await flush(); } catch {} }, true],
-      ['Use the saved version', async () => { try { await replace(await api('planner')); writePending(userId, null); clearWarning(); } catch (error) { message(reason(error)); } }]
+      ['Keep my changes', async () => { try { const doc = await latest(); version = doc.version; conflict = false; dirty = true; failures = 0; await flush(); } catch {} }, true],
+      ['Use the saved version', async () => { try { await replace(await latest()); writePending(userId, null); clearWarning(); } catch (error) { message(reason(error)); } }]
     ]);
   }
 
@@ -104,6 +118,7 @@ export function connectAccount(model, session, status) {
     dirty = true; keepLocally(); message('Saving private account changes…');
     flush().catch(() => {});
   });
+  const latest = async () => { const row = await loadPlanner(userId); return row ? { state: row.state, version: row.version } : { state: model.snapshot(), version: 0 }; };
   async function replace(doc) { version = doc.version; applying = true; try { model.replaceSnapshot(doc.state); dirty = false; conflict = false; } finally { applying = false; } message('Private planner is up to date.'); }
 
   // What happened before this page loaded.
@@ -119,12 +134,12 @@ export function connectAccount(model, session, status) {
 
   setInterval(async () => {
     if (!session.user || document.hidden || conflict) return;
-    try { if (dirty) await flush(); else if (!sending) { const doc = await api('planner'); if (!dirty && !sending && doc.version !== version) await replace(doc); } } catch (error) { message(`Sync paused: ${reason(error)}`); }
+    try { if (dirty) await flush(); else if (!sending) { const doc = await latest(); if (!dirty && !sending && doc.version !== version && doc.version !== 0) await replace(doc); } } catch (error) { message(`Sync paused: ${reason(error)}`); }
   }, 15000);
   // Changes are kept on this device, so leaving the page is only risky if that couldn't be stored.
   window.addEventListener('beforeunload', event => { if ((dirty || sending) && !keepLocally()) { event.preventDefault(); event.returnValue = ''; } });
   window.addEventListener('offline', () => message(session.user ? 'Offline. Changes are kept on this device and will save when the server is reachable.' : 'Offline. Local changes still save in this browser; online services are unavailable.'));
   window.addEventListener('online', () => { if (session.user) { failures = 0; flush().catch(() => {}); } else message('Online. Your local planner stays saved in this browser.'); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && session.user && dirty && !conflict) { failures = 0; flush().catch(() => {}); } });
-  return { flush, replace, async logout() { await flush(); await api('logout', 'POST'); clearAccountCache(); try { if (session.user?.provider === 'clerk') { const { signOutClerk } = await import('./clerk-client.mjs'); await signOutClerk(); } } finally { location.reload(); } } };
+  return { flush, replace, async logout() { await flush(); await signOut(); clearAccountCache(); location.reload(); } };
 }

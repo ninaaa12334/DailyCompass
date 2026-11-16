@@ -31,7 +31,7 @@ export function initReminderSettings({ model, account, sync, pushStatus }) {
     if (refreshing) return; refreshing = true;
     try {
       $('#scheduled-reminders').replaceChildren(); $('#notification-center').replaceChildren();
-      if (!account.user) { $('#reminder-center-status').textContent = 'Sign in under Account and enable background reminders on this device to receive scheduled notifications.'; return; }
+      if (!account.user || account.cloud) { $('#reminder-center-status').textContent = 'To get notifications even when Day Compass is closed, open the Reminders tile and turn on “Notify me even when Day Compass is closed” on each device.'; return; }
       await sync.flush();
       const records = await api('reminders'), timeZone = model.getSettings().timeZone;
       const pending = records.filter(r => r.status === 'pending').sort((a, b) => a.due - b.due);

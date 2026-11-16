@@ -9,3 +9,4 @@ render.yaml
 .htaccess
 data/
 push-worker/
+supabase-tools/
