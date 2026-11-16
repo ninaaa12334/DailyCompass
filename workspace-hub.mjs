@@ -3,6 +3,7 @@ import { parseSchedule, scheduleInputs, describeSchedule } from './schedule-requ
 import { interpretPlanningRequest } from './planning-request.mjs';
 import { reminderSound } from './reminder-banner.mjs';
 import { buildCalendarFile, downloadCalendarFile } from './ics-export.mjs';
+import { pushSupport, pushEnabled, enablePush, disablePush, testPush, startPushSync } from './push-cloud.mjs';
 import { dateLabel } from './clock.mjs';
 
 // Calendar-centred workspace: the calendar fills the middle of the screen and every other
@@ -114,7 +115,11 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   // Simple controls on top; the detailed (technical) notification settings stay one tap away.
   const controls = node('div', undefined, 'reminder-controls');
   controls.innerHTML = `
-    <label class="hub-switch"><span><strong>Remind me</strong><small>A banner and soft chime while Day Compass is open</small></span><input type="checkbox" role="switch" data-reminder="enabled"></label>
+    <div class="reminder-push">
+      <label class="hub-switch"><span><strong>Notify me even when Day Compass is closed</strong><small data-push-status></small></span><input type="checkbox" role="switch" data-reminder="push"></label>
+      <div class="reminder-push-actions" hidden><button type="button" class="secondary" data-reminder="push-test">Send a test notification</button></div>
+    </div>
+    <label class="hub-switch"><span><strong>Remind me in the page</strong><small>A banner and soft chime while Day Compass is open</small></span><input type="checkbox" role="switch" data-reminder="enabled"></label>
     <label class="hub-switch"><span><strong>Play a sound</strong><small>Soft two-note chime</small></span><input type="checkbox" role="switch" data-reminder="sound"></label>
     <label class="hub-row"><span><strong>Default reminder</strong><small>Each event can change this in its edit form</small></span>
       <select data-reminder="lead"><option value="0">When it starts</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="15">15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option><option value="1440">1 day before</option></select></label>
@@ -132,7 +137,32 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
       </details>
     </div>`;
   const control = name => controls.querySelector(`[data-reminder=${name}]`);
+  let pushNote = '';
+  function syncPushControls() {
+    const on = pushEnabled(), support = pushSupport(), toggle = control('push');
+    toggle.checked = on; toggle.disabled = !on && !support.ok;
+    controls.querySelector('[data-push-status]').textContent = pushNote || (on ? 'On for this device. Reminders arrive like messages, even with the site closed.' : support.ok ? 'Works on phones and computers. Turn it on separately on each device.' : support.reason);
+    controls.querySelector('.reminder-push-actions').hidden = !on;
+  }
+  control('push').addEventListener('change', async event => {
+    const toggle = event.target, turnOn = toggle.checked; toggle.disabled = true;
+    pushNote = turnOn ? 'Turning on… allow notifications if the browser asks.' : 'Turning off…';
+    controls.querySelector('[data-push-status]').textContent = pushNote;
+    try {
+      if (turnOn) { const result = await enablePush(model); pushNote = `On for this device · ${result.saved ?? 0} reminder${result.saved === 1 ? '' : 's'} scheduled in the next 60 days.`; feedback('Notifications are on for this device.'); }
+      else { await disablePush(); pushNote = ''; feedback('Notifications are off for this device.'); }
+    } catch (problem) { pushNote = problem.message; if (!pushEnabled()) toggle.checked = false; }
+    toggle.disabled = false; syncPushControls();
+  });
+  control('push-test').addEventListener('click', async event => {
+    event.target.disabled = true;
+    try { const result = await testPush(); pushNote = result.sent ? 'Test sent. It should appear within a few seconds (close or switch away from this tab to see it as a notification).' : `The notification service didn’t accept it (code ${result.status}).`; }
+    catch (problem) { pushNote = problem.message; }
+    event.target.disabled = false; syncPushControls();
+  });
+  startPushSync(model, result => { if (result.error) { pushNote = `Couldn’t update notifications: ${result.error}`; syncPushControls(); } else if (!result.unchanged && pushEnabled()) { pushNote = `On for this device · ${result.saved} reminder${result.saved === 1 ? '' : 's'} scheduled in the next 60 days.`; syncPushControls(); } });
   function syncControls() {
+    syncPushControls();
     const settings = model.getSettings();
     control('enabled').checked = Boolean(settings.remindersEnabled);
     control('sound').checked = reminderSound.enabled();

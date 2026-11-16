@@ -1,0 +1,17 @@
+{
+  // Day Compass push service: stores each device's notification address and upcoming reminder
+  // times, and sends due reminders every minute — so notifications arrive even when the site is closed.
+  "name": "day-compass-push",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "triggers": { "crons": ["* * * * *"] },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "day-compass-push", "database_id": "6c040136-ceb8-455d-a460-a02034895a9e" }
+  ],
+  "vars": {
+    // Sites allowed to talk to this service.
+    "ALLOWED_ORIGINS": "https://daily-compass1.vercel.app,http://127.0.0.1:8080,http://localhost:8080",
+    "VAPID_SUBJECT": "https://daily-compass1.vercel.app"
+  }
+  // Secrets (set with `wrangler secret put`, never committed): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
+}

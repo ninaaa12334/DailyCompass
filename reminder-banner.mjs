@@ -61,6 +61,7 @@ export function initReminderBanner({ model, now, openActivity, openTasks }) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
   function describe(reminder) {
+    if (reminder.body) return { heading: reminder.title, body: reminder.body, icon: '🔔' }; // already worded (cloud notification)
     const time = now(), stamp = dayNumber(time.date) * 1440 + time.minute;
     if (reminder.key.startsWith('deadline|')) return { heading: reminder.title.replace(/^Deadline: /, ''), body: 'Deadline reminder', icon: '⏰' };
     const left = reminder.startStamp - stamp;

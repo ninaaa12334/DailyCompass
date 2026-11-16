@@ -225,6 +225,13 @@ body.hub-layout .workspace-sidecar, body.hub-layout .scene-themes, body.hub-layo
 .reminder-controls-actions .hub-primary { flex: 1; min-height: 42px; }
 .reminder-controls-actions .secondary { min-height: 42px; border-radius: 14px; }
 .reminder-controls-note { margin: 0; padding: 0 14px 12px; background: var(--surface); }
+.reminder-push { display: grid; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.reminder-push .hub-switch { background: transparent; }
+.reminder-push .hub-switch strong { font-size: .95rem; }
+.reminder-push-actions { padding: 0 14px 12px; }
+.reminder-push-actions[hidden] { display: none; }
+.reminder-push-actions .secondary { min-height: 38px; border-radius: 12px; }
+.hub-switch input[role=switch]:disabled { opacity: .45; cursor: not-allowed; }
 .reminder-export { display: grid; gap: 8px; padding: 14px; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .reminder-export strong { font-size: .92rem; }
 .reminder-export p { margin: 0; font-size: .82rem; color: var(--muted); }

@@ -206,6 +206,8 @@ export async function startApp() {
     catch (error) { $('#reminder-alert').textContent = `Reminder delivery paused: ${error.message}`; }
   }
   setInterval(() => { renderSummary(); tickReminders(); banner.tick(); }, 15000);
+  // A cloud notification that arrives while this page is being looked at shows as a banner here instead.
+  navigator.serviceWorker?.addEventListener('message', event => { const payload = event.data?.type === 'cloud-reminder' ? event.data.payload : null; if (payload) banner.show({ key: String(payload.tag || Date.now()), title: payload.title, body: payload.body, date: now().date, start: '' }); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderSummary(); tickReminders(); } });
   window.addEventListener('storage', event => { if (event.key === PLANNER_KEY && !isDemo) attempt(() => model.reload()); });
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }

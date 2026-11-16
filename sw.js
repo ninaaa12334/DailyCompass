@@ -9,6 +9,13 @@ self.addEventListener('push', event => {
   let payload;
   try { payload = event.data.json(); } catch { return; }
   event.waitUntil((async () => {
+    // Cloud reminders: if Day Compass is open and being looked at, show the in-page banner instead of a second pop-up.
+    if (payload.source === 'cloud') {
+      const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const watching = windows.filter(window => window.visibilityState === 'visible' && window.focused);
+      if (watching.length) { for (const window of watching) window.postMessage({ type: 'cloud-reminder', payload }); return; }
+      return self.registration.showNotification(payload.title || 'Day Compass', { body: payload.body, tag: payload.tag, icon: '/compass-icon.svg', badge: '/compass-icon.svg', data: { url: payload.url } });
+    }
     const received = reportReceipt(payload.key, 'received');
     try { await self.registration.showNotification(payload.title || 'Day Compass', { body: payload.body, tag: payload.tag, data: { url: payload.url, key: payload.key } }); await reportReceipt(payload.key, 'display-requested'); }
     catch { await reportReceipt(payload.key, 'display-failed'); }

@@ -8,3 +8,4 @@ render.yaml
 .env*
 .htaccess
 data/
+push-worker/
