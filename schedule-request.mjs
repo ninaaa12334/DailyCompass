@@ -155,6 +155,8 @@ export function readDays(text, anyDay = false) {
 export function parseScheduleRequest(prompt, settings = {}, at = new Date()) {
   const original = String(prompt || '').trim();
   let text = ` ${original.toLowerCase().replace(/\b(a|p)\.\s?m\.?/g, '$1m').replace(/[,!?]+/g, ' ').replace(/\s+/g, ' ')} `;
+  // "from 9 30 am to 1" means 9:30 (people often type a space instead of a colon).
+  text = text.replace(/(^ | from | at | to | till | until | between | and )(\d{1,2}) ([0-5]\d)(?= ?(?:am|pm|to|till|until|and|-|–)(?![a-z]))/g, '$1$2:$3');
   const today = zonedNow(at, settings.timeZone || 'UTC').date;
   const ask = clarification => ({ clarification });
   if (original.length < 3) return ask('Tell me what to add, for example “school every weekday from 8 to 2 until June 20”.');
@@ -210,7 +212,7 @@ export function parseScheduleRequest(prompt, settings = {}, at = new Date()) {
 
   // Title: whatever remains after removing the date/time words and filler.
   let title = text
-    .replace(/\b(i have|i've got|i got|i go to|i attend|i do|i need to|i want to|i'd like to|please|can you|could you|add|put|schedule|create|make|set up|block|book|remind me (?:about|of|to)?|to my calendar|in my calendar|on my calendar|to the calendar|my calendar|calendar|every|each|on|at|from|in the|the|a|an|and|for|me|i|have|has|got|go|to|there is|there's|we have)\b/g, ' ')
+    .replace(/\b(i have|i've got|i got|i go to|i attend|i do|i need to|i want to|i'd like to|please|can you|could you|add|put|schedule|create|make|set up|block|book|remind me (?:about|of|to)?|to my calendar|in my calendar|on my calendar|to the calendar|my calendar|calendar|every|each|on|at|from|in the|the|a|an|and|for|me|i|have|has|got|go|to|there is|there's|we have|repeat(?:s|ing|ed)?)\b/g, ' ')
     .replace(/\s+/g, ' ').trim();
   title = title.replace(/^(my|our)\s+/, '').trim();
   if (!title) title = 'Event';

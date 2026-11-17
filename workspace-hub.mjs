@@ -17,6 +17,7 @@ const node = (tag, text, className) => { const n = document.createElement(tag); 
 const ICONS = {
   tasks: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></svg>',
   day: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3Z"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
   spark: '<svg viewBox="0 0 24 24"><path d="M12 3.5 13.8 9 19.5 11 13.8 13 12 18.5 10.2 13 4.5 11 10.2 9Z"/><path d="M19 3v3M17.5 4.5h3"/></svg>',
   chat: '<svg viewBox="0 0 24 24"><path d="M5 17.5V7a2.5 2.5 0 0 1 2.5-2.5h9A2.5 2.5 0 0 1 19 7v6a2.5 2.5 0 0 1-2.5 2.5H9Z"/><path d="M9 9.5h6M9 12h4"/></svg>',
@@ -226,12 +227,51 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   const holidayBox = node('div', undefined, 'gcal-holidays'); holidayBox.append(node('strong', 'Holidays'), holidayControls({ model, feedback }));
   sheet('gcal', 'Calendars', [gcal.element, holidayBox], gcal.onOpen);
 
+  // ---------- Ideas: little things you're curious about (no dates, no pressure) ----------
+  const ideasTile = tile('ideas', 'bulb', 'Ideas', () => openSheet('ideas'));
+  const ideasBox = node('div', undefined, 'ideas-box');
+  ideasBox.innerHTML = '<p class="ideas-intro">Little things you’re curious about. No dates, no deadlines — they don’t count as tasks. When you have free time, I’ll suggest one.</p><form class="ideas-add"><input name="idea" maxlength="300" autocomplete="off" required placeholder="How do black holes form?"><button type="submit" class="hub-primary">Add</button></form><ul class="ideas-list"></ul><p class="ideas-empty">No ideas yet. You can also type “idea: …” in the ask bar.</p>';
+  const ideasForm = ideasBox.querySelector('form'), ideasList = ideasBox.querySelector('.ideas-list');
+  function addIdea(text) {
+    try { model.addIdea(text, newId(), now().date); return true; } catch (problem) { feedback(problem.message); return false; }
+  }
+  ideasForm.addEventListener('submit', event => { event.preventDefault(); if (addIdea(ideasForm.elements.idea.value)) { ideasForm.reset(); ideasForm.elements.idea.focus(); } });
+  function remindAbout(idea) {
+    closeSheet(sheets.get('ideas').dialog);
+    openSheet('reminders');
+    const form = controls.querySelector('[data-reminder=add]'); form.elements.what.value = idea.text; form.elements.time.focus();
+  }
+  function renderIdeas() {
+    const ideas = model.getIdeas();
+    ideasBox.querySelector('.ideas-empty').hidden = ideas.length > 0;
+    ideasList.replaceChildren(...ideas.map(idea => {
+      const li = node('li', undefined, 'idea-item'), text = node('span', idea.text, 'idea-text');
+      const remind = node('button', '🔔', 'idea-action'); remind.type = 'button'; remind.title = 'Remind me about this at a set time'; remind.setAttribute('aria-label', `Set a reminder for: ${idea.text}`);
+      remind.addEventListener('click', () => remindAbout(idea));
+      const done = node('button', '✓', 'idea-action'); done.type = 'button'; done.title = 'Done — remove it'; done.setAttribute('aria-label', `Done, remove: ${idea.text}`);
+      done.addEventListener('click', () => { model.removeIdea(idea.id); feedback('Idea removed. Undo is at the top.'); });
+      li.append(text, remind, done); return li;
+    }));
+    ideasTile.detail.textContent = ideas.length ? `${ideas.length} saved` : 'Things you’re curious about';
+  }
+  sheet('ideas', 'Ideas', ideasBox, () => setTimeout(() => ideasForm.elements.idea.focus(), 50));
+  // A gentle nudge in "Space in your day": one idea per day, only when there is free time.
+  const nudge = node('button', undefined, 'idea-nudge'); nudge.type = 'button'; nudge.hidden = true;
+  nudge.addEventListener('click', () => openSheet('ideas'));
+  freeWidget?.append(nudge);
+  function renderNudge() {
+    const ideas = model.getIdeas(), free = Number.parseFloat($('#free-minutes')?.textContent || '0');
+    if (!ideas.length || !(free > 0)) { nudge.hidden = true; return; }
+    const day = Number(now().date.replaceAll('-', '')), idea = ideas[day % ideas.length];
+    nudge.hidden = false; nudge.replaceChildren(node('span', '💡', 'idea-nudge-icon'), node('span', `Free moment? Look into: ${idea.text}`));
+  }
+
   left.append(...[productivity, nowWidget, freeWidget, tasksTile.button].filter(Boolean));
   // The right side is a slim column of icons; hovering shows the name. Upcoming opens in a sheet.
   const upcomingTile = tile('upcoming', 'day', 'Upcoming events', () => openSheet('upcoming'));
   upcomingTile.button.querySelector('.hub-icon').innerHTML = ICONS.list;
   right.classList.add('hub-rail-icons');
-  right.append(...[upcomingTile.button, dayTile.button, remindersTile.button, gcalTile.button, aiTile.button, helper].filter(Boolean));
+  right.append(...[upcomingTile.button, dayTile.button, remindersTile.button, ideasTile.button, gcalTile.button, aiTile.button, helper].filter(Boolean));
   if (helper) { helper.dataset.label = 'Task helper'; helper.title = 'Task helper'; }
   if (helper) { helper.classList.add('hub-tile', 'hub-tile-helper'); helper.replaceChildren(icon('chat'), Object.assign(node('span', undefined, 'hub-tile-text'), { innerHTML: '<strong>Task helper</strong><small class="hub-tile-detail">Turn a thought into a task</small>' }), node('span', '›', 'hub-tile-chevron')); }
   aiTile.detail.textContent = 'Suggestions for a day';
@@ -252,12 +292,12 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   chip('Your day', () => openSheet('day'));
   chip('Upcoming', () => openSheet('upcoming'));
   chip('Reminders', () => openSheet('reminders'));
+  chip('Ideas', () => openSheet('ideas'));
   chip('Google Calendar', () => openSheet('gcal'));
   chip('Plan with AI', () => openSheet('ai'));
   if (helper) chip('Task helper', () => helper.click());
   // On phones the upcoming list lives in a sheet; on wider screens it stays in the right rail.
   sheet('upcoming', 'Upcoming events', upcoming);
-  sheets.get('upcoming').dialog.addEventListener('close', () => right.prepend(upcoming));
 
   const hub = node('div', undefined, 'hub');
   hub.append(top, chips, left, center, right);
@@ -368,6 +408,9 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   const isReminderRequest = text => /^\s*(please\s+)?(remind me|reminder)\b/i.test(text);
   const plus = (time, m) => { const t = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)) + m; return `${String(Math.floor(Math.min(t, 1439) / 60)).padStart(2, '0')}:${String(Math.min(t, 1439) % 60).padStart(2, '0')}`; };
   function handle(text, from) {
+    // "idea: how do black holes form" or "I wonder why the sky is blue" goes to Ideas, not the calendar.
+    const idea = text.match(/^\s*(?:idea|💡)\s*[:\-–]?\s+(.+)$/iu)?.[1] || (/^\s*i wonder\b/i.test(text) ? text.trim() : '');
+    if (idea && from === 'bar') { if (addIdea(idea.charAt(0).toUpperCase() + idea.slice(1))) { askInput.value = ''; feedback('Saved to Ideas 💡'); } return; }
     lastText = text; askedFrom = from;
     const result = parseSchedule(text, model.getSettings());
     if (result.clarification) { showQuestion(isReminderRequest(text) && /What time/.test(result.clarification) ? 'When should I remind you? For example “remind me to go to the shop at 5pm” or “… tomorrow at 9am”.' : result.clarification, text); return; }
@@ -417,6 +460,9 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     today.textContent = dateLabel(current.date);
     mode.textContent = $('#planner-mode')?.textContent || '';
   }
+  model.subscribe(() => requestAnimationFrame(() => { renderIdeas(); renderNudge(); }));
+  new MutationObserver(renderNudge).observe($('#free-minutes') || document.createElement('i'), { childList: true, characterData: true, subtree: true });
+  renderIdeas(); renderNudge();
   model.subscribe(() => requestAnimationFrame(render));
   for (const id of ['#day-capacity', '#reminder-list', '#mini-productivity-percent', '#planner-mode']) { const el = $(id); if (el) new MutationObserver(render).observe(el, { childList: true, characterData: true, subtree: true }); }
   render();

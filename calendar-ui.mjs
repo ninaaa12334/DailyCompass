@@ -17,6 +17,12 @@ export function initCalendar(model, handlers) {
   try { const saved = storage.getItem('day-compass.calendar-view.v1'); if (['day', 'week', 'month', 'year'].includes(saved)) view = saved; } catch {}
   let focusHour = 9, lastTimedKey = '', yearKey = '';
   function choose(date) { selected = date; render(); handlers.onSelection?.(); }
+  // Like Google Calendar: tapping a date opens that day's full schedule (phones keep their agenda list).
+  function openDay(date) {
+    if (compactScreen.matches) { choose(date); return; }
+    view = 'day'; try { storage.setItem('day-compass.calendar-view.v1', view); } catch { /* still opens */ }
+    choose(date); $('#week-view')?.focus?.({ preventScroll: true });
+  }
   function open(date, item, start) { choose(date); if (item?.kind !== 'break') handlers.onActivity({ date, item, start }); }
   // Month view: one long, scrollable list of months (like a phone calendar). More months load
   // as you scroll up or down; the title follows the month you're looking at.
@@ -30,10 +36,11 @@ export function initCalendar(model, handlers) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'calendar-day'; button.textContent = Number(date.slice(-2));
       Object.assign(button.dataset, { date, color: day.color, load: ratio === 0 ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3', due: due ? 'true' : 'false' });
       button.setAttribute('aria-pressed', String(date === selected));
-      button.setAttribute('aria-label', `${dateLabel(date)}, ${day.commitments.length} activities, ${booked} minutes booked, ${due} deadlines. Select day.`);
+      button.setAttribute('aria-label', `${dateLabel(date)}, ${day.commitments.length} activities, ${booked} minutes booked, ${due} deadlines. Open day.`);
       const markers = document.createElement('span'); markers.className = 'mobile-month-indicator'; markers.setAttribute('aria-hidden', 'true'); markers.textContent = day.commitments.length ? '•'.repeat(Math.min(3, day.commitments.length)) : ''; button.append(markers);
       if (date === now().date) button.setAttribute('aria-current', 'date');
-      button.addEventListener('click', () => { choose(date); [...$('#calendar-days').querySelectorAll('.calendar-day')].find(node => node.dataset.date === date)?.focus(); }); cell.append(button);
+      button.addEventListener('click', () => openDay(date)); cell.append(button);
+      cell.addEventListener('click', event => { if (event.target === cell || event.target.classList.contains('holiday-name') || event.target.classList.contains('month-due')) openDay(date); });
       for (const name of holidaysOn(settingsNow, date)) { const tag = document.createElement('div'); tag.className = 'holiday-name'; tag.textContent = name; tag.title = name; cell.append(tag); cell.dataset.holiday = 'true'; }
       const events = [...day.commitments].sort((a, b) => minutes(a.start) - minutes(b.start));
       for (const item of events.slice(0, 3)) {
@@ -201,7 +208,7 @@ export function initCalendar(model, handlers) {
     else if (view === 'year') renderYear();
     else {
       renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, getHoliday: date => holidaysOn(model.getSettings(), date), timeZone: model.getSettings().timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.getSettings()),
-        onSelect: date => choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
+        onSelect: date => view === 'week' ? openDay(date) : choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
         onNavigate: (date, hour) => { focusHour = hour; choose(date); [...document.querySelectorAll('.time-slot')].find(node => node.dataset.date === date && Number(node.dataset.hour) === hour)?.focus(); }
       });
       // Reposition only when the date/view changes, never on an ordinary task update.

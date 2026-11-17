@@ -64,6 +64,8 @@ export function validatePlanner(state) {
     }
     ensure(Number.isInteger(task.duration) && task.duration > 0 && task.duration <= 1440 && Number.isInteger(task.spent) && task.spent >= 0 && task.spent <= task.duration, 'Duration must be 1–1440 minutes; time already worked cannot exceed it.');
   }
+  // Ideas: little things you're curious about. No dates, no deadlines; they never count as tasks.
+  if (state.ideas !== undefined) ensure(Array.isArray(state.ideas) && state.ideas.length <= 500 && state.ideas.every(idea => idea && typeof idea.id === 'string' && idea.id && typeof idea.text === 'string' && idea.text.trim() && idea.text.length <= 300 && validDate(idea.added)), 'The ideas list could not be read.');
   for (const [date, day] of Object.entries(state.days)) {
     ensure(validDate(date) && day && Array.isArray(day.commitments), 'Invalid calendar date or activities.'); interval(day);
     ensure(['theme', 'blue', 'sage', 'lavender', 'rose'].includes(day.color), 'Invalid calendar colour.');
@@ -177,6 +179,9 @@ export function createPlannerStore(storage) {
     getPlanning: () => clone({ plans: state.plans, tasks: state.tasks }),
     subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); },
     getTasks: () => clone(state.tasks),
+    getIdeas: () => clone(state.ideas || []),
+    addIdea(text, id, added) { const clean = String(text || '').replace(/\s+/g, ' ').trim(); ensure(clean, 'Write the idea first.'); ensure(clean.length <= 300, 'Keep the idea under 300 characters.'); commit(next => { next.ideas = [{ id, text: clean, added }, ...(next.ideas || [])]; }); },
+    removeIdea(id) { commit(next => { next.ideas = (next.ideas || []).filter(idea => idea.id !== id); }); },
     getDay(date) {
       ensure(validDate(date), 'Choose a valid date.');
       const day = clone(state.days[date] || { start: state.settings.planningStart, end: state.settings.planningEnd, color: 'theme', commitments: [] }); day.date = date;
