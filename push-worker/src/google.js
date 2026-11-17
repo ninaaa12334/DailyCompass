@@ -11,7 +11,10 @@ import { b64url } from './webpush.js';
 // Calendar access is kept as an encrypted refresh token. Signed-in people are identified by their
 // Supabase login (checked with Supabase on every request).
 
-const SCOPES = 'openid email profile https://www.googleapis.com/auth/calendar.readonly';
+// Sign-in asks only for name + email (no Google review needed, no warning screen).
+// Calendar access is asked separately, only when someone clicks Connect Google Calendar.
+const LOGIN_SCOPES = 'openid email profile';
+const CALENDAR_SCOPES = 'openid email https://www.googleapis.com/auth/calendar.readonly';
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const allowed = env => String(env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 const decodeJwt = token => { try { return JSON.parse(new TextDecoder().decode(b64url.decode(String(token).split('.')[1]))); } catch { return {}; } };
@@ -61,8 +64,8 @@ async function newState(env, { userId = '', origin, purpose, nonce = '' }) {
   await env.DB.batch([env.DB.prepare('DELETE FROM google_states WHERE created < ?').bind(Date.now() - 3600000), env.DB.prepare('INSERT INTO google_states (state, user_id, origin, created, purpose, nonce) VALUES (?, ?, ?, ?, ?, ?)').bind(state, userId, origin, Date.now(), purpose, nonce)]);
   return state;
 }
-function consentUrl(env, state, { hint = '', nonce = '', prompt = 'consent' } = {}) {
-  const params = new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, redirect_uri: env.GOOGLE_REDIRECT_URI, response_type: 'code', scope: SCOPES, access_type: 'offline', include_granted_scopes: 'true', prompt, state });
+function consentUrl(env, state, { hint = '', nonce = '', prompt = 'consent', scope = CALENDAR_SCOPES } = {}) {
+  const params = new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, redirect_uri: env.GOOGLE_REDIRECT_URI, response_type: 'code', scope, access_type: scope === LOGIN_SCOPES ? 'online' : 'offline', include_granted_scopes: 'true', prompt, state });
   if (hint) params.set('login_hint', hint);
   if (nonce) params.set('nonce', nonce);
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
@@ -90,13 +93,7 @@ export async function handleGoogle(request, env, path) {
     const claims = decodeJwt(tokens.id_token), calendarAllowed = String(tokens.scope || '').includes('calendar.readonly');
 
     if (login) {
-      const key = `sub:${claims.sub}`;
-      if (calendarAllowed && tokens.refresh_token) await storeLink(env, key, claims.email || '', tokens.refresh_token);
-      else if (calendarAllowed && !(await env.DB.prepare('SELECT 1 FROM google_links WHERE user_id = ?').bind(key).first())) {
-        // Google only gives a long-lived calendar key on the consent screen; ask once more for it.
-        const retry = await newState(env, { origin: saved.origin, purpose: 'login', nonce: saved.nonce });
-        return Response.redirect(consentUrl(env, retry, { hint: claims.email, nonce: saved.nonce, prompt: 'consent' }), 302);
-      }
+      if (calendarAllowed && tokens.refresh_token) await storeLink(env, `sub:${claims.sub}`, claims.email || '', tokens.refresh_token);
       // The sign-in token goes to the page in the URL fragment (never sent to any server).
       return Response.redirect(`${back}/auth.html?mode=login&via=google#id_token=${encodeURIComponent(tokens.id_token)}`, 302);
     }
@@ -112,7 +109,7 @@ export async function handleGoogle(request, env, path) {
     const body = await request.json().catch(() => ({})), nonce = String(body.nonce || '');
     if (!/^[a-f0-9]{64}$/.test(nonce)) return json({ error: 'Please try again.' }, 400);
     const state = await newState(env, { origin, purpose: 'login', nonce });
-    return json({ url: consentUrl(env, state, { nonce, prompt: 'select_account' }) });
+    return json({ url: consentUrl(env, state, { nonce, prompt: 'select_account', scope: LOGIN_SCOPES }) });
   }
 
   const user = await supabaseUser(request, env);
