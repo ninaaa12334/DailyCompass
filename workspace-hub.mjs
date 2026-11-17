@@ -17,6 +17,7 @@ const node = (tag, text, className) => { const n = document.createElement(tag); 
 const ICONS = {
   tasks: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></svg>',
   day: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>',
+  calendars: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><path d="m12 12 1.1 2.2 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3Z"/></svg>',
   bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3Z"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
   spark: '<svg viewBox="0 0 24 24"><path d="M12 3.5 13.8 9 19.5 11 13.8 13 12 18.5 10.2 13 4.5 11 10.2 9Z"/><path d="M19 3v3M17.5 4.5h3"/></svg>',
@@ -221,7 +222,7 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   // Themes live in the 🎨 button at the top, so there's no tile for them here.
   // Google Calendar (read-only), connected with the person's Google account.
   const gcal = initGoogleCalendar({ model, account, feedback });
-  const gcalTile = tile('gcal', 'day', 'Calendars & holidays', () => openSheet('gcal'));
+  const gcalTile = tile('gcal', 'calendars', 'Calendars & holidays', () => openSheet('gcal'));
   gcalTile.detail.textContent = 'Google Calendar, public holidays';
   // Like Google's "Other calendars": public holidays can be shown or hidden here (and in Settings).
   const holidayBox = node('div', undefined, 'gcal-holidays'); holidayBox.append(node('strong', 'Holidays'), holidayControls({ model, feedback }));

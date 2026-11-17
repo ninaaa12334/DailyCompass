@@ -574,3 +574,25 @@ body[data-calendar-wide=true] .hub-left { visibility: hidden; width: 0; overflow
 /* Year view scrolls through years: a heading starts each one */
 .year-block-title { grid-column: 1 / -1; margin: 10px 4px 0; font-size: 1.15rem; font-weight: 700; color: var(--text); }
 .year-block-title:first-child { margin-top: 0; }
+
+/* ---------- Right icon column: smooth round buttons, no white ring, no snow caps ---------- */
+.hub .hub-rail-icons { gap: 12px; }
+.hub .hub-rail-icons .hub-tile, .hub .hub-rail-icons .hub-tile-helper {
+  width: 50px !important; height: 50px !important; min-height: 50px !important; padding: 0 !important; border: 0 !important;
+  border-radius: 50% !important; background: transparent !important; box-shadow: none !important; backdrop-filter: none !important;
+}
+.hub .hub-rail-icons .hub-tile .hub-icon {
+  width: 50px; height: 50px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface));
+  box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 6px 16px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: transform .3s var(--hub-spring), background-color .2s ease, box-shadow .2s ease;
+}
+.hub .hub-rail-icons .hub-tile .hub-icon svg { width: 22px; height: 22px; stroke-width: 1.8; }
+.hub .hub-rail-icons .hub-tile:hover .hub-icon, .hub .hub-rail-icons .hub-tile:focus-visible .hub-icon {
+  transform: scale(1.08); background: color-mix(in srgb, var(--accent) 20%, var(--surface));
+  box-shadow: 0 2px 4px rgb(0 0 0 / .08), 0 10px 22px -8px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.hub .hub-rail-icons .hub-tile:active .hub-icon { transform: scale(.94); }
+.hub .hub-rail-icons .hub-tile:hover { transform: none !important; }
+:root[data-decor] .hub .hub-rail-icons > *::before { content: none !important; display: none !important; }
+:root[data-mode=dark] .hub .hub-rail-icons .hub-tile .hub-icon { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
