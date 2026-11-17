@@ -16,6 +16,8 @@ export function initCalendar(model, handlers) {
   let view = compactScreen.matches ? 'day' : 'week';
   try { const saved = storage.getItem('day-compass.calendar-view.v1'); if (['day', 'week', 'month', 'year'].includes(saved)) view = saved; } catch {}
   let focusHour = 9, lastTimedKey = '', yearKey = '';
+  // Year view scrolls through several years; more are added as you reach the top or bottom.
+  let yearFrom = 0, yearTo = 0, yearExtending = false, yearJumping = false, yearLastTop = 0;
   function choose(date) { selected = date; render(); handlers.onSelection?.(); }
   // Like Google Calendar: tapping a date opens that day's full schedule (phones keep their agenda list).
   function openDay(date) {
@@ -123,10 +125,14 @@ export function initCalendar(model, handlers) {
     });
     $('#calendar-month').replaceChildren(picker);
     const dueDates = new Set(model.getTasks().filter(task => !task.completed && task.deadline).map(task => task.deadline));
+    const y = Number(year); if (!yearFrom || (yearKey !== year && (y < yearFrom || y > yearTo))) { yearFrom = y - 1; yearTo = y + 1; yearKey = ''; }
+    const keep = host.scrollTop;
     host.replaceChildren();
+    for (let shown = yearFrom; shown <= yearTo; shown++) {
+    const heading = document.createElement('h4'); heading.className = 'year-block-title'; heading.dataset.year = String(shown); heading.textContent = String(shown); host.append(heading);
     for (let month = 1; month <= 12; month++) {
-      const first = `${year}-${String(month).padStart(2, '0')}-01`;
-      const box = document.createElement('section'); box.className = 'year-month';
+      const first = `${shown}-${String(month).padStart(2, '0')}-01`;
+      const box = document.createElement('section'); box.className = 'year-month'; box.dataset.month = first.slice(0, 7);
       const title = document.createElement('button'); title.type = 'button'; title.className = 'year-month-title';
       title.textContent = dateLabel(first, { weekday: undefined, month: 'long', day: undefined, year: undefined });
       title.setAttribute('aria-label', `Open ${dateLabel(first, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' })}`);
@@ -149,13 +155,53 @@ export function initCalendar(model, handlers) {
       }
       box.append(title, grid); host.append(box);
     }
-    // When the year view opens, start at the selected month rather than January.
+    }
+    host.scrollTop = keep;
+    // When the year view opens (or you pick a year), start at the selected month.
     if (yearKey !== year) {
-      yearKey = year;
-      const target = host.children[Number(selected.slice(5, 7)) - 1];
-      requestAnimationFrame(() => { if (target) host.scrollTop += target.getBoundingClientRect().top - host.getBoundingClientRect().top - 6; });
+      yearKey = year; yearJumping = true;
+      requestAnimationFrame(() => {
+        const target = host.querySelector(`[data-month="${selected.slice(0, 7)}"]`);
+        if (target) host.scrollTop += target.getBoundingClientRect().top - host.getBoundingClientRect().top - 6;
+        yearLastTop = host.scrollTop; followYear();
+        requestAnimationFrame(() => { yearJumping = false; });
+      });
     }
   }
+  // The year picker in the title follows the year you're scrolling through.
+  function followYear() {
+    if (view !== 'year') return;
+    const host = $('#year-view'), line = host.getBoundingClientRect().top + 80;
+    const headings = [...host.querySelectorAll('.year-block-title')];
+    const current = headings.filter(h => h.getBoundingClientRect().top <= line).at(-1) || headings[0];
+    const picker = $('#calendar-month select');
+    if (current && picker && picker.value !== current.dataset.year) {
+      if (![...picker.options].some(o => o.value === current.dataset.year)) picker.append(Object.assign(document.createElement('option'), { value: current.dataset.year, textContent: current.dataset.year }));
+      picker.value = current.dataset.year;
+    }
+  }
+  function rerangeYears(from, to) {
+    const host = $('#year-view'), line = host.getBoundingClientRect().top;
+    const anchor = [...host.querySelectorAll('.year-month')].find(b => b.getBoundingClientRect().bottom > line), month = anchor?.dataset.month, before = anchor?.getBoundingClientRect().top;
+    yearFrom = from; yearTo = to; renderYear();
+    const again = month && host.querySelector(`[data-month="${month}"]`);
+    if (again) host.scrollTop += again.getBoundingClientRect().top - before;
+  }
+  $('#year-view').addEventListener('scroll', () => {
+    const host = $('#year-view'), top = host.scrollTop, goingUp = top < yearLastTop; yearLastTop = top;
+    if (view !== 'year' || yearExtending || yearJumping) return;
+    followYear();
+    const nearTop = goingUp && top < 200, nearEnd = !goingUp && host.scrollHeight - top - host.clientHeight < 400;
+    if (!nearTop && !nearEnd) return;
+    yearExtending = true;
+    requestAnimationFrame(() => {
+      // Keep at most four years drawn so it stays fast.
+      if (nearTop && yearFrom > 1971) rerangeYears(yearFrom - 1, Math.min(yearTo, yearFrom + 2));
+      else if (nearEnd && yearTo < 2200) rerangeYears(Math.max(yearFrom, yearTo - 2), yearTo + 1);
+      yearLastTop = host.scrollTop;
+      requestAnimationFrame(() => { yearExtending = false; });
+    });
+  }, { passive: true });
   function renderMobileWeek() {
     const strip = $('#mobile-week-days'); strip.replaceChildren();
     for (const date of weekDates(selected)) {

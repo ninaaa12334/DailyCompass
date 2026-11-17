@@ -564,9 +564,13 @@ body[data-calendar-wide=true] .hub-left { visibility: hidden; width: 0; overflow
   body.hub-layout #planner { height: auto; min-height: 100dvh; }
   .hub { height: auto; min-height: 100dvh; grid-template-rows: auto auto auto; }
   .hub-center, .hub-center .calendar-widget { height: auto; min-height: 0; }
-  .hub-center #week-view, .hub-center #month-view { height: calc(100svh - 96px) !important; min-height: 380px; max-height: none; -webkit-overflow-scrolling: touch; }
+  .hub-center #week-view, .hub-center #month-view, .hub-center #year-view { height: calc(100svh - 96px) !important; min-height: 380px; max-height: none; -webkit-overflow-scrolling: touch; }
 }
 /* The date strip above already shows the day, so the grid doesn't repeat it. */
 @media (max-width: 580px) {
   .hub-center #week-grid .week-day-heading, .hub-center #week-grid .week-corner { display: none; }
 }
+
+/* Year view scrolls through years: a heading starts each one */
+.year-block-title { grid-column: 1 / -1; margin: 10px 4px 0; font-size: 1.15rem; font-weight: 700; color: var(--text); }
+.year-block-title:first-child { margin-top: 0; }
