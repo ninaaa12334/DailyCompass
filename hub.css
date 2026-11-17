@@ -472,3 +472,29 @@ body.hub-layout .hub { position: relative; z-index: 1; }
 .reminder-more summary { cursor: pointer; min-height: 38px; padding: 8px 0 4px; font-size: .88rem; font-weight: 600; color: var(--muted); }
 .reminder-more-body { display: grid; gap: 8px; }
 .reminder-more-body .secondary { min-height: 40px; border-radius: 12px; text-align: left; justify-content: flex-start; }
+
+/* ---------- Scrolling month view + a bigger calendar ---------- */
+.hub { grid-template-columns: 244px minmax(0, 1fr) 258px; gap: 12px; }
+@media (max-width: 1199px) { .hub { grid-template-columns: 232px minmax(0, 1fr); } }
+@media (max-width: 899px) { .hub { grid-template-columns: minmax(0, 1fr); } }
+.hub-center #month-view { scroll-behavior: auto; overscroll-behavior: contain; }
+#month-view .weekdays { position: sticky; top: 0; z-index: 3; }
+#calendar-days { display: block !important; }
+.month-block { margin: 0 0 6px; }
+.month-grid { display: grid !important; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.month-block-title { margin: 0; padding: 16px 8px 8px; font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
+.month-block:first-child .month-block-title { padding-top: 8px; }
+.month-grid { gap: 0 !important; }
+.month-blank { border-top-color: transparent !important; background: transparent !important; }
+.hub-center .month-cell { min-height: 8.6rem; }
+@media (max-width: 899px) { .hub-center .month-cell { min-height: 4rem; } .month-block-title { padding: 12px 6px 6px; font-size: .95rem; } }
+
+/* Tasks tile progress ring */
+.task-ring { position: relative; display: grid; place-items: center; width: 46px; height: 46px; }
+.task-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.task-ring circle { fill: none; stroke-width: 5; }
+.task-ring-track { stroke: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.task-ring-fill { stroke: var(--accent); stroke-linecap: round; transition: stroke-dasharray .6s var(--hub-spring); }
+.task-ring b { position: relative; font-size: .72rem; font-weight: 700; color: var(--text); }
+.hub .hub-tile-tasks { grid-template-columns: 46px minmax(0, 1fr) auto; }
+.task-spark { color: var(--accent) !important; font-size: 1.3rem !important; opacity: .8; }

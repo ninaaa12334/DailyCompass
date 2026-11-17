@@ -6,6 +6,7 @@ import { buildCalendarFile, downloadCalendarFile } from './ics-export.mjs';
 import { pushSupport, pushEnabled, enablePush, disablePush, testPush, startPushSync } from './push-cloud.mjs';
 import { initGoogleCalendar } from './google-calendar.mjs';
 import { holidayControls } from './holidays.mjs';
+import { taskProductivity } from './productivity.mjs';
 import { isDarkMode, toggleDarkMode } from './theme-ui.mjs';
 import { dateLabel } from './clock.mjs';
 
@@ -113,6 +114,12 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   const tasksWidget = $('.tasks-widget');
   const tasksTile = tile('tasks', 'tasks', 'Tasks', () => openSheet('tasks'));
   const taskPreview = node('ul', undefined, 'hub-task-preview'); tasksTile.button.querySelector('.hub-tile-text').append(taskPreview);
+  // A little progress ring for today's tasks ("3/5 · Look at you go.") instead of the plain icon.
+  const taskRing = node('span', undefined, 'task-ring'); taskRing.setAttribute('aria-hidden', 'true');
+  taskRing.innerHTML = '<svg viewBox="0 0 44 44"><circle class="task-ring-track" cx="22" cy="22" r="18"/><circle class="task-ring-fill" cx="22" cy="22" r="18" pathLength="100" stroke-dasharray="0 100"/></svg><b>0/0</b>';
+  tasksTile.button.querySelector('.hub-icon').replaceWith(taskRing);
+  tasksTile.button.querySelector('.hub-tile-chevron').textContent = '✦'; tasksTile.button.querySelector('.hub-tile-chevron').classList.add('task-spark');
+  const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
   sheet('tasks', 'Tasks & deadlines', tasksWidget, () => setTimeout(() => $('#task-title')?.focus(), 60));
 
   const timeline = $('.timeline-widget');
@@ -349,7 +356,15 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   // ---------- Live tile details ----------
   function render() {
     const tasks = model.getTasks(), active = tasks.filter(task => !task.completed);
-    tasksTile.detail.textContent = tasks.length ? `${active.length} to do · ${tasks.length - active.length} done` : 'Nothing yet — add one';
+    const todayTasks = taskProductivity(model.getPlanning(), now().date, 'day'), done = todayTasks.done, total = todayTasks.total;
+    taskRing.querySelector('b').textContent = `${done}/${total}`;
+    taskRing.querySelector('.task-ring-fill').setAttribute('stroke-dasharray', `${total ? Math.round(done / total * 100) : 0} 100`);
+    const title = tasksTile.button.querySelector('.hub-tile-text strong');
+    if (!total) { title.textContent = 'Tasks'; tasksTile.detail.textContent = tasks.length ? `${active.length} to do` : 'Nothing yet — add one'; }
+    else if (done === total) { title.textContent = 'All done!'; tasksTile.detail.textContent = `Every task for today is finished. 🎉`; }
+    else if (done === 0) { title.textContent = 'Ready when you are.'; tasksTile.detail.textContent = `${WORDS[total] || total} little step${total === 1 ? '' : 's'} today.`; }
+    else { title.textContent = 'Look at you go.'; tasksTile.detail.textContent = `${WORDS[done] || done} little win${done === 1 ? '' : 's'}. All yours.`; }
+    tasksTile.button.setAttribute('aria-label', `Tasks: ${done} of ${total} done today. ${title.textContent}`);
     taskPreview.replaceChildren(...active.slice(0, 3).map(task => node('li', task.title)));
     chipTasks.textContent = `Tasks · ${active.length}`;
     const percent = $('#mini-productivity-percent')?.textContent || '0%';

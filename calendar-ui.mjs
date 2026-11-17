@@ -18,20 +18,22 @@ export function initCalendar(model, handlers) {
   let focusHour = 9, lastTimedKey = '', yearKey = '';
   function choose(date) { selected = date; render(); handlers.onSelection?.(); }
   function open(date, item, start) { choose(date); if (item?.kind !== 'break') handlers.onActivity({ date, item, start }); }
-  function renderMonth() {
-    const grid = $('#calendar-days'); grid.replaceChildren(); const settingsNow = model.getSettings();
-    for (const date of monthDates(selected)) {
+  // Month view: one long, scrollable list of months (like a phone calendar). More months load
+  // as you scroll up or down; the title follows the month you're looking at.
+  let monthFrom = '', monthTo = '', monthScrollTarget = '', extending = false, jumpScheduled = false;
+  const addMonths = (month, n) => { const d = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + n, 1)); return d.toISOString().slice(0, 7); };
+  const monthTitle = month => dateLabel(`${month}-01`, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' });
+  function monthCell(date, settingsNow, dueOn) {
       const day = model.getDay(date), { ratio, booked } = planningCapacity(day, model.getSettings());
-      const due = model.getTasks().filter(task => !task.completed && task.deadline === date).length;
+      const due = dueOn.get(date) || 0;
       const cell = document.createElement('div'); cell.className = 'month-cell';
-      if (date.slice(0, 7) !== selected.slice(0, 7)) cell.classList.add('other-month');
       const button = document.createElement('button'); button.type = 'button'; button.className = 'calendar-day'; button.textContent = Number(date.slice(-2));
       Object.assign(button.dataset, { date, color: day.color, load: ratio === 0 ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3', due: due ? 'true' : 'false' });
       button.setAttribute('aria-pressed', String(date === selected));
       button.setAttribute('aria-label', `${dateLabel(date)}, ${day.commitments.length} activities, ${booked} minutes booked, ${due} deadlines. Select day.`);
       const markers = document.createElement('span'); markers.className = 'mobile-month-indicator'; markers.setAttribute('aria-hidden', 'true'); markers.textContent = day.commitments.length ? '•'.repeat(Math.min(3, day.commitments.length)) : ''; button.append(markers);
       if (date === now().date) button.setAttribute('aria-current', 'date');
-      button.addEventListener('click', () => { choose(date); [...grid.querySelectorAll('.calendar-day')].find(node => node.dataset.date === date)?.focus(); }); cell.append(button);
+      button.addEventListener('click', () => { choose(date); [...$('#calendar-days').querySelectorAll('.calendar-day')].find(node => node.dataset.date === date)?.focus(); }); cell.append(button);
       for (const name of holidaysOn(settingsNow, date)) { const tag = document.createElement('div'); tag.className = 'holiday-name'; tag.textContent = name; tag.title = name; cell.append(tag); cell.dataset.holiday = 'true'; }
       const events = [...day.commitments].sort((a, b) => minutes(a.start) - minutes(b.start));
       for (const item of events.slice(0, 3)) {
@@ -42,9 +44,63 @@ export function initCalendar(model, handlers) {
       }
       if (events.length > 3) { const more = document.createElement('button'); more.type = 'button'; more.className = 'month-more'; more.textContent = `+${events.length - 3} more`; more.addEventListener('click', () => { view = 'day'; choose(date); }); cell.append(more); }
       if (due) { const note = document.createElement('small'); note.className = 'month-due'; note.textContent = `${due} due`; cell.append(note); }
-      grid.append(cell);
+      return cell;
+  }
+  function renderMonth() {
+    const scroller = $('#month-view'), host = $('#calendar-days'), month = selected.slice(0, 7);
+    if (!monthFrom || month < monthFrom || month > monthTo) { monthFrom = addMonths(month, -2); monthTo = addMonths(month, 6); monthScrollTarget ||= month; }
+    const keep = scroller.scrollTop, settingsNow = model.getSettings(), dueOn = new Map();
+    for (const task of model.getTasks()) if (!task.completed && task.deadline) dueOn.set(task.deadline, (dueOn.get(task.deadline) || 0) + 1);
+    host.replaceChildren();
+    for (let m = monthFrom; m <= monthTo; m = addMonths(m, 1)) {
+      const block = document.createElement('section'); block.className = 'month-block'; block.dataset.month = m;
+      const heading = document.createElement('h4'); heading.className = 'month-block-title'; heading.textContent = monthTitle(m);
+      const grid = document.createElement('div'); grid.className = 'calendar-days month-grid';
+      const first = `${m}-01`, lead = (new Date(`${first}T12:00:00Z`).getUTCDay() + 6) % 7;
+      for (let i = 0; i < lead; i++) { const blank = document.createElement('div'); blank.className = 'month-cell month-blank'; blank.setAttribute('aria-hidden', 'true'); grid.append(blank); }
+      for (let date = first; date.slice(0, 7) === m; date = addDays(date, 1)) grid.append(monthCell(date, settingsNow, dueOn));
+      block.append(heading, grid); host.append(block);
+    }
+    scroller.scrollTop = keep;
+    // A jump (Today, arrows, opening the view) waits until all redraws are done, then scrolls there.
+    if (monthScrollTarget && !jumpScheduled) {
+      jumpScheduled = true;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const target = $('#calendar-days').querySelector(`[data-month="${monthScrollTarget}"]`);
+        if (target) scroller.scrollTop += target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - ($('#month-view .weekdays')?.offsetHeight || 0);
+        monthScrollTarget = ''; jumpScheduled = false; followTitle();
+      }));
     }
   }
+  const MAX_MONTHS = 24;
+  function visibleBlock() { const line = $('#month-view').getBoundingClientRect().top + 60; return [...$('#calendar-days').children].find(b => b.getBoundingClientRect().bottom > line); }
+  // Redraw with a new range without the view jumping: keep the month you're looking at in place.
+  function rerangeKeeping(from, to) {
+    const scroller = $('#month-view'), anchor = visibleBlock(), month = anchor?.dataset.month, before = anchor?.getBoundingClientRect().top;
+    monthFrom = from; monthTo = to; renderMonth();
+    const again = month && $('#calendar-days').querySelector(`[data-month="${month}"]`);
+    if (again) scroller.scrollTop += again.getBoundingClientRect().top - before;
+  }
+  function followTitle() {
+    if (view !== 'month') return;
+    const scroller = $('#month-view'), line = scroller.getBoundingClientRect().top + ($('#month-view .weekdays')?.offsetHeight || 0) + 40;
+    const block = [...$('#calendar-days').children].find(b => b.getBoundingClientRect().bottom > line);
+    if (block) $('#calendar-month').textContent = monthTitle(block.dataset.month);
+  }
+  $('#month-view').addEventListener('scroll', () => {
+    if (view !== 'month' || extending || monthScrollTarget) return;
+    followTitle();
+    const scroller = $('#month-view');
+    const nearTop = scroller.scrollTop < 250, nearEnd = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 500;
+    if (!nearTop && !nearEnd) return;
+    extending = true;
+    requestAnimationFrame(() => {
+      const months = (a, b) => (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7)) + 1;
+      if (nearTop) { const from = addMonths(monthFrom, -4); rerangeKeeping(from, months(from, monthTo) > MAX_MONTHS ? addMonths(from, MAX_MONTHS - 1) : monthTo); }
+      else { const to = addMonths(monthTo, 4); rerangeKeeping(months(monthFrom, to) > MAX_MONTHS ? addMonths(to, -(MAX_MONTHS - 1)) : monthFrom, to); }
+      extending = false;
+    });
+  }, { passive: true });
   // Whole year: twelve small months. Shading shows how booked each day is; tap a day to open it.
   function renderYear() {
     const host = $('#year-view'), year = selected.slice(0, 4), today = now().date;
@@ -67,7 +123,7 @@ export function initCalendar(model, handlers) {
       const title = document.createElement('button'); title.type = 'button'; title.className = 'year-month-title';
       title.textContent = dateLabel(first, { weekday: undefined, month: 'long', day: undefined, year: undefined });
       title.setAttribute('aria-label', `Open ${dateLabel(first, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' })}`);
-      title.addEventListener('click', () => { view = 'month'; try { storage.setItem('day-compass.calendar-view.v1', view); } catch {} choose(first); });
+      title.addEventListener('click', () => { view = 'month'; monthScrollTarget = first.slice(0, 7); try { storage.setItem('day-compass.calendar-view.v1', view); } catch {} choose(first); });
       if (first.slice(0, 7) === today.slice(0, 7)) box.classList.add('current');
       const grid = document.createElement('div'); grid.className = 'year-days';
       for (const letter of ['M', 'T', 'W', 'T', 'F', 'S', 'S']) { const head = document.createElement('span'); head.className = 'year-weekday'; head.textContent = letter; head.setAttribute('aria-hidden', 'true'); grid.append(head); }
@@ -175,14 +231,15 @@ export function initCalendar(model, handlers) {
   for (const id of ['#calendar-add', '#setup-day']) $(id).addEventListener('click', () => open(selected));
   $('#mobile-agenda-add').addEventListener('click', () => open(selected));
   $('#edit-day-hours').addEventListener('click', () => handlers.onHours(selected));
-  document.querySelectorAll('[data-calendar-view]').forEach(button => button.addEventListener('click', () => { view = button.dataset.calendarView; render(); try { storage.setItem('day-compass.calendar-view.v1', view); } catch { $('#calendar-status').textContent = 'View changed but the preference could not be saved.'; } }));
+  document.querySelectorAll('[data-calendar-view]').forEach(button => button.addEventListener('click', () => { view = button.dataset.calendarView; if (view === 'month') monthScrollTarget = selected.slice(0, 7); render(); try { storage.setItem('day-compass.calendar-view.v1', view); } catch { $('#calendar-status').textContent = 'View changed but the preference could not be saved.'; } }));
   for (const [id, direction] of [['#previous-period', -1], ['#next-period', 1]]) $(id).addEventListener('click', () => {
     if (view === 'year') { const year = Number(selected.slice(0, 4)) + direction, last = new Date(Date.UTC(year, Number(selected.slice(5, 7)), 0)).getUTCDate(); selected = `${year}-${selected.slice(5, 7)}-${String(Math.min(Number(selected.slice(8, 10)), last)).padStart(2, '0')}`; }
-    else if (view === 'month') { const d = new Date(`${selected}T12:00:00`), last = new Date(d.getFullYear(), d.getMonth() + direction + 1, 0).getDate(); selected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d.getDate(), last)).padStart(2, '0')}`; const moved = new Date(d.getFullYear(), d.getMonth() + direction, Math.min(d.getDate(), last), 12); selected = `${moved.getFullYear()}-${String(moved.getMonth() + 1).padStart(2, '0')}-${String(moved.getDate()).padStart(2, '0')}`; }
+    else if (view === 'month') { monthScrollTarget = 'pending'; const d = new Date(`${selected}T12:00:00`), last = new Date(d.getFullYear(), d.getMonth() + direction + 1, 0).getDate(); selected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d.getDate(), last)).padStart(2, '0')}`; const moved = new Date(d.getFullYear(), d.getMonth() + direction, Math.min(d.getDate(), last), 12); selected = `${moved.getFullYear()}-${String(moved.getMonth() + 1).padStart(2, '0')}-${String(moved.getDate()).padStart(2, '0')}`; }
     else selected = addDays(selected, direction * (view === 'week' ? 7 : 1));
+    if (monthScrollTarget === 'pending') monthScrollTarget = selected.slice(0, 7);
     render(); handlers.onSelection?.();
   });
-  $('#calendar-today').addEventListener('click', () => choose(now().date));
+  $('#calendar-today').addEventListener('click', () => { if (view === 'month') monthScrollTarget = now().date.slice(0, 7); choose(now().date); });
   compactScreen.addEventListener('change', () => { lastTimedKey = ''; render(); });
   // Event colours are worked out for light or dark mode, so redraw when that changes.
   new MutationObserver(() => render()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
