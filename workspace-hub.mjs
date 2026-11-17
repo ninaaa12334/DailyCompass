@@ -248,9 +248,9 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
       const li = node('li', undefined, 'idea-item'), text = node('span', idea.text, 'idea-text');
       const remind = node('button', '🔔', 'idea-action'); remind.type = 'button'; remind.title = 'Remind me about this at a set time'; remind.setAttribute('aria-label', `Set a reminder for: ${idea.text}`);
       remind.addEventListener('click', () => remindAbout(idea));
-      const done = node('button', '✓', 'idea-action'); done.type = 'button'; done.title = 'Done — remove it'; done.setAttribute('aria-label', `Done, remove: ${idea.text}`);
-      done.addEventListener('click', () => { model.removeIdea(idea.id); feedback('Idea removed. Undo is at the top.'); });
-      li.append(text, remind, done); return li;
+      const remove = node('button', '🗑', 'idea-action idea-delete'); remove.type = 'button'; remove.title = 'Delete this idea'; remove.setAttribute('aria-label', `Delete idea: ${idea.text}`);
+      remove.addEventListener('click', () => { model.removeIdea(idea.id); feedback('Idea deleted. Undo is at the top.'); });
+      li.append(text, remind, remove); return li;
     }));
     ideasTile.detail.textContent = ideas.length ? `${ideas.length} saved` : 'Things you’re curious about';
   }

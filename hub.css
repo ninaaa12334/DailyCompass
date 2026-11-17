@@ -556,3 +556,4 @@ body[data-calendar-wide=true] .hub-left { visibility: hidden; width: 0; overflow
 .idea-nudge { display: flex; gap: 8px; align-items: flex-start; width: 100%; margin-top: 10px; padding: 9px 11px; border: 0; border-radius: 12px; background: color-mix(in srgb, #f6bf26 16%, var(--surface)); color: var(--text); font: inherit; font-size: .84rem; text-align: left; min-height: 0; cursor: pointer; }
 .idea-nudge[hidden] { display: none; }
 .idea-nudge:hover { background: color-mix(in srgb, #f6bf26 26%, var(--surface)); }
+.idea-delete:hover { background: color-mix(in srgb, #d32f2f 16%, var(--surface)); }
