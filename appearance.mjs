@@ -12,9 +12,9 @@ export const PRESETS = {
   'deep-sea': { label: 'Deep sea', group: 'dark', dark: true, accent: '#5fd4f5', busy: '#5fd4f5', background: '#08131f', tint: '#123047', surface: '#0f1d2c', surfaceAlt: '#152637', text: '#eaf6fb', muted: '#9fb6c6', border: '#203347', wallpaper: wash('radial-gradient(60% 50% at 0% 0%, #0f3550 0%, transparent 70%)', 'radial-gradient(50% 50% at 100% 100%, #102c4a 0%, transparent 70%)', 'radial-gradient(40% 40% at 80% 10%, #13403f 0%, transparent 70%)') },
   velvet: { label: 'Velvet night', group: 'dark', dark: true, accent: '#c7a4ff', busy: '#b48cff', background: '#120f1c', tint: '#2d2347', surface: '#1b1728', surfaceAlt: '#241f34', text: '#f4f0fd', muted: '#b3aac8', border: '#332c47', wallpaper: wash('radial-gradient(55% 50% at 0% 0%, #2e1d4f 0%, transparent 70%)', 'radial-gradient(50% 45% at 100% 90%, #3f1b3d 0%, transparent 70%)', 'radial-gradient(40% 40% at 90% 0%, #1b2950 0%, transparent 70%)') },
   // Winter themes: the decorations (garland, snow, snowman, tree) come from seasonal-decor.mjs.
-  christmas: { label: 'Christmas', group: 'winter', decor: 'christmas', accent: '#b3122e', busy: '#2c7a51', background: '#edf3f9', tint: '#fbe3e6', surface: '#ffffff', surfaceAlt: '#f3f7fb', text: '#1d2333', muted: '#535a6b', border: '#dde5ef', wallpaper: wash('radial-gradient(70% 55% at 10% 0%, #ffffff 0%, transparent 70%)', 'radial-gradient(60% 50% at 95% 25%, #dfeaf6 0%, transparent 70%)', 'radial-gradient(70% 50% at 50% 100%, #f7fbff 0%, transparent 70%)') },
-  'snowy-night': { label: 'Snowy night', group: 'winter', decor: 'christmas', dark: true, accent: '#ff8a8a', busy: '#7fd3a5', background: '#0d1729', tint: '#3a2232', surface: '#15223a', surfaceAlt: '#1c2b46', text: '#f2f5fb', muted: '#b4bfd3', border: '#2a3a58', wallpaper: wash('radial-gradient(60% 50% at 15% 0%, #1d3157 0%, transparent 70%)', 'radial-gradient(50% 45% at 90% 20%, #24224a 0%, transparent 70%)', 'radial-gradient(80% 45% at 50% 100%, #1a2a47 0%, transparent 75%)') },
-  frost: { label: 'Frost', group: 'winter', decor: 'snow', accent: '#1f5f9e', busy: '#2b6cb0', background: '#eaf2fa', tint: '#d8e8f7', surface: '#fbfdff', surfaceAlt: '#eef5fc', text: '#1a2534', muted: '#4f5d70', border: '#d6e2ee', wallpaper: wash('radial-gradient(60% 50% at 0% 0%, #d9ebfb 0%, transparent 70%)', 'radial-gradient(50% 45% at 100% 20%, #eef6ff 0%, transparent 70%)', 'radial-gradient(70% 50% at 60% 100%, #dcebf8 0%, transparent 70%)') },
+  christmas: { label: 'Christmas', group: 'winter', decor: 'christmas', darkVariant: 'snowy-night', accent: '#b3122e', busy: '#2c7a51', background: '#edf3f9', tint: '#fbe3e6', surface: '#ffffff', surfaceAlt: '#f3f7fb', text: '#1d2333', muted: '#535a6b', border: '#dde5ef', wallpaper: wash('radial-gradient(70% 55% at 10% 0%, #ffffff 0%, transparent 70%)', 'radial-gradient(60% 50% at 95% 25%, #dfeaf6 0%, transparent 70%)', 'radial-gradient(70% 50% at 50% 100%, #f7fbff 0%, transparent 70%)') },
+  'snowy-night': { label: 'Snowy night', hidden: true, replacedBy: 'christmas', decor: 'christmas', dark: true, accent: '#ff8a8a', busy: '#7fd3a5', background: '#0d1729', tint: '#3a2232', surface: '#15223a', surfaceAlt: '#1c2b46', text: '#f2f5fb', muted: '#b4bfd3', border: '#2a3a58', wallpaper: wash('radial-gradient(60% 50% at 15% 0%, #1d3157 0%, transparent 70%)', 'radial-gradient(50% 45% at 90% 20%, #24224a 0%, transparent 70%)', 'radial-gradient(80% 45% at 50% 100%, #1a2a47 0%, transparent 75%)') },
+  frost: { label: 'Frost', hidden: true, replacedBy: 'christmas', decor: 'snow', accent: '#1f5f9e', busy: '#2b6cb0', background: '#eaf2fa', tint: '#d8e8f7', surface: '#fbfdff', surfaceAlt: '#eef5fc', text: '#1a2534', muted: '#4f5d70', border: '#d6e2ee', wallpaper: wash('radial-gradient(60% 50% at 0% 0%, #d9ebfb 0%, transparent 70%)', 'radial-gradient(50% 45% at 100% 20%, #eef6ff 0%, transparent 70%)', 'radial-gradient(70% 50% at 60% 100%, #dcebf8 0%, transparent 70%)') },
   aurora: { label: 'Daylight', accent: '#6554cf', busy: '#6554cf', background: '#faf8f5', tint: '#ede6fb' },
   linen: { label: 'Linen', accent: '#52604a', busy: '#52604a', background: '#f5f3ed', tint: '#e3e7da', surface: '#fffefa', surfaceAlt: '#eeece5', text: '#30342c', muted: '#686b61', border: '#deded4', warm: true },
   stone: { label: 'Stone', accent: '#6a6055', busy: '#6a6055', background: '#f2f0eb', tint: '#e6e0d7', surface: '#fdfcf9', surfaceAlt: '#eae7e0', text: '#37322c', muted: '#645d54', border: '#dcd7cf', warm: true },
@@ -36,9 +36,38 @@ export const DEFAULT_APPEARANCE = { preset: 'linen', customAccent: false, accent
 const validHex = value => typeof value === 'string' && /^#[\da-f]{6}$/i.test(value);
 
 export function validateAppearance(value) {
-  if (!value || !Object.hasOwn(PRESETS, value.preset) || typeof value.customAccent !== 'boolean' || typeof value.customBusy !== 'boolean' || !validHex(value.accent) || !validHex(value.busy)) {
+  if (!value || !Object.hasOwn(PRESETS, value.preset) || typeof value.customAccent !== 'boolean' || typeof value.customBusy !== 'boolean' || !validHex(value.accent) || !validHex(value.busy) || (value.dark !== undefined && typeof value.dark !== 'boolean')) {
     throw new Error('Choose a theme and valid colours.');
   }
+}
+
+// ----- Dark mode for any theme: a dark version in the same colour family -----
+function hexToHsl(hex) {
+  const [r, g, b] = hex.slice(1).match(/../g).map(v => parseInt(v, 16) / 255), max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > .5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+function hslToHex(h, s, l) {
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return '#' + [f(0), f(8), f(4)].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+}
+// Lighten a colour until it is easy to read on the dark surfaces.
+function brightOnDark(hex, surface) {
+  const [h, s] = hexToHsl(hex);
+  for (let l = .62; l <= .9; l += .02) { const c = hslToHex(h, Math.max(.4, Math.min(s, .85)), l); if (contrastRatio(c, surface) >= 4.5) return c; }
+  return hslToHex(h, .5, .85);
+}
+function darkVersion(theme, keepAccent) {
+  const [h, s] = hexToHsl(theme.accent), sat = Math.min(s, .5);
+  const surface = hslToHex(h, sat * .4, .13);
+  const accent = keepAccent ? theme.accent : brightOnDark(theme.accent, surface);
+  const busy = theme.busyCustom ? theme.busy : brightOnDark(theme.busy || theme.accent, surface);
+  return { ...theme, dark: true, warm: false,
+    background: hslToHex(h, sat * .45, .085), surface, surfaceAlt: hslToHex(h, sat * .38, .17), border: hslToHex(h, sat * .3, .25), tint: hslToHex(h, sat * .55, .22),
+    text: '#f2f3f7', muted: hslToHex(h, .12, .76), accent, busy,
+    wallpaper: wash(`radial-gradient(60% 50% at 0% 0%, ${hslToHex(h, sat * .7, .17)} 0%, transparent 70%)`, `radial-gradient(50% 45% at 100% 90%, ${hslToHex((h + 40) % 360, sat * .6, .14)} 0%, transparent 70%)`) };
 }
 
 function luminance(hex) {
@@ -56,12 +85,18 @@ export function textOn(color) {
 
 export function resolveAppearance(value, systemDark = false) {
   validateAppearance(value);
-  const key = value.preset === 'system' ? systemDark ? 'midnight' : 'sage' : value.preset;
+  let key = value.preset === 'system' ? systemDark ? 'midnight' : 'sage' : value.preset;
+  if (PRESETS[key].replacedBy) key = PRESETS[key].replacedBy;
+  // Dark mode: a theme can name its own dark look (Christmas → snowy night); others get a generated one.
+  const wantsDark = value.dark === true;
+  if (wantsDark && PRESETS[key].darkVariant) key = PRESETS[key].darkVariant;
   const preset = PRESETS[key];
   const accent = value.customAccent ? value.accent : preset.accent;
   const busy = value.customBusy ? value.busy : preset.busy;
   const dark = Boolean(preset.dark || key === 'midnight');
-  return { surface: dark ? '#252734' : '#ffffff', surfaceAlt: dark ? '#2c2e3b' : '#f8f7fb', text: dark ? '#f1f0fa' : '#27273d', muted: dark ? '#bfc4da' : '#5d6076', border: dark ? '#454561' : '#e4e4ef', ...preset, dark, accent, accentText: textOn(accent), busy, busyText: textOn(busy) };
+  let theme = { surface: dark ? '#252734' : '#ffffff', surfaceAlt: dark ? '#2c2e3b' : '#f8f7fb', text: dark ? '#f1f0fa' : '#27273d', muted: dark ? '#bfc4da' : '#5d6076', border: dark ? '#454561' : '#e4e4ef', ...preset, dark, accent, busy, busyCustom: value.customBusy };
+  if (wantsDark && !dark) theme = darkVersion(theme, value.customAccent);
+  return { ...theme, accentText: textOn(theme.accent), busyText: textOn(theme.busy) };
 }
 
 export function createAppearanceStore(storage) {

@@ -439,3 +439,4 @@ body.hub-layout .hub { position: relative; z-index: 1; }
 @media (max-width: 899px) { .decor-bow { width: 78px; } :root[data-decor=christmas] body.hub-layout .hub { padding-top: 54px; } .decor-top, .decor-garland { height: 56px; } .decor-ground { height: 50px; } }
 @media (prefers-reduced-motion: reduce) { .decor-snow { display: none; } .decor-light { animation: none; } }
 /* Winter section in the theme picker */
+#appearance-dialog .theme-dark-switch { border-radius: 16px; margin-bottom: 14px; background: color-mix(in srgb, var(--text) 5%, var(--surface)); }

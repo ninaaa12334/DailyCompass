@@ -80,3 +80,17 @@ test('sample demo data, preferences, and edits cannot overwrite personal storage
   assert.equal(local.getItem(CALENDAR_KEY), 'personal calendar');
   assert.equal(local.getItem(APPEARANCE_KEY), 'personal appearance');
 });
+
+test('dark mode turns every theme into a readable dark version', () => {
+  for (const preset of Object.keys(PRESETS)) {
+    const theme = resolveAppearance({ ...DEFAULT_APPEARANCE, preset, dark: true });
+    assert.equal(theme.dark, true, preset);
+    assert.ok(contrastRatio(theme.accent, theme.accentText) >= 4.5, `${preset}: button text`);
+    for (const surface of [theme.surface, theme.background]) {
+      assert.ok(contrastRatio(theme.text, surface) >= 4.5, `${preset}: text`);
+      assert.ok(contrastRatio(theme.muted, surface) >= 4.5, `${preset}: secondary text`);
+    }
+  }
+  assert.equal(resolveAppearance({ ...DEFAULT_APPEARANCE, preset: 'christmas', dark: true }).background, PRESETS['snowy-night'].background);
+  assert.equal(resolveAppearance({ ...DEFAULT_APPEARANCE, preset: 'frost' }).background, PRESETS.christmas.background);
+});

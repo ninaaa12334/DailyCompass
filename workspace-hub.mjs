@@ -5,6 +5,7 @@ import { reminderSound } from './reminder-banner.mjs';
 import { buildCalendarFile, downloadCalendarFile } from './ics-export.mjs';
 import { pushSupport, pushEnabled, enablePush, disablePush, testPush, startPushSync } from './push-cloud.mjs';
 import { initGoogleCalendar } from './google-calendar.mjs';
+import { isDarkMode, toggleDarkMode } from './theme-ui.mjs';
 import { dateLabel } from './clock.mjs';
 
 // Calendar-centred workspace: the calendar fills the middle of the screen and every other
@@ -21,6 +22,8 @@ const ICONS = {
   // Cog outline (Feather "settings" icon, MIT licence).
   gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+  moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>',
+  sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>',
   send: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'
 };
 const icon = name => { const span = node('span', undefined, 'hub-icon'); span.setAttribute('aria-hidden', 'true'); span.innerHTML = ICONS[name]; return span; };
@@ -81,7 +84,12 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   const undoButton = iconButton('undo', 'Undo last change', () => undo.click());
   const syncUndo = () => { undoButton.disabled = undo.disabled; };
   new MutationObserver(syncUndo).observe(undo, { attributes: true, attributeFilter: ['disabled'] }); syncUndo();
-  actions.append(undoButton, iconButton('palette', 'Themes', () => $('[data-open-appearance]').click()), iconButton('gear', 'Settings', () => openSheet('settings')));
+  // Dark mode on/off for whichever theme is chosen.
+  const darkButton = iconButton('moon', 'Dark mode', () => { try { toggleDarkMode(); } catch { feedback('Couldn’t change dark mode. Check browser storage permissions.'); } });
+  const syncDarkButton = () => { const on = isDarkMode(); darkButton.replaceChildren(icon(on ? 'sun' : 'moon')); darkButton.setAttribute('aria-label', on ? 'Light mode' : 'Dark mode'); darkButton.title = on ? 'Light mode' : 'Dark mode'; darkButton.setAttribute('aria-pressed', String(on)); };
+  document.addEventListener('appearance-changed', syncDarkButton); syncDarkButton();
+  new MutationObserver(syncDarkButton).observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
+  actions.append(undoButton, darkButton, iconButton('palette', 'Themes', () => $('[data-open-appearance]').click()), iconButton('gear', 'Settings', () => openSheet('settings')));
   top.append(brand, titles, ask, actions);
 
   // ---------- Rails ----------

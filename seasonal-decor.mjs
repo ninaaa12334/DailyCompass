@@ -115,7 +115,7 @@ function render(kind) {
 }
 
 function update() {
-  const kind = PRESETS[root.dataset.theme]?.decor || '';
+  const preset = PRESETS[root.dataset.theme], kind = PRESETS[preset?.replacedBy]?.decor || preset?.decor || '';
   if (root.dataset.decor === kind && (kind ? layer : true)) return;
   if (kind) root.dataset.decor = kind; else delete root.dataset.decor;
   render(kind);

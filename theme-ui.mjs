@@ -34,6 +34,13 @@ export function bindAccountAppearance(model) {
   });
 }
 media.addEventListener('change', () => apply(saved));
+// Quick dark mode switch (the moon/sun button in the planner).
+export function isDarkMode() { return saved.dark === true; }
+export function toggleDarkMode() {
+  const next = { ...saved, dark: saved.dark !== true };
+  if (!store) { storage.setItem(APPEARANCE_KEY, JSON.stringify(next)); store = createAppearanceStore(storage); } else store.save(next);
+  saved = next; loadError = false; apply(saved); document.dispatchEvent(new Event('appearance-changed'));
+}
 export function selectPreset(preset) {
   const next = { ...saved, preset, customAccent: false, customBusy: false };
   if (!store) { storage.setItem(APPEARANCE_KEY, JSON.stringify(next)); store = createAppearanceStore(storage); } else store.save(next);
@@ -48,6 +55,7 @@ dialog.innerHTML = `
   <div class="dialog-heading"><div><p class="widget-label">MAKE YOURSELF AT HOME</p><h2 id="appearance-title">Your colours, your space.</h2></div><button type="button" class="secondary" id="close-appearance">Close</button></div>
   <p class="muted">Soft daylight or a quieter evening. Find what feels comfortable.</p>
   <form id="appearance-form">
+    <label class="hub-switch theme-dark-switch"><span><strong>Dark mode</strong><small>Turns whichever theme you pick dark</small></span><input type="checkbox" role="switch" name="dark"></label>
     <fieldset><legend>Theme</legend><p class="theme-group-label">Winter</p><div class="theme-options theme-cards" id="theme-winter"></div><p class="theme-group-label">Light</p><div class="theme-options theme-cards" id="theme-light"></div><p class="theme-group-label">Dark</p><div class="theme-options theme-cards" id="theme-dark"></div><details id="other-palettes"><summary>Classic palettes</summary><div class="theme-options" id="theme-options"></div><div class="theme-options" id="other-theme-options"></div></details></fieldset>
     <div class="colour-choice"><label><input type="checkbox" name="customAccent"> Use a custom accent</label><input type="color" name="accent" aria-label="Custom accent colour"></div>
     <div class="colour-choice"><label><input type="checkbox" name="customBusy"> Use a custom busyness colour</label><input type="color" name="busy" aria-label="Calendar busyness colour"></div>
@@ -62,6 +70,7 @@ document.body.append(dialog);
 const form = dialog.querySelector('form');
 const error = dialog.querySelector('#appearance-error');
 for (const [key, preset] of Object.entries(PRESETS)) {
+  if (preset.hidden) continue; // replaced themes stay valid for old saves but aren't offered
   const label = document.createElement('label');
   label.className = 'theme-option';
   const input = document.createElement('input');
@@ -80,7 +89,7 @@ for (const [key, preset] of Object.entries(PRESETS)) {
   dialog.querySelector(preset.group === 'winter' ? '#theme-winter' : preset.group === 'light' ? '#theme-light' : preset.group === 'dark' ? '#theme-dark' : ['linen', 'stone', 'clay', 'dusk'].includes(key) ? '#theme-options' : '#other-theme-options').append(label);
 }
 function read() {
-  return { preset: form.elements.namedItem('preset').value, customAccent: form.elements.namedItem('customAccent').checked, accent: form.elements.namedItem('accent').value, customBusy: form.elements.namedItem('customBusy').checked, busy: form.elements.namedItem('busy').value };
+  return { preset: form.elements.namedItem('preset').value, customAccent: form.elements.namedItem('customAccent').checked, accent: form.elements.namedItem('accent').value, customBusy: form.elements.namedItem('customBusy').checked, busy: form.elements.namedItem('busy').value, dark: form.elements.namedItem('dark').checked };
 }
 function preview() {
   const value = read();
@@ -94,9 +103,11 @@ function preview() {
 document.querySelectorAll('[data-open-appearance]').forEach(button => button.addEventListener('click', () => {
   for (const [key, value] of Object.entries(saved)) {
     const control = form.elements.namedItem(key);
-    if (key.startsWith('custom')) control.checked = value;
-    else control.value = value;
+    if (!control) continue;
+    if (typeof value === 'boolean') control.checked = value;
+    else control.value = PRESETS[value]?.replacedBy || value;
   }
+  form.elements.namedItem('dark').checked = saved.dark === true;
   dialog.querySelector('#other-palettes').open = !PRESETS[saved.preset]?.group;
   error.hidden = !loadError;
   error.textContent = loadError ? 'Saved preferences could not be read. Saving a new choice will replace only appearance preferences; your tasks and calendar stay intact.' : '';
