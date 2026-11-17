@@ -333,7 +333,7 @@ body.hub-layout .welcome-connections { position: fixed; z-index: 25; left: 50%; 
   .hub-center #calendar-month { font-size: 1rem; flex-basis: 100%; line-height: 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hub .period-controls { gap: 4px; }
   .hub .period-controls button { min-width: 32px; padding: 0; height: 32px; min-height: 32px; }
-  .hub .calendar-view-switch { flex: 1 1 0; min-width: 0; width: auto; }
+  .hub .calendar-view-switch { flex: 1 1 auto; min-width: 0; width: auto; }
   .hub .calendar-view-switch button { flex: 1; padding: .2rem .3rem; min-height: 28px; font-size: .78rem; }
   .hub-center #year-view { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
   .year-month { padding: 8px 6px 6px; border-radius: 14px; }
@@ -402,3 +402,40 @@ body.hub-layout .welcome-connections { position: fixed; z-index: 25; left: 50%; 
 .gcal-details summary { cursor: pointer; font-weight: 600; min-height: 30px; padding: 4px 0; }
 .gcal-details p { margin: 4px 0; }
 .gcal-details ul { margin: 4px 0 0; padding-left: 18px; }
+
+/* ---------- Winter themes (seasonal-decor.mjs) ---------- */
+.seasonal-decor { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+body.hub-layout .hub { position: relative; z-index: 1; }
+:root[data-decor=christmas] body.hub-layout .hub { padding-top: 66px; }
+.decor-top { position: absolute; top: 0; left: 0; right: 0; height: 70px; }
+.decor-garland { position: absolute; inset: 0; width: 100%; height: 70px; filter: drop-shadow(0 4px 4px rgb(0 0 0 / .18)); }
+.decor-bow { position: absolute; top: -2px; left: 50%; width: 118px; transform: translateX(-50%); filter: drop-shadow(0 6px 6px rgb(0 0 0 / .25)); }
+.decor-light { animation: decor-twinkle 2.6s ease-in-out infinite; }
+@keyframes decor-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.decor-ground { position: absolute; left: -5%; right: -5%; bottom: -30px; height: 90px; border-radius: 50% 50% 0 0 / 100% 100% 0 0; background: radial-gradient(120% 100% at 50% 100%, #ffffff 55%, #f1f6fc 75%, transparent 76%); }
+:root[data-mode=dark] .decor-ground { background: radial-gradient(120% 100% at 50% 100%, #e9f0f8 55%, #c9d6e6 75%, transparent 76%); opacity: .9; }
+.decor-snowman { position: absolute; left: 14px; bottom: 0; width: 190px; }
+.decor-tree { position: absolute; right: 10px; bottom: 0; width: 200px; }
+.decor-flake { position: absolute; color: #b8cde3; opacity: .55; line-height: 1; }
+:root[data-mode=dark] .decor-flake { color: #8fa8c8; opacity: .45; }
+.decor-snow i { position: absolute; top: -10px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 4px rgb(255 255 255 / .8); animation: decor-fall linear infinite; }
+:root:not([data-mode=dark]) .decor-snow i { background: #ffffff; box-shadow: 0 0 3px rgb(120 150 190 / .55); }
+@keyframes decor-fall { to { transform: translate(var(--drift, 0), 105vh); } }
+/* Snow resting on cards */
+:root[data-decor] .hub .hub-card, :root[data-decor] .hub-center .calendar-widget, :root[data-decor] .hub .hub-tile { position: relative; overflow: visible; }
+:root[data-decor] .hub-left > :first-child::before, :root[data-decor] .hub-left > :nth-child(4)::before, :root[data-decor] .hub-right > :first-child::before,
+:root[data-decor] .hub-center .calendar-widget::before, :root[data-decor] .hub .now-widget::before, :root[data-decor] .hub-right > :nth-child(4)::before {
+  content: ''; display: block !important; position: absolute; z-index: 2; top: -9px; right: 10px; width: 46%; height: 18px; pointer-events: none;
+  background: radial-gradient(14px 10px at 12% 70%, #fff 98%, transparent) , radial-gradient(18px 12px at 35% 55%, #fff 98%, transparent), radial-gradient(22px 13px at 62% 60%, #fff 98%, transparent), radial-gradient(16px 11px at 86% 70%, #fff 98%, transparent), linear-gradient(#fff, #fff) bottom / 100% 8px no-repeat;
+  border-radius: 12px 12px 6px 6px; filter: drop-shadow(0 2px 2px rgb(90 120 160 / .25));
+}
+:root[data-decor] .hub-center .calendar-widget::before { left: 30px; right: auto; width: 40%; }
+:root[data-decor] .hub .now-widget::before { left: auto; right: 16px; width: 30%; }
+.decor-candy { position: absolute; top: 14px; right: 16px; width: 22px; transform: rotate(18deg); }
+.decor-candy svg { width: 100%; height: auto; display: block; }
+/* Keep decorations out of the way on smaller screens */
+@media (max-height: 980px) { .decor-snowman { width: 150px; } .decor-tree { width: 160px; } }
+@media (max-width: 1199px), (max-height: 760px) { .decor-snowman, .decor-tree { display: none; } }
+@media (max-width: 899px) { .decor-bow { width: 78px; } :root[data-decor=christmas] body.hub-layout .hub { padding-top: 54px; } .decor-top, .decor-garland { height: 56px; } .decor-ground { height: 50px; } }
+@media (prefers-reduced-motion: reduce) { .decor-snow { display: none; } .decor-light { animation: none; } }
+/* Winter section in the theme picker */

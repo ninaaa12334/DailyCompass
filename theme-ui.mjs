@@ -48,7 +48,7 @@ dialog.innerHTML = `
   <div class="dialog-heading"><div><p class="widget-label">MAKE YOURSELF AT HOME</p><h2 id="appearance-title">Your colours, your space.</h2></div><button type="button" class="secondary" id="close-appearance">Close</button></div>
   <p class="muted">Soft daylight or a quieter evening. Find what feels comfortable.</p>
   <form id="appearance-form">
-    <fieldset><legend>Theme</legend><p class="theme-group-label">Light</p><div class="theme-options theme-cards" id="theme-light"></div><p class="theme-group-label">Dark</p><div class="theme-options theme-cards" id="theme-dark"></div><details id="other-palettes"><summary>Classic palettes</summary><div class="theme-options" id="theme-options"></div><div class="theme-options" id="other-theme-options"></div></details></fieldset>
+    <fieldset><legend>Theme</legend><p class="theme-group-label">Winter</p><div class="theme-options theme-cards" id="theme-winter"></div><p class="theme-group-label">Light</p><div class="theme-options theme-cards" id="theme-light"></div><p class="theme-group-label">Dark</p><div class="theme-options theme-cards" id="theme-dark"></div><details id="other-palettes"><summary>Classic palettes</summary><div class="theme-options" id="theme-options"></div><div class="theme-options" id="other-theme-options"></div></details></fieldset>
     <div class="colour-choice"><label><input type="checkbox" name="customAccent"> Use a custom accent</label><input type="color" name="accent" aria-label="Custom accent colour"></div>
     <div class="colour-choice"><label><input type="checkbox" name="customBusy"> Use a custom busyness colour</label><input type="color" name="busy" aria-label="Calendar busyness colour"></div>
     <p class="fine-print">Button text adjusts for contrast. Dates with their own busy colour keep that override.</p>
@@ -77,7 +77,7 @@ for (const [key, preset] of Object.entries(PRESETS)) {
   } else swatch.style.background = preset.background ? `linear-gradient(135deg, ${preset.background} 0 40%, ${preset.tint} 40% 72%, ${preset.accent} 72%)` : 'linear-gradient(90deg,#365d4d 50%,#141e23 50%)';
   const name = document.createElement('span'); name.className = 'theme-name'; name.textContent = preset.label;
   label.append(input, swatch, name);
-  dialog.querySelector(preset.group === 'light' ? '#theme-light' : preset.group === 'dark' ? '#theme-dark' : ['linen', 'stone', 'clay', 'dusk'].includes(key) ? '#theme-options' : '#other-theme-options').append(label);
+  dialog.querySelector(preset.group === 'winter' ? '#theme-winter' : preset.group === 'light' ? '#theme-light' : preset.group === 'dark' ? '#theme-dark' : ['linen', 'stone', 'clay', 'dusk'].includes(key) ? '#theme-options' : '#other-theme-options').append(label);
 }
 function read() {
   return { preset: form.elements.namedItem('preset').value, customAccent: form.elements.namedItem('customAccent').checked, accent: form.elements.namedItem('accent').value, customBusy: form.elements.namedItem('customBusy').checked, busy: form.elements.namedItem('busy').value };
