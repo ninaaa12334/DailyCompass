@@ -1,4 +1,5 @@
 import { sendPush, b64url } from './webpush.js';
+import { handleGoogle } from './google.js';
 
 // Day Compass push service.
 //   GET    /vapid                      → public key browsers need to subscribe
@@ -34,6 +35,7 @@ const subscriptionOf = device => ({ endpoint: device.endpoint, keys: { p256dh: d
 async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/';
   if (request.method === 'GET' && path === '/vapid') return json({ publicKey: env.VAPID_PUBLIC_KEY });
+  if (path.startsWith('/google/')) return handleGoogle(request, env, path);
   if (request.method === 'GET' && path === '/') return json({ service: 'Day Compass push', ok: true });
 
   if (request.method === 'POST' && path === '/devices') {
@@ -105,7 +107,7 @@ export default {
   async fetch(request, env) {
     const headers = cors(request, env);
     if (request.method === 'OPTIONS') return new Response(null, { status: headers ? 204 : 403, headers: headers || {} });
-    if (request.headers.get('Origin') && !headers) return json({ error: 'This site is not allowed to use the push service.' }, 403);
+    if (request.headers.get('Origin') && !headers && new URL(request.url).pathname !== '/google/callback') return json({ error: 'This site is not allowed to use the push service.' }, 403);
     try { const response = await handle(request, env); for (const [k, v] of Object.entries(headers || {})) response.headers.set(k, v); return response; }
     catch (error) { return json({ error: error.status ? error.message : 'Something went wrong.' }, error.status || 500, headers || {}); }
   },

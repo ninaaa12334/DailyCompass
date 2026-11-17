@@ -4,6 +4,7 @@ import { interpretPlanningRequest } from './planning-request.mjs';
 import { reminderSound } from './reminder-banner.mjs';
 import { buildCalendarFile, downloadCalendarFile } from './ics-export.mjs';
 import { pushSupport, pushEnabled, enablePush, disablePush, testPush, startPushSync } from './push-cloud.mjs';
+import { initGoogleCalendar } from './google-calendar.mjs';
 import { dateLabel } from './clock.mjs';
 
 // Calendar-centred workspace: the calendar fills the middle of the screen and every other
@@ -197,10 +198,15 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   const upcoming = $('.workspace-upcoming'); upcoming?.classList.add('hub-card', 'hub-upcoming');
   const helper = $('.task-chat-launch');
   const themesTile = tile('themes', 'palette', 'Themes', () => $('[data-open-appearance]').click());
+  // Google Calendar (read-only), connected with the person's Google account.
+  const gcal = initGoogleCalendar({ model, account, feedback });
+  const gcalTile = tile('gcal', 'day', 'Google Calendar', () => openSheet('gcal'));
+  gcalTile.detail.textContent = 'Show your Google events';
+  sheet('gcal', 'Google Calendar', gcal.element, gcal.onOpen);
   themesTile.detail.textContent = 'Colours & wallpaper';
 
   left.append(...[productivity, nowWidget, freeWidget, tasksTile.button].filter(Boolean));
-  right.append(...[upcoming, dayTile.button, remindersTile.button, aiTile.button, helper, themesTile.button].filter(Boolean));
+  right.append(...[upcoming, dayTile.button, remindersTile.button, gcalTile.button, aiTile.button, helper, themesTile.button].filter(Boolean));
   if (helper) { helper.classList.add('hub-tile', 'hub-tile-helper'); helper.replaceChildren(icon('chat'), Object.assign(node('span', undefined, 'hub-tile-text'), { innerHTML: '<strong>Task helper</strong><small class="hub-tile-detail">Turn a thought into a task</small>' }), node('span', '›', 'hub-tile-chevron')); }
   aiTile.detail.textContent = 'Suggestions for a day';
   center.append($('.calendar-widget'));
@@ -213,6 +219,7 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   chip('Your day', () => openSheet('day'));
   chip('Upcoming', () => openSheet('upcoming'));
   chip('Reminders', () => openSheet('reminders'));
+  chip('Google Calendar', () => openSheet('gcal'));
   chip('Plan with AI', () => openSheet('ai'));
   if (helper) chip('Task helper', () => helper.click());
   // On phones the upcoming list lives in a sheet; on wider screens it stays in the right rail.
@@ -360,5 +367,6 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   model.subscribe(() => requestAnimationFrame(render));
   for (const id of ['#day-capacity', '#reminder-list', '#mini-productivity-percent', '#planner-mode']) { const el = $(id); if (el) new MutationObserver(render).observe(el, { childList: true, characterData: true, subtree: true }); }
   render();
+  if (gcal.openAfterConnect) setTimeout(() => openSheet('gcal'), 300);
   return { render, openSheet };
 }

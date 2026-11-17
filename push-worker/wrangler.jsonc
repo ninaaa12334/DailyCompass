@@ -11,7 +11,13 @@
   "vars": {
     // Sites allowed to talk to this service.
     "ALLOWED_ORIGINS": "https://daily-compass1.vercel.app,http://127.0.0.1:8080,http://localhost:8080",
-    "VAPID_SUBJECT": "https://daily-compass1.vercel.app"
+    "VAPID_SUBJECT": "https://daily-compass1.vercel.app",
+    "PUBLIC_URL": "https://day-compass-push.day-compass-push.workers.dev",
+    // Google Calendar (read-only). The client secret is a Cloudflare secret, never committed.
+    "GOOGLE_CLIENT_ID": "88571627712-80ju191ofue37chvtar32l29gg1k7hcr.apps.googleusercontent.com",
+    // Used only to check who is signed in (public key, safe to commit).
+    "SUPABASE_URL": "https://ffjjvkbojuetcdmpqapx.supabase.co",
+    "SUPABASE_KEY": "sb_publishable_uL03_LEg7r7fkqc0FkQGRg_1GzUSsVk"
   }
-  // Secrets (set with `wrangler secret put`, never committed): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
+  // Secrets (never committed): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, TOKEN_KEY, GOOGLE_CLIENT_SECRET
 }

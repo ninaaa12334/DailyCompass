@@ -18,3 +18,20 @@ CREATE TABLE IF NOT EXISTS reminders (
   PRIMARY KEY (device_id, key)
 );
 CREATE INDEX IF NOT EXISTS reminders_due ON reminders (due);
+
+-- Google Calendar (read-only): one connection per Day Compass account, refresh token encrypted.
+CREATE TABLE IF NOT EXISTS google_links (
+  user_id TEXT PRIMARY KEY,          -- Supabase user id
+  email TEXT NOT NULL DEFAULT '',
+  refresh_enc TEXT NOT NULL,
+  iv TEXT NOT NULL,
+  created INTEGER NOT NULL,
+  updated INTEGER NOT NULL
+);
+-- Short-lived "who started this connection" records for the Google redirect.
+CREATE TABLE IF NOT EXISTS google_states (
+  state TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  created INTEGER NOT NULL
+);
