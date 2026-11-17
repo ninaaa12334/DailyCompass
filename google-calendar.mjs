@@ -2,6 +2,7 @@ import { cloud } from './cloud.mjs';
 import { PUSH_SERVICE } from './push-cloud.mjs';
 import { zonedNow, dateLabel } from './clock.mjs';
 import { addDays, timeLabel } from './calendar-view.mjs';
+import { GOOGLE_COLOR_IDS } from './event-colors.mjs';
 
 // Google Calendar (read-only) for signed-in accounts. The Cloudflare service holds the Google
 // connection; this file shows the controls and copies events into the planner as busy time.
@@ -19,13 +20,15 @@ async function call(path, method = 'GET') {
 }
 
 // Google events → the planner's imported-event format (shown as read-only busy time).
-export function toImports(events, timeZone) {
+// Each event keeps its Google colour: its own colour if it has one, otherwise its calendar's colour.
+export function toImports(events, timeZone, calendarColors = {}) {
   const items = [];
   for (const e of events) {
     const a = zonedNow(new Date(e.start), timeZone), b = zonedNow(new Date(e.end), timeZone);
     const end = b.date > a.date ? '24:00' : timeLabel(b.minute);
     if (end !== '24:00' && b.minute <= a.minute) continue;
-    items.push({ id: `gcal-${e.calendarId}-${e.id}`, googleId: e.id, calendarId: e.calendarId, title: e.title, date: a.date, start: timeLabel(a.minute), end, sourceStart: e.start, sourceEnd: e.end });
+    const color = GOOGLE_COLOR_IDS[e.colorId] || (/^#[\da-f]{6}$/i.test(calendarColors[e.calendarId] || '') ? calendarColors[e.calendarId].toLowerCase() : '');
+    items.push({ id: `gcal-${e.calendarId}-${e.id}`, googleId: e.id, calendarId: e.calendarId, title: e.title, date: a.date, start: timeLabel(a.minute), end, sourceStart: e.start, sourceEnd: e.end, ...(color ? { color } : {}) });
   }
   return items;
 }
@@ -107,7 +110,7 @@ export function initGoogleCalendar({ model, account, feedback }) {
         if (ids.length) {
           const query = new URLSearchParams({ calendars: ids.join(','), timeMin: new Date(`${addDays(today, -PAST_DAYS)}T00:00:00Z`).toISOString(), timeMax: new Date(`${addDays(today, FUTURE_DAYS)}T23:59:59Z`).toISOString() });
           const result = await call(`/google/events?${query}`);
-          items = toImports(result.events, zone); state.stats = result.stats || {};
+          items = toImports(result.events, zone, Object.fromEntries(state.calendars.map(c => [c.id, c.color]))); state.stats = result.stats || {};
         }
         const current = JSON.stringify(model.snapshot().imports || []);
         if (JSON.stringify(items) !== current) model.setImports(items);

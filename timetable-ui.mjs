@@ -2,6 +2,7 @@ import { addDays, eventPosition, timeLabel } from './calendar-view.mjs';
 import { minutes, capacity } from './calendar-store.mjs';
 import { zonedNow } from './clock.mjs';
 import { activityVisual } from './activity-visuals.mjs';
+import { paintEvent } from './event-colors.mjs';
 
 export function renderTimetable(grid, options) {
   const { dates, selected, focusHour, getDay, getTasks, onSelect, onAdd, onEdit, onNavigate } = options;
@@ -33,7 +34,9 @@ export function renderTimetable(grid, options) {
     const detail = document.createElement('small');
     detail.textContent = due ? `${due} due` : `${Math.round(booked / 6) / 10}h booked`;
     header.setAttribute('aria-label', `${date}, ${day.commitments.length} activities, ${booked} minutes booked within planning hours, ${due} incomplete task deadlines. Select day.`);
-    header.append(label, number, detail);
+    const holiday = options.getHoliday?.(date) || [];
+    if (holiday.length) { const tag = document.createElement('small'); tag.className = 'holiday-name'; tag.textContent = holiday.join(' · '); tag.title = holiday.join(' · '); header.dataset.holiday = 'true'; header.append(label, number, tag, detail); }
+    else header.append(label, number, detail);
     header.addEventListener('click', () => onSelect(date));
     grid.append(header);
   }
@@ -90,7 +93,7 @@ export function renderTimetable(grid, options) {
       if (item.kind !== 'break') button.type = 'button';
       button.className = `week-event${position.height < 40 ? ' short-event' : ''}${item.completed ? ' completed' : ''}`;
       button.dataset.eventId = item.id;
-      const visual = activityVisual(item); button.dataset.activity = visual.kind;
+      const visual = activityVisual(item); button.dataset.activity = visual.kind; paintEvent(button, item);
       button.style.top = `${position.top}px`; button.style.height = `${position.height}px`;
       button.title = `${item.title} · ${item.start}–${item.end}`;
       button.setAttribute('aria-label', `Edit ${item.title}, ${date}, ${item.start} to ${item.end}`);

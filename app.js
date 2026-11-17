@@ -16,6 +16,8 @@ import { bindAccountAppearance } from './theme-ui.mjs';
 import { initInterfaceMotion } from './interface-motion.mjs';
 import { initWorkspaceHub } from './workspace-hub.mjs';
 import { initReminderBanner } from './reminder-banner.mjs';
+import { EVENT_COLORS, colorOf } from './event-colors.mjs';
+import { holidayControls } from './holidays.mjs';
 
 export async function startApp() {
   const $ = selector => document.querySelector(selector);
@@ -36,6 +38,16 @@ export async function startApp() {
   const model = createPlannerStore(storage);
   if (account.user) bindAccountAppearance(model);
   const form = $('#activity-form');
+  // Colour choice in the edit window: Automatic (from the category) or one of Google Calendar's colours.
+  const colorField = document.createElement('fieldset'); colorField.className = 'color-field';
+  colorField.innerHTML = '<legend>Colour</legend><div class="color-swatches"></div>';
+  const swatch = (value, label, hex) => { const l = document.createElement('label'); l.className = 'color-swatch'; l.title = label; const input = document.createElement('input'); input.type = 'radio'; input.name = 'color'; input.value = value; input.setAttribute('aria-label', label); const dot = document.createElement('span'); dot.style.background = hex; l.append(input, dot); return l; };
+  const autoSwatch = swatch('', 'Automatic (from the category)', '#999999'); autoSwatch.classList.add('color-auto'); autoSwatch.append(Object.assign(document.createElement('small'), { textContent: 'Auto' }));
+  colorField.querySelector('.color-swatches').append(autoSwatch, ...Object.entries(EVENT_COLORS).map(([key, c]) => swatch(key, c.label, c.hex)));
+  form.querySelector('#activity-category').closest('.task-fields').after(colorField);
+  // The Auto dot shows the colour the category would give.
+  function showAutoColor() { autoSwatch.querySelector('span').style.background = colorOf({ title: form.elements.namedItem('title').value, category: form.elements.namedItem('category').value, kind: form.elements.namedItem('kind').value }); }
+  for (const name of ['title', 'category', 'kind']) form.elements.namedItem(name).addEventListener('input', showAutoColor);
   let calendar, assistant, productivity, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
   const displayedNotifications = new Map();
   const banner = initReminderBanner({ model, now: () => zonedNow(new Date(), model.getSettings().timeZone), openActivity: (...args) => openActivity(...args), openTasks: () => document.querySelector('.hub-tile-tasks')?.click() });
@@ -73,6 +85,7 @@ export async function startApp() {
     const data = source ? { ...source, date: source.date || date, kind } : { kind, title, date, category: 'Study', priority: 'Medium', start: timeLabel(start ?? 9 * 60), end: timeLabel(end ?? Math.min(1439, (start ?? 9 * 60) + 60)), duration: 30, spent: 0, deadline: '', notes: '', repeat: 'none', repeatUntil: '', reminder: 'default', dstChoice: '' };
     if (source) original = { id: source.id, kind, date: source.date || date };
     for (const name of ['kind', 'title', 'date', 'category', 'priority', 'start', 'end', 'duration', 'spent', 'deadline', 'notes', 'repeat', 'repeatUntil', 'reminder']) if (data[name] !== undefined) field(name).value = data[name];
+    field('color').value = data.color || ''; showAutoColor();
     field('deadlineAlertDate').value = source?.deadlineReminder?.date || '';
     field('deadlineAlertTime').value = source?.deadlineReminder?.time || '09:00';
     field('dstChoice').value = data.dstChoice || '';
@@ -179,7 +192,7 @@ export async function startApp() {
   form.addEventListener('submit', event => {
     event.preventDefault(); if (saving) return; saving = true; $('#save-activity').disabled = true;
     const data = {};
-    for (const name of ['kind', 'title', 'category', 'priority', 'date', 'start', 'end', 'deadline', 'notes', 'repeat', 'repeatUntil', 'reminder']) data[name] = field(name).value;
+    for (const name of ['kind', 'title', 'category', 'priority', 'date', 'start', 'end', 'deadline', 'notes', 'repeat', 'repeatUntil', 'reminder', 'color']) data[name] = field(name).value;
     data.title = data.title.trim(); data.duration = Number(field('duration').value); data.spent = Number(field('spent').value); data.id = original?.id || newId(); data.locked = false;
     if (data.kind === 'task' && field('deadlineAlertDate').value) data.deadlineReminder = { date: field('deadlineAlertDate').value, time: field('deadlineAlertTime').value };
     if (!['default', 'off'].includes(data.reminder)) data.reminder = Number(data.reminder);
@@ -224,6 +237,8 @@ export async function startApp() {
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }
   productivity = initProductivity({ model, storage, selectedDate: calendar.getSelectedDate });
   assistant = initAssistant({ model, account, calendar, openActivity, now });
+  // Holidays switch in Settings → Planning too.
+  { const planning = document.querySelector('#settings-planning'); if (planning) { const block = document.createElement('div'); block.className = 'holiday-settings'; block.append(Object.assign(document.createElement('h4'), { textContent: 'Public holidays' }), holidayControls({ model, feedback })); planning.append(block); } }
   $('#open-reminder-settings').addEventListener('click', () => { $('[data-panel=settings]').click(); $('[data-settings-view=notifications]').click(); $('#settings-panel').scrollIntoView({ block: 'start' }); });
   if (account.user && new URLSearchParams(location.search).get('welcome') === '1') {
     const welcome = document.createElement('section'); welcome.className = 'welcome-connections'; welcome.setAttribute('aria-label', 'Optional calendar connection');

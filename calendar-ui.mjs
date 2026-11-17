@@ -1,6 +1,8 @@
 ﻿import { capacity, minutes } from './calendar-store.mjs';
 import { storage } from './runtime.mjs';
 import { addDays, weekDates, monthDates } from './calendar-view.mjs';
+import { paintEvent } from './event-colors.mjs';
+import { holidaysOn } from './holidays.mjs';
 import { renderTimetable, updateNowLines } from './timetable-ui.mjs';
 import { zonedNow, dateLabel, durationLabel } from './clock.mjs';
 import { planningCapacity } from './scheduler.mjs';
@@ -17,7 +19,7 @@ export function initCalendar(model, handlers) {
   function choose(date) { selected = date; render(); handlers.onSelection?.(); }
   function open(date, item, start) { choose(date); if (item?.kind !== 'break') handlers.onActivity({ date, item, start }); }
   function renderMonth() {
-    const grid = $('#calendar-days'); grid.replaceChildren();
+    const grid = $('#calendar-days'); grid.replaceChildren(); const settingsNow = model.getSettings();
     for (const date of monthDates(selected)) {
       const day = model.getDay(date), { ratio, booked } = planningCapacity(day, model.getSettings());
       const due = model.getTasks().filter(task => !task.completed && task.deadline === date).length;
@@ -30,11 +32,12 @@ export function initCalendar(model, handlers) {
       const markers = document.createElement('span'); markers.className = 'mobile-month-indicator'; markers.setAttribute('aria-hidden', 'true'); markers.textContent = day.commitments.length ? '•'.repeat(Math.min(3, day.commitments.length)) : ''; button.append(markers);
       if (date === now().date) button.setAttribute('aria-current', 'date');
       button.addEventListener('click', () => { choose(date); [...grid.querySelectorAll('.calendar-day')].find(node => node.dataset.date === date)?.focus(); }); cell.append(button);
+      for (const name of holidaysOn(settingsNow, date)) { const tag = document.createElement('div'); tag.className = 'holiday-name'; tag.textContent = name; tag.title = name; cell.append(tag); cell.dataset.holiday = 'true'; }
       const events = [...day.commitments].sort((a, b) => minutes(a.start) - minutes(b.start));
       for (const item of events.slice(0, 3)) {
         const event = document.createElement(item.kind === 'break' ? 'div' : 'button');
         if (item.kind !== 'break') event.type = 'button';
-        event.className = `month-event${item.completed ? ' completed' : ''}`; event.dataset.activity = activityVisual(item).kind; event.textContent = `${item.start} ${item.title}`; event.title = `${item.title}: ${item.start}–${item.end}`;
+        event.className = `month-event${item.completed ? ' completed' : ''}`; event.dataset.activity = activityVisual(item).kind; paintEvent(event, item); event.textContent = `${item.start} ${item.title}`; event.title = `${item.title}: ${item.start}–${item.end}`;
         if (item.kind !== 'break') event.addEventListener('click', () => open(date, item)); cell.append(event);
       }
       if (events.length > 3) { const more = document.createElement('button'); more.type = 'button'; more.className = 'month-more'; more.textContent = `+${events.length - 3} more`; more.addEventListener('click', () => { view = 'day'; choose(date); }); cell.append(more); }
@@ -77,6 +80,7 @@ export function initCalendar(model, handlers) {
         button.setAttribute('aria-label', `${dateLabel(date, { year: 'numeric' })}, ${day.commitments.length} activities${dueDates.has(date) ? ', deadline' : ''}. Open day.`);
         if (date === today) button.setAttribute('aria-current', 'date');
         if (date === selected) button.setAttribute('aria-pressed', 'true');
+        const holiday = holidaysOn(model.getSettings(), date); if (holiday.length) { button.dataset.holiday = 'true'; button.title = holiday.join(' · '); }
         button.addEventListener('click', () => { view = 'day'; try { storage.setItem('day-compass.calendar-view.v1', view); } catch {} lastTimedKey = ''; choose(date); });
         grid.append(button);
       }
@@ -105,7 +109,8 @@ export function initCalendar(model, handlers) {
     }
   }
   function renderMobileAgenda() {
-    $('#mobile-agenda-heading').textContent = dateLabel(selected);
+    const holidayToday = holidaysOn(model.getSettings(), selected);
+    $('#mobile-agenda-heading').textContent = holidayToday.length ? `${dateLabel(selected)} · ${holidayToday.join(' · ')}` : dateLabel(selected);
     const list = $('#mobile-agenda-list'); list.replaceChildren();
     const activities = model.getDay(selected).commitments.sort((a, b) => minutes(a.start) - minutes(b.start));
     $('#mobile-agenda-empty').textContent = activities.length ? '' : 'A clear day. Tap + Add to plan something.';
@@ -113,7 +118,7 @@ export function initCalendar(model, handlers) {
       const li = document.createElement('li');
       const entry = document.createElement(item.kind === 'break' ? 'div' : 'button');
       entry.className = `mobile-agenda-entry${item.completed ? ' completed' : ''}`;
-      const visual = activityVisual(item); entry.dataset.activity = visual.kind;
+      const visual = activityVisual(item); entry.dataset.activity = visual.kind; paintEvent(entry, item);
       if (item.kind !== 'break') { entry.type = 'button'; entry.setAttribute('aria-label', `Edit ${item.title}, ${item.start} to ${item.end}`); entry.addEventListener('click', () => open(selected, item)); }
       const time = document.createElement('span'); time.className = 'mobile-agenda-time'; time.textContent = `${item.start}–${item.end}`;
       const title = document.createElement('strong'); title.className = 'task-title'; title.textContent = item.title;
@@ -139,7 +144,7 @@ export function initCalendar(model, handlers) {
     if (view === 'month') renderMonth();
     else if (view === 'year') renderYear();
     else {
-      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, timeZone: model.getSettings().timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.getSettings()),
+      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, getHoliday: date => holidaysOn(model.getSettings(), date), timeZone: model.getSettings().timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.getSettings()),
         onSelect: date => choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
         onNavigate: (date, hour) => { focusHour = hour; choose(date); [...document.querySelectorAll('.time-slot')].find(node => node.dataset.date === date && Number(node.dataset.hour) === hour)?.focus(); }
       });
@@ -179,6 +184,9 @@ export function initCalendar(model, handlers) {
   });
   $('#calendar-today').addEventListener('click', () => choose(now().date));
   compactScreen.addEventListener('change', () => { lastTimedKey = ''; render(); });
+  // Event colours are worked out for light or dark mode, so redraw when that changes.
+  new MutationObserver(() => render()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
+  document.addEventListener('holidays-updated', () => render());
   setInterval(() => { if (!document.hidden && !['month', 'year'].includes(view)) updateNowLines($('#week-grid')); }, 60000);
   render();
   return { getSelectedDate: () => selected, selectDate: choose, refresh: render };

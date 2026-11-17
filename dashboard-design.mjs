@@ -1,6 +1,7 @@
 import { addDays } from './calendar-view.mjs';
 import { dateLabel } from './clock.mjs';
 import { activityVisual } from './activity-visuals.mjs';
+import { paintEvent } from './event-colors.mjs';
 import { minutes } from './calendar-store.mjs';
 import { selectPreset } from './theme-ui.mjs';
 import { PRESETS } from './appearance.mjs';
@@ -58,7 +59,7 @@ export function initDashboardDesign({ model, openActivity, now }) {
     for (let i = 0; i < 7; i++) for (const item of model.getDay(addDays(from, i)).commitments) if (!item.completed && item.kind !== 'break' && (item.date !== current.date || minutes(item.end) > current.minute)) upcoming.push(item);
     upcoming.sort((a, b) => a.date.localeCompare(b.date) || minutes(a.start) - minutes(b.start));
     const list = $('#workspace-upcoming-list'); list.replaceChildren();
-    for (const item of upcoming.slice(0, 6)) { const li = node('li'), b = node('button', undefined, 'upcoming-activity'); b.type = 'button'; b.dataset.activity = activityVisual(item).kind; const icon = node('span', activityVisual(item).icon, 'upcoming-mark'); icon.setAttribute('aria-hidden', 'true'); const text = node('span'); text.append(node('strong', item.title), node('small', `${dateLabel(item.date)} · ${item.start}–${item.end}`)); b.append(icon, text); b.addEventListener('click', () => openActivity({ date: item.date, item })); li.append(b); list.append(li); }
+    for (const item of upcoming.slice(0, 6)) { const li = node('li'), b = node('button', undefined, 'upcoming-activity'); b.type = 'button'; b.dataset.activity = activityVisual(item).kind; paintEvent(b, item); const icon = node('span', activityVisual(item).icon, 'upcoming-mark'); icon.setAttribute('aria-hidden', 'true'); const text = node('span'); text.append(node('strong', item.title), node('small', `${dateLabel(item.date)} · ${item.start}–${item.end}`)); b.append(icon, text); b.addEventListener('click', () => openActivity({ date: item.date, item })); li.append(b); list.append(li); }
     if (!upcoming.length) list.append(node('li', 'No upcoming events in the next seven days.', 'fine-print'));
     themeState();
   }

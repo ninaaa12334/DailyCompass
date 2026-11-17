@@ -26,6 +26,7 @@ function validateActivity(item) {
   ensure(typeof item.notes === 'string' && item.notes.length <= 5000, 'Notes must be at most 5000 characters.');
   ensure(typeof item.completed === 'boolean' && typeof item.locked === 'boolean', 'Invalid completion or lock data.');
   ensure(['none', 'daily', 'weekly'].includes(item.repeat), 'Choose a supported recurrence.');
+  ensure(item.color === undefined || item.color === '' || (typeof item.color === 'string' && /^[a-z]{3,12}$/.test(item.color)), 'Choose a valid colour.');
   ensure(item.reminder === 'default' || item.reminder === 'off' || (Number.isInteger(item.reminder) && item.reminder >= 0 && item.reminder <= 1440), 'Reminder minutes must be between 0 and 1440.');
 }
 export function validatePlanner(state) {
@@ -37,6 +38,7 @@ export function validatePlanner(state) {
   if (settings.appearance !== undefined) validateAppearance(settings.appearance);
   for (const [key, max] of [['travelMinutes', 180], ['minimumGap', 240]]) if (settings[key] !== undefined) ensure(Number.isInteger(settings[key]) && settings[key] >= (key === 'minimumGap' ? 5 : 0) && settings[key] <= max, `Invalid ${key}.`);
   if (settings.googleCalendars !== undefined) ensure(Array.isArray(settings.googleCalendars) && settings.googleCalendars.length <= 50 && settings.googleCalendars.every(id => typeof id === 'string' && id.length <= 300), 'Invalid Google Calendar choice.');
+  if (settings.holidays !== undefined) ensure(settings.holidays && typeof settings.holidays === 'object' && typeof settings.holidays.show === 'boolean' && typeof settings.holidays.country === 'string' && settings.holidays.country.length <= 3, 'Invalid holiday setting.');
   if (settings.interests !== undefined) ensure(typeof settings.interests === 'string' && settings.interests.length <= 500, 'Interests must be under 500 characters.');
   if (settings.routines !== undefined) { ensure(Array.isArray(settings.routines) && settings.routines.length <= 100, 'Too many routines.'); for (const r of settings.routines) { ensure(typeof r.id === 'string' && typeof r.title === 'string' && r.title.length > 0 && r.title.length <= 120 && Array.isArray(r.weekdays) && r.weekdays.every(n => Number.isInteger(n) && n >= 0 && n <= 6), 'Invalid routine.'); interval(r); } }
   if (settings.keptFree !== undefined) { ensure(Array.isArray(settings.keptFree) && settings.keptFree.length <= 1000, 'Invalid kept-free periods.'); for (const g of settings.keptFree) { ensure(validDate(g.date), 'Invalid kept-free date.'); interval(g); } }

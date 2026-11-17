@@ -5,6 +5,7 @@ import { reminderSound } from './reminder-banner.mjs';
 import { buildCalendarFile, downloadCalendarFile } from './ics-export.mjs';
 import { pushSupport, pushEnabled, enablePush, disablePush, testPush, startPushSync } from './push-cloud.mjs';
 import { initGoogleCalendar } from './google-calendar.mjs';
+import { holidayControls } from './holidays.mjs';
 import { isDarkMode, toggleDarkMode } from './theme-ui.mjs';
 import { dateLabel } from './clock.mjs';
 
@@ -208,9 +209,11 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   // Themes live in the 🎨 button at the top, so there's no tile for them here.
   // Google Calendar (read-only), connected with the person's Google account.
   const gcal = initGoogleCalendar({ model, account, feedback });
-  const gcalTile = tile('gcal', 'day', 'Google Calendar', () => openSheet('gcal'));
-  gcalTile.detail.textContent = 'Show your Google events';
-  sheet('gcal', 'Google Calendar', gcal.element, gcal.onOpen);
+  const gcalTile = tile('gcal', 'day', 'Calendars & holidays', () => openSheet('gcal'));
+  gcalTile.detail.textContent = 'Google Calendar, public holidays';
+  // Like Google's "Other calendars": public holidays can be shown or hidden here (and in Settings).
+  const holidayBox = node('div', undefined, 'gcal-holidays'); holidayBox.append(node('strong', 'Holidays'), holidayControls({ model, feedback }));
+  sheet('gcal', 'Calendars', [gcal.element, holidayBox], gcal.onOpen);
 
   left.append(...[productivity, nowWidget, freeWidget, tasksTile.button].filter(Boolean));
   right.append(...[upcoming, dayTile.button, remindersTile.button, gcalTile.button, aiTile.button, helper].filter(Boolean));

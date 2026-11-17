@@ -150,7 +150,7 @@ export async function handleGoogle(request, env, path) {
           if ((e.attendees || []).some(a => a.self && a.responseStatus === 'declined')) { s.declined++; continue; }
           if (!e.start?.dateTime || !e.end?.dateTime) { s.allDay++; continue; }
           s.added++;
-          events.push({ calendarId: id, id: e.id, title: String(e.summary || 'Busy').slice(0, 120), start: e.start.dateTime, end: e.end.dateTime });
+          events.push({ calendarId: id, id: e.id, title: String(e.summary || 'Busy').slice(0, 120), start: e.start.dateTime, end: e.end.dateTime, colorId: e.colorId || '' });
         }
         if (!data.nextPageToken) break; pageToken = data.nextPageToken;
       }
