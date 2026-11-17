@@ -6,7 +6,8 @@ import { addDays, timeLabel } from './calendar-view.mjs';
 // Google Calendar (read-only) for signed-in accounts. The Cloudflare service holds the Google
 // connection; this file shows the controls and copies events into the planner as busy time.
 const node = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
-const PAST_DAYS = 7, FUTURE_DAYS = 120, AUTO_SYNC = 30 * 60000;
+// A full year ahead, so long-running classes and series show in the Year view too.
+const PAST_DAYS = 7, FUTURE_DAYS = 365, AUTO_SYNC = 30 * 60000;
 
 async function call(path, method = 'GET') {
   const sb = await cloud(), { data } = await sb.auth.getSession(), token = data.session?.access_token;
@@ -75,7 +76,7 @@ export function initGoogleCalendar({ model, account, feedback }) {
       list.after(box);
     }
     actions.append(button('Update now', () => sync(true), true), button('Disconnect', disconnect));
-    note.textContent = `Events from the last ${PAST_DAYS} days to ${FUTURE_DAYS} days ahead appear as busy time in your calendar. Edit them in Google Calendar; changes show up here within about 30 minutes, or press Update now.`;
+    note.textContent = `Events from the last ${PAST_DAYS} days to a year ahead appear as busy time in your calendar. Edit them in Google Calendar; changes show up here within about 30 minutes, or press Update now.`;
   }
 
   async function refreshStatus() {
