@@ -7,8 +7,12 @@ try {
   await cloud();
   // Back from Google: the account system has finished the login, so continue into the app.
   if (params.get('via') === 'google' || params.get('error_description')) {
-    const { currentUser, loadPlanner } = await import('./cloud.mjs');
-    const user = await currentUser().catch(() => null);
+    const { currentUser, loadPlanner, finishGoogleSignIn } = await import('./cloud.mjs');
+    const idToken = new URLSearchParams(location.hash.slice(1)).get('id_token');
+    if (idToken) history.replaceState(null, '', `${location.pathname}${location.search}`); // don't keep the token in the address bar
+    let user = null;
+    if (idToken) { try { user = await finishGoogleSignIn(idToken); } catch (error) { status.textContent = `Google sign-in didn’t finish: ${error.message}`; } }
+    user ??= await currentUser().catch(() => null);
     if (user) { const row = await loadPlanner(user.id).catch(() => null); location.replace(!row || row.state?.settings?.onboardingComplete !== true ? 'onboarding.html' : 'dashboard.html'); await new Promise(() => {}); }
     status.textContent = params.get('error_description') ? `Google sign-in didn’t finish: ${params.get('error_description')}` : 'Google sign-in didn’t finish. Please try again.';
   }

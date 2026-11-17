@@ -13,6 +13,9 @@
     "ALLOWED_ORIGINS": "https://daily-compass1.vercel.app,http://127.0.0.1:8080,http://localhost:8080",
     "VAPID_SUBJECT": "https://daily-compass1.vercel.app",
     "PUBLIC_URL": "https://day-compass-push.day-compass-push.workers.dev",
+    // Where Google sends people back. Goes through the website's own address (vercel.json forwards it here),
+    // so Google only ever shows daily-compass1.vercel.app.
+    "GOOGLE_REDIRECT_URI": "https://day-compass-push.day-compass-push.workers.dev/google/callback",
     // Google Calendar (read-only). The client secret is a Cloudflare secret, never committed.
     "GOOGLE_CLIENT_ID": "88571627712-80ju191ofue37chvtar32l29gg1k7hcr.apps.googleusercontent.com",
     // Used only to check who is signed in (public key, safe to commit).

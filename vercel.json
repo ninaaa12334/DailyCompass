@@ -1,3 +1,8 @@
 {
-  "rewrites": []
+  "rewrites": [
+    {
+      "source": "/google-auth/callback",
+      "destination": "https://day-compass-push.day-compass-push.workers.dev/google/callback"
+    }
+  ]
 }

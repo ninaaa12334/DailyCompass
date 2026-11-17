@@ -35,3 +35,7 @@ CREATE TABLE IF NOT EXISTS google_states (
   origin TEXT NOT NULL,
   created INTEGER NOT NULL
 );
+
+-- Sign-in with Google through this service (added later; run once on existing databases):
+-- ALTER TABLE google_states ADD COLUMN purpose TEXT NOT NULL DEFAULT 'connect';
+-- ALTER TABLE google_states ADD COLUMN nonce TEXT NOT NULL DEFAULT '';

@@ -64,11 +64,27 @@ export async function signIn(email, password) {
 export async function providers() {
   try { const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_KEY } }); return (await response.json()).external || {}; } catch { return {}; }
 }
-// Goes to Google, then comes back to the sign-in page, which finishes the login.
+// "Continue with Google": one Google screen signs in AND connects Google Calendar.
+// The Day Compass service runs the Google step; the page then signs in to Supabase with Google's
+// ID token. A one-time random value (nonce) proves the token was made for this exact sign-in.
+const NONCE_KEY = 'day-compass.google-nonce';
+const GOOGLE_SERVICE = 'https://day-compass-push.day-compass-push.workers.dev';
+const hex = bytes => [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, '0')).join('');
 export async function signInWithGoogle() {
-  const sb = await cloud();
-  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/auth.html?mode=login&via=google` } });
+  const raw = hex(crypto.getRandomValues(new Uint8Array(32)));
+  const hashed = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw)));
+  sessionStorage.setItem(NONCE_KEY, raw);
+  const response = await fetch(`${GOOGLE_SERVICE}/google/login-start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nonce: hashed }) }).catch(() => null);
+  const body = await response?.json().catch(() => ({}));
+  if (!response?.ok || !body?.url) throw new Error(body?.error || 'Google sign-in isn’t available right now. Try again in a moment.');
+  location.assign(body.url);
+}
+export async function finishGoogleSignIn(idToken) {
+  const sb = await cloud(), nonce = sessionStorage.getItem(NONCE_KEY) || undefined;
+  sessionStorage.removeItem(NONCE_KEY);
+  const { data, error } = await sb.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce });
   if (error) throw fail(error);
+  return data.user;
 }
 export async function signOut() { const sb = await cloud(); await sb.auth.signOut(); }
 export async function sendPasswordReset(email) {
