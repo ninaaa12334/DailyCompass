@@ -56,12 +56,7 @@ dialog.innerHTML = `
   <p class="muted">Soft daylight or a quieter evening. Find what feels comfortable.</p>
   <form id="appearance-form">
     <label class="hub-switch theme-dark-switch"><span><strong>Dark mode</strong><small>Turns whichever theme you pick dark</small></span><input type="checkbox" role="switch" name="dark"></label>
-    <fieldset><legend>Theme</legend><p class="theme-group-label">Winter</p><div class="theme-options theme-cards" id="theme-winter"></div><p class="theme-group-label">Light</p><div class="theme-options theme-cards" id="theme-light"></div><p class="theme-group-label">Dark</p><div class="theme-options theme-cards" id="theme-dark"></div><details id="other-palettes"><summary>Classic palettes</summary><div class="theme-options" id="theme-options"></div><div class="theme-options" id="other-theme-options"></div></details></fieldset>
-    <div class="colour-choice"><label><input type="checkbox" name="customAccent"> Use a custom accent</label><input type="color" name="accent" aria-label="Custom accent colour"></div>
-    <div class="colour-choice"><label><input type="checkbox" name="customBusy"> Use a custom busyness colour</label><input type="color" name="busy" aria-label="Calendar busyness colour"></div>
-    <p class="fine-print">Button text adjusts for contrast. Dates with their own busy colour keep that override.</p>
-    <div class="theme-preview" id="theme-preview"><span>Live preview</span><span class="preview-button">Your accent</span></div>
-    <p class="fine-print">${isDemo ? 'Demo preferences stay separate from your personal planner.' : 'Signed-in choices save with your account. You can change them anytime.'}</p>
+    <fieldset><legend>Theme</legend><p class="theme-group-label">Winter</p><div class="theme-options theme-cards" id="theme-winter"></div><p class="theme-group-label">Light</p><div class="theme-options theme-cards" id="theme-light"></div><p class="theme-group-label">Dark</p><div class="theme-options theme-cards" id="theme-dark"></div></fieldset>
     ${isDemo ? '' : '<a class="setup-again" href="onboarding.html?edit=1">Revisit welcome setup →</a>'}
     <p id="appearance-error" role="alert" hidden></p>
     <button type="submit">Save appearance</button>
@@ -70,7 +65,7 @@ document.body.append(dialog);
 const form = dialog.querySelector('form');
 const error = dialog.querySelector('#appearance-error');
 for (const [key, preset] of Object.entries(PRESETS)) {
-  if (preset.hidden) continue; // replaced themes stay valid for old saves but aren't offered
+  if (preset.hidden || !preset.group) continue; // older/replaced themes stay valid for existing saves but aren't offered
   const label = document.createElement('label');
   label.className = 'theme-option';
   const input = document.createElement('input');
@@ -86,20 +81,17 @@ for (const [key, preset] of Object.entries(PRESETS)) {
   } else swatch.style.background = preset.background ? `linear-gradient(135deg, ${preset.background} 0 40%, ${preset.tint} 40% 72%, ${preset.accent} 72%)` : 'linear-gradient(90deg,#365d4d 50%,#141e23 50%)';
   const name = document.createElement('span'); name.className = 'theme-name'; name.textContent = preset.label;
   label.append(input, swatch, name);
-  dialog.querySelector(preset.group === 'winter' ? '#theme-winter' : preset.group === 'light' ? '#theme-light' : preset.group === 'dark' ? '#theme-dark' : ['linen', 'stone', 'clay', 'dusk'].includes(key) ? '#theme-options' : '#other-theme-options').append(label);
+  dialog.querySelector(preset.group === 'winter' ? '#theme-winter' : preset.group === 'light' ? '#theme-light' : '#theme-dark').append(label);
 }
 function read() {
-  return { preset: form.elements.namedItem('preset').value, customAccent: form.elements.namedItem('customAccent').checked, accent: form.elements.namedItem('accent').value, customBusy: form.elements.namedItem('customBusy').checked, busy: form.elements.namedItem('busy').value, dark: form.elements.namedItem('dark').checked };
+  // Custom colours are no longer offered in the picker; any existing ones are kept until a new theme is picked.
+  const picked = form.elements.namedItem('preset').value;
+  const changed = picked && picked !== saved.preset;
+  return { preset: picked || saved.preset, customAccent: changed ? false : saved.customAccent, accent: saved.accent, customBusy: changed ? false : saved.customBusy, busy: saved.busy, dark: form.elements.namedItem('dark').checked };
 }
-function preview() {
-  const value = read();
-  form.elements.namedItem('accent').disabled = !value.customAccent;
-  form.elements.namedItem('busy').disabled = !value.customBusy;
-  const theme = resolveAppearance(value, media.matches);
-  const block = dialog.querySelector('#theme-preview');
-  block.style.setProperty('--preview-accent', theme.accent);
-  block.style.setProperty('--preview-ink', theme.accentText);
-}
+
+function preview() { /* The whole page previews the chosen theme (see the input listener below). */ }
+
 document.querySelectorAll('[data-open-appearance]').forEach(button => button.addEventListener('click', () => {
   for (const [key, value] of Object.entries(saved)) {
     const control = form.elements.namedItem(key);
@@ -108,7 +100,6 @@ document.querySelectorAll('[data-open-appearance]').forEach(button => button.add
     else control.value = PRESETS[value]?.replacedBy || value;
   }
   form.elements.namedItem('dark').checked = saved.dark === true;
-  dialog.querySelector('#other-palettes').open = !PRESETS[saved.preset]?.group;
   error.hidden = !loadError;
   error.textContent = loadError ? 'Saved preferences could not be read. Saving a new choice will replace only appearance preferences; your tasks and calendar stay intact.' : '';
   preview();
