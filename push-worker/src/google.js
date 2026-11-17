@@ -135,17 +135,27 @@ export async function handleGoogle(request, env, path) {
     const url = new URL(request.url), ids = (url.searchParams.get('calendars') || '').split(',').filter(Boolean).slice(0, 20);
     const timeMin = url.searchParams.get('timeMin'), timeMax = url.searchParams.get('timeMax');
     if (!ids.length || Number.isNaN(Date.parse(timeMin)) || Number.isNaN(Date.parse(timeMax))) return json({ error: 'Choose calendars and a date range.' }, 400);
-    const events = [];
+    // Bring in every timed event (including ones the organiser marked "Free"), and count what was skipped
+    // so the app can explain it: all-day events, cancelled ones and declined invitations.
+    const events = [], stats = {};
     for (const id of ids) {
+      const s = stats[id] = { found: 0, added: 0, allDay: 0, cancelled: 0, declined: 0 };
       let pageToken = '';
       for (let page = 0; page < 5; page++) {
         const query = new URLSearchParams({ singleEvents: 'true', orderBy: 'startTime', timeMin, timeMax, maxResults: '2500', ...(pageToken ? { pageToken } : {}) });
         const data = await google(env, link, `/calendars/${encodeURIComponent(id)}/events?${query}`);
-        for (const e of data.items || []) if (e.status !== 'cancelled' && e.transparency !== 'transparent' && e.start?.dateTime && e.end?.dateTime) events.push({ calendarId: id, id: e.id, title: String(e.summary || 'Busy').slice(0, 120), start: e.start.dateTime, end: e.end.dateTime });
+        for (const e of data.items || []) {
+          s.found++;
+          if (e.status === 'cancelled') { s.cancelled++; continue; }
+          if ((e.attendees || []).some(a => a.self && a.responseStatus === 'declined')) { s.declined++; continue; }
+          if (!e.start?.dateTime || !e.end?.dateTime) { s.allDay++; continue; }
+          s.added++;
+          events.push({ calendarId: id, id: e.id, title: String(e.summary || 'Busy').slice(0, 120), start: e.start.dateTime, end: e.end.dateTime });
+        }
         if (!data.nextPageToken) break; pageToken = data.nextPageToken;
       }
     }
-    return json({ events: events.slice(0, 5000) });
+    return json({ events: events.slice(0, 5000), stats, timeMin, timeMax });
   }
   if (request.method === 'DELETE' && path === '/google/link') {
     if (link) { try { await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(await open(env, link.iv, link.refresh_enc))}`, { method: 'POST' }); } catch {} await env.DB.prepare('DELETE FROM google_links WHERE user_id = ?').bind(link.user_id).run(); }

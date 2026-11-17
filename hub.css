@@ -398,3 +398,7 @@ body.hub-layout .welcome-connections { position: fixed; z-index: 25; left: 50%; 
 .gcal-actions .hub-primary { flex: 1; min-height: 44px; }
 .gcal-actions .secondary { min-height: 44px; border-radius: 14px; }
 .gcal-note { margin: 0; }
+.gcal-details { font-size: .85rem; border-radius: 12px; padding: 8px 12px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.gcal-details summary { cursor: pointer; font-weight: 600; min-height: 30px; padding: 4px 0; }
+.gcal-details p { margin: 4px 0; }
+.gcal-details ul { margin: 4px 0 0; padding-left: 18px; }

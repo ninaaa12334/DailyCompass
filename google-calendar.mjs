@@ -38,7 +38,7 @@ export function initGoogleCalendar({ model, account, feedback }) {
 
   function chosen() { const ids = model.getSettings().googleCalendars; return Array.isArray(ids) && ids.length ? ids : state.calendars.filter(c => c.primary).map(c => c.id); }
   function render() {
-    list.replaceChildren(); actions.replaceChildren();
+    list.replaceChildren(); actions.replaceChildren(); root.querySelectorAll('.gcal-details').forEach(el => el.remove());
     if (!account.user) { status.textContent = 'Sign in to connect your Google Calendar.'; note.textContent = ''; return; }
     if (state.busy) { status.textContent = 'Working…'; }
     else if (state.error) status.textContent = state.error;
@@ -59,6 +59,20 @@ export function initGoogleCalendar({ model, account, feedback }) {
         label.append(box, dot, node('span', c.name + (c.primary ? ' (main)' : '')));
         list.append(label);
       }
+    }
+    // What the last update brought in, so it's clear why something is or isn't shown.
+    if (state.stats && Object.keys(state.stats).length) {
+      const box = node('details', undefined, 'gcal-details'); box.append(node('summary', 'What was brought in'));
+      for (const [id, s] of Object.entries(state.stats)) {
+        const name = state.calendars.find(c => c.id === id)?.name || id;
+        const skipped = [s.allDay && `${s.allDay} all-day`, s.cancelled && `${s.cancelled} cancelled`, s.declined && `${s.declined} you declined`].filter(Boolean).join(', ');
+        box.append(node('p', `${name}: ${s.added} event${s.added === 1 ? '' : 's'} added${skipped ? ` (skipped ${skipped})` : ''}.`));
+      }
+      const zone = model.getSettings().timeZone, now = Date.now();
+      const next = (model.snapshot().imports || []).filter(i => Date.parse(i.sourceStart) > now).sort((a, b) => Date.parse(a.sourceStart) - Date.parse(b.sourceStart)).slice(0, 8);
+      if (next.length) { const ul = node('ul'); for (const i of next) ul.append(node('li', `${dateLabel(i.date)} ${i.start}–${i.end} · ${i.title}`)); box.append(node('strong', 'Next events'), ul); }
+      else box.append(node('p', 'No upcoming Google events were found in the chosen calendars.'));
+      list.after(box);
     }
     actions.append(button('Update now', () => sync(true), true), button('Disconnect', disconnect));
     note.textContent = `Events from the last ${PAST_DAYS} days to ${FUTURE_DAYS} days ahead appear as busy time in your calendar. Edit them in Google Calendar; changes show up here within about 30 minutes, or press Update now.`;
@@ -91,7 +105,8 @@ export function initGoogleCalendar({ model, account, feedback }) {
         let items = [];
         if (ids.length) {
           const query = new URLSearchParams({ calendars: ids.join(','), timeMin: new Date(`${addDays(today, -PAST_DAYS)}T00:00:00Z`).toISOString(), timeMax: new Date(`${addDays(today, FUTURE_DAYS)}T23:59:59Z`).toISOString() });
-          items = toImports((await call(`/google/events?${query}`)).events, zone);
+          const result = await call(`/google/events?${query}`);
+          items = toImports(result.events, zone); state.stats = result.stats || {};
         }
         const current = JSON.stringify(model.snapshot().imports || []);
         if (JSON.stringify(items) !== current) model.setImports(items);
