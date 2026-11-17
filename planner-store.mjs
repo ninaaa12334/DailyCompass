@@ -185,7 +185,7 @@ export function createPlannerStore(storage) {
         return { ...entry, ...(task ? { title: task.title, category: task.category, priority: task.priority, notes: task.notes, reminder: task.reminder, completed: task.completed || entry.completed } : {}), date };
       });
       if (importSource !== state.imports || importZone !== state.settings.timeZone || !importCache) { importCache = importedDays(state.imports || [], state.settings.timeZone); importSource = state.imports; importZone = state.settings.timeZone; }
-      day.commitments = [...day.commitments.map(item => ({ ...item, date })), ...planned, ...routineEvents(date, state.settings), ...(importCache[date] || []).map(e => ({ ...e, kind: 'fixed', sourceImport: true, reminder: 'off' }))];
+      day.commitments = [...day.commitments.map(item => ({ ...item, date })), ...planned, ...routineEvents(date, state.settings), ...(importCache[date] || []).map(e => ({ ...e, kind: 'fixed', sourceImport: true, reminder: 'default' }))];
       return day;
     },
     saveSettings(settings) { commit(next => { next.settings = { ...next.settings, ...settings }; }); },

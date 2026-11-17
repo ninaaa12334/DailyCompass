@@ -16,3 +16,13 @@ test('Google events become read-only busy time in the planner', () => {
   assert.ok(dentist?.sourceImport); assert.deepEqual([dentist.start, dentist.end], ['15:00', '16:00']);
   assert.ok(model.getDay('2026-11-20').commitments.some(c => c.title === 'Trip' && c.end === '10:00'));
 });
+
+test('Google events get reminders like your own events', async () => {
+  const { upcomingReminders } = await import('./reminders.mjs');
+  const data = new Map(), model = createPlannerStore({ getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, v) });
+  model.saveSettings({ timeZone: 'Europe/Budapest', reminderMinutes: 10 });
+  model.setImports(toImports([{ calendarId: 'me@gmail.com', id: 'm1', title: 'Club meeting', start: '2026-11-18T16:30:00Z', end: '2026-11-18T18:00:00Z' }], 'Europe/Budapest'));
+  const list = upcomingReminders(model, { date: '2026-11-18', minute: 600 });
+  const club = list.find(r => r.title === 'Club meeting');
+  assert.ok(club, 'Google event has a reminder'); assert.equal(club.start, '17:30'); assert.equal(club.lead, 10);
+});
