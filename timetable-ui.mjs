@@ -94,7 +94,8 @@ export function renderTimetable(grid, options) {
       button.className = `week-event${position.height < 40 ? ' short-event' : ''}${item.completed ? ' completed' : ''}`;
       button.dataset.eventId = item.id;
       const visual = activityVisual(item); button.dataset.activity = visual.kind; paintEvent(button, item);
-      button.style.top = `${position.top}px`; button.style.height = `${position.height}px`;
+      button.style.top = `${position.top}px`; button.style.height = `${item.isReminder ? Math.max(position.height, 24) : position.height}px`;
+      if (item.isReminder) button.classList.add("reminder-event");
       button.title = `${item.title} · ${item.start}–${item.end}`;
       button.setAttribute('aria-label', `Edit ${item.title}, ${date}, ${item.start} to ${item.end}`);
       const title = document.createElement('strong'); title.textContent = item.title;

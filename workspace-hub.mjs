@@ -24,6 +24,9 @@ const ICONS = {
   // Cog outline (Feather "settings" icon, MIT licence).
   gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+  list: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 9.5h17M8 3v4M16 3v4M7.5 13.5h4M7.5 16.5h7"/></svg>',
+  expand: '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
+  shrink: '<svg viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>',
   sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>',
   send: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'
@@ -102,6 +105,7 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     const b = node('button', undefined, `hub-tile hub-tile-${key}`); b.type = 'button'; b.setAttribute('aria-haspopup', 'dialog');
     const text = node('span', undefined, 'hub-tile-text'), name = node('strong', label), detail = node('small', '', 'hub-tile-detail');
     text.append(name, detail); b.append(icon(iconName), text, node('span', '›', 'hub-tile-chevron'));
+    b.dataset.label = label; b.title = label; b.setAttribute('aria-label', label);
     b.addEventListener('click', onClick); return { button: b, detail };
   };
 
@@ -135,6 +139,7 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     <label class="hub-switch"><span><strong>Reminders</strong><small data-reminder-status></small></span><input type="checkbox" role="switch" data-reminder="on"></label>
     <label class="hub-row"><span><strong>Remind me</strong></span><select data-reminder="lead"><option value="0">When it starts</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="15">15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option><option value="1440">1 day before</option></select></label>
     <label class="hub-switch"><span><strong>Sound</strong></span><input type="checkbox" role="switch" data-reminder="sound"></label>
+    <form class="reminder-add" data-reminder="add"><strong>＋ Add a reminder</strong><input name="what" maxlength="120" required placeholder="What should I remind you about?"><div class="reminder-add-row"><input name="date" type="date" required><input name="time" type="time" required><button type="submit" class="hub-primary">Add</button></div></form>
     <details class="reminder-more"><summary>More options</summary><div class="reminder-more-body">
       <button type="button" class="secondary" data-reminder="test">Send a test reminder</button>
       <button type="button" class="secondary" data-reminder="more">Quiet hours &amp; other settings</button>
@@ -170,6 +175,17 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     event.target.disabled = false; syncControls();
   });
   control('sound').addEventListener('change', event => { reminderSound.set(event.target.checked); });
+  { const form = control('add'), today = now().date; form.elements.date.value = today; form.elements.date.min = today;
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const what = form.elements.what.value.trim(), date = form.elements.date.value, time = form.elements.time.value;
+      if (!what || !date || !time) return;
+      try {
+        model.saveActivities([{ kind: 'fixed', id: newId(), title: what.charAt(0).toUpperCase() + what.slice(1), category: 'Personal projects', priority: 'Medium', date, start: time, end: plus(time, 5), notes: '', repeat: 'none', repeatUntil: '', reminder: 0, completed: false, locked: false, isReminder: true }]);
+        if (!model.getSettings().remindersEnabled) model.saveSettings({ remindersEnabled: true });
+        feedback(`Reminder set for ${dateLabel(date)} at ${time}.`); form.reset(); form.elements.date.value = today;
+      } catch (problem) { feedback(problem.message); }
+    }); }
   control('lead').addEventListener('change', event => { try { model.saveSettings({ reminderMinutes: Number(event.target.value) }); } catch (problem) { feedback(problem.message); syncControls(); } });
   control('test').addEventListener('click', async event => {
     if (!pushEnabled()) { banner?.test(); return; }
@@ -211,10 +227,22 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   sheet('gcal', 'Calendars', [gcal.element, holidayBox], gcal.onOpen);
 
   left.append(...[productivity, nowWidget, freeWidget, tasksTile.button].filter(Boolean));
-  right.append(...[upcoming, dayTile.button, remindersTile.button, gcalTile.button, aiTile.button, helper].filter(Boolean));
+  // The right side is a slim column of icons; hovering shows the name. Upcoming opens in a sheet.
+  const upcomingTile = tile('upcoming', 'day', 'Upcoming events', () => openSheet('upcoming'));
+  upcomingTile.button.querySelector('.hub-icon').innerHTML = ICONS.list;
+  right.classList.add('hub-rail-icons');
+  right.append(...[upcomingTile.button, dayTile.button, remindersTile.button, gcalTile.button, aiTile.button, helper].filter(Boolean));
+  if (helper) { helper.dataset.label = 'Task helper'; helper.title = 'Task helper'; }
   if (helper) { helper.classList.add('hub-tile', 'hub-tile-helper'); helper.replaceChildren(icon('chat'), Object.assign(node('span', undefined, 'hub-tile-text'), { innerHTML: '<strong>Task helper</strong><small class="hub-tile-detail">Turn a thought into a task</small>' }), node('span', '›', 'hub-tile-chevron')); }
   aiTile.detail.textContent = 'Suggestions for a day';
   center.append($('.calendar-widget'));
+  // Make the calendar fill the screen (hides the left column); remembered on this device.
+  const expand = node('button', undefined, 'hub-icon-button calendar-expand'); expand.type = 'button';
+  const setWide = wide => { document.body.dataset.calendarWide = wide ? 'true' : 'false'; expand.replaceChildren(icon(wide ? 'shrink' : 'expand')); expand.title = wide ? 'Make the calendar smaller' : 'Make the calendar bigger'; expand.setAttribute('aria-label', expand.title); expand.setAttribute('aria-pressed', String(wide)); try { localStorage.setItem('day-compass.calendar-wide.v1', String(wide)); } catch {} };
+  expand.addEventListener('click', () => setWide(document.body.dataset.calendarWide !== 'true'));
+  center.querySelector('.calendar-header-actions')?.prepend(expand);
+  let startWide = false; try { startWide = localStorage.getItem('day-compass.calendar-wide.v1') === 'true'; } catch {}
+  setWide(startWide);
 
   // Phone: a swipeable row of chips gives quick access to the same tiles.
   const chips = node('nav', undefined, 'hub-chips'); chips.setAttribute('aria-label', 'Quick access');
@@ -228,7 +256,7 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   chip('Plan with AI', () => openSheet('ai'));
   if (helper) chip('Task helper', () => helper.click());
   // On phones the upcoming list lives in a sheet; on wider screens it stays in the right rail.
-  const upcomingHome = node('div'); sheet('upcoming', 'Upcoming', upcomingHome, () => { if (matchMedia('(max-width: 1199px)').matches) upcomingHome.append(upcoming); });
+  sheet('upcoming', 'Upcoming events', upcoming);
   sheets.get('upcoming').dialog.addEventListener('close', () => right.prepend(upcoming));
 
   const hub = node('div', undefined, 'hub');
@@ -275,7 +303,8 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
       const rows = node('dl', undefined, 'hub-review-rows');
       const row = (label, value) => { rows.append(node('dt', label), node('dd', value)); };
       if (dayText) row(plans.length > 1 ? 'Days' : 'Repeats', dayText.replace(/^Every /, plans.length > 1 ? '' : 'Every '));
-      row('Time', `${plan.start} – ${plan.end}${plan.guessedLength ? ' (1 hour, change in the event)' : ''}`);
+      if (plan.reminderOnly) row('Remind me at', plan.start);
+      else row('Time', `${plan.start} – ${plan.end}${plan.guessedLength ? ' (1 hour, change in the event)' : ''}`);
       if (!plan.recurring) row('Date', full(plan.from));
       card.append(rows);
     }
@@ -310,11 +339,13 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     add.addEventListener('click', () => {
       try {
         const keep = pending.map(plan => ({ ...plan, dates: plan.dates.filter(date => !clashDates.has(date)) })).filter(plan => plan.dates.length);
-        model.saveActivities(keep.flatMap(plan => scheduleInputs(plan, newId)));
+        model.saveActivities(keep.flatMap(plan => scheduleInputs(plan, newId).map(input => plan.reminderOnly ? { ...input, isReminder: true, reminder: 0 } : input)));
+        if (keep.some(plan => plan.reminderOnly) && !model.getSettings().remindersEnabled) model.saveSettings({ remindersEnabled: true });
         closeSheet(reviewDialog); askInput.value = ''; const prompt = $('#ai-prompt'); if (prompt && askedFrom === 'ai') prompt.value = '';
         feedback(`Added “${pending[0].title}” to your calendar${count > 1 ? ` (${count} days)` : ''}. Undo is at the top if you change your mind.`);
       } catch (problem) { error.textContent = problem.message || String(problem); }
     });
+    if (plans[0].reminderOnly) { add.textContent = count === 1 ? 'Add reminder' : `Add ${count} reminders`; note.textContent = count === 1 ? 'You’ll get a reminder at that time.' : `You’ll get ${count} reminders.`; }
     review.append(...[node('p', `“${text}”`, 'hub-review-echo'), card, note, warning, error, add].filter(Boolean));
     openSheet('add');
     setTimeout(() => add.focus(), 80);
@@ -334,10 +365,19 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     }
     openSheet('add');
   }
+  const isReminderRequest = text => /^\s*(please\s+)?(remind me|reminder)\b/i.test(text);
+  const plus = (time, m) => { const t = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)) + m; return `${String(Math.floor(Math.min(t, 1439) / 60)).padStart(2, '0')}:${String(Math.min(t, 1439) % 60).padStart(2, '0')}`; };
   function handle(text, from) {
     lastText = text; askedFrom = from;
     const result = parseSchedule(text, model.getSettings());
-    if (result.clarification) showQuestion(result.clarification, text); else showPlans(result.plans, text);
+    if (result.clarification) { showQuestion(isReminderRequest(text) && /What time/.test(result.clarification) ? 'When should I remind you? For example “remind me to go to the shop at 5pm” or “… tomorrow at 9am”.' : result.clarification, text); return; }
+    if (isReminderRequest(text)) {
+      // Keep the person's own words as the title: "remind me to go to the shop at 5" -> "Go to the shop".
+      const words = text.replace(/^\s*(please\s+)?(remind me|reminder)\s*(to|about|that)?\s*/i, '').replace(/\s+(on|at|by|tomorrow|today|tonight|this|next|in|every)\b.*$/i, '').replace(/[.!]+$/, '').trim();
+      const title = words && result.plans.length === 1 ? words.charAt(0).toUpperCase() + words.slice(1, 80) : null;
+      result.plans = result.plans.map(plan => ({ ...plan, title: title || plan.title, reminderOnly: true, end: plus(plan.start, 5), guessedLength: false }));
+    }
+    showPlans(result.plans, text);
   }
   ask.addEventListener('submit', event => {
     event.preventDefault();

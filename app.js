@@ -50,7 +50,7 @@ export async function startApp() {
   for (const name of ['title', 'category', 'kind']) form.elements.namedItem(name).addEventListener('input', showAutoColor);
   let calendar, assistant, productivity, original = null, placement = null, preview = null, saving = false, activeAlertKey = null;
   const displayedNotifications = new Map();
-  const banner = initReminderBanner({ model, now: () => zonedNow(new Date(), model.getSettings().timeZone), openActivity: (...args) => openActivity(...args), openTasks: () => document.querySelector('.hub-tile-tasks')?.click() });
+  const banner = initReminderBanner({ model, now: () => zonedNow(new Date(), model.getSettings().timeZone), openActivity: (...args) => showEventCard(...args), openTasks: () => document.querySelector('.hub-tile-tasks')?.click() });
   const now = () => zonedNow(new Date(), model.getSettings().timeZone);
   const field = name => form.elements.namedItem(name);
   const showError = (id, error) => { $(id).hidden = false; $(id).textContent = error.message || String(error); };
@@ -182,7 +182,33 @@ export async function startApp() {
     for (const warning of proposed.warnings) { const p = document.createElement('p'); p.textContent = warning; body.append(p); }
     $('#apply-plan').disabled = Boolean(proposed.warnings.length); $('#plan-error').hidden = true; $('#plan-dialog').showModal();
   }
-  calendar = initCalendar(model, { onActivity: openActivity, onSelection: renderSummary, onHours: date => {
+  // Tapping an event shows a small card (like Google Calendar) with Edit and Delete right there.
+  const card = document.createElement('dialog'); card.className = 'hub-sheet event-card'; card.setAttribute('aria-labelledby', 'event-card-title');
+  document.body.append(card);
+  card.addEventListener('click', event => { if (event.target === card) card.close(); });
+  function showEventCard(args = {}) {
+    const { item } = args, date = args.date || calendar.getSelectedDate();
+    if (!item) { openActivity(args); return; }
+    const isImport = Boolean(item.sourceImport), isRoutine = Boolean(item.sourceRoutine), isTask = item.kind === 'task';
+    const task = isTask ? model.getTasks().find(t => t.id === item.taskId || t.id === item.id) : null;
+    card.innerHTML = '<div class="event-card-bar"></div><div class="event-card-body"><div class="event-card-head"><h2 id="event-card-title"></h2><button type="button" class="hub-sheet-done" data-act="close">Close</button></div><p class="event-card-when"></p><p class="event-card-note"></p><div class="event-card-actions"></div></div>';
+    card.querySelector('.event-card-bar').style.background = colorOf(item);
+    card.querySelector('h2').textContent = item.title;
+    card.querySelector('.event-card-when').textContent = `${dateLabel(date, { year: 'numeric' })} · ${item.isReminder ? `🔔 Reminder at ${item.start}` : `${item.start}–${item.end}`}${item.seriesId ? ' · repeats' : ''}`;
+    card.querySelector('.event-card-note').textContent = isImport ? 'From Google Calendar. Change or delete it in Google Calendar.' : isRoutine ? 'Part of your weekly routines.' : item.notes || '';
+    const actions = card.querySelector('.event-card-actions');
+    const add = (label, handler, style = 'secondary') => { const b = document.createElement('button'); b.type = 'button'; b.className = style; b.textContent = label; b.addEventListener('click', handler); actions.append(b); return b; };
+    const remove = scope => { if (attempt(() => isTask ? model.remove('task', task.id, task.date) : model.remove('fixed', item.id, date, scope))) { card.close(); feedback(scope === 'series' ? 'All repeats deleted. Undo is at the top.' : 'Deleted. Undo is at the top.'); } };
+    if (!isImport) add('Edit', () => { card.close(); openActivity({ ...args, date }); }, 'hub-primary');
+    if (isTask && task) add(task.completed ? 'Mark not done' : 'Mark done', () => { if (attempt(() => model.toggle('task', task.id))) card.close(); });
+    if (!isImport && !isRoutine) {
+      if (item.seriesId && !isTask) { add('🗑 Delete this one', () => remove('one'), 'danger'); add('🗑 Delete all repeats', () => remove('series'), 'danger'); }
+      else add('🗑 Delete', () => remove('one'), 'danger');
+    }
+    card.querySelector('[data-act=close]').addEventListener('click', () => card.close());
+    if (!card.open) card.showModal();
+  }
+  calendar = initCalendar(model, { onActivity: showEventCard, onSelection: renderSummary, onHours: date => {
     const day = model.getDay(date); for (const name of ['start', 'end', 'color']) $('#hours-form').elements.namedItem(name).value = day[name]; $('#hours-error').hidden = true; $('#hours-dialog').showModal();
   } });
   model.subscribe(() => { renderTasks(); calendar.refresh(); renderSummary(); });
@@ -236,7 +262,7 @@ export async function startApp() {
   window.addEventListener('storage', event => { if (event.key === PLANNER_KEY && !isDemo) attempt(() => model.reload()); });
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }
   productivity = initProductivity({ model, storage, selectedDate: calendar.getSelectedDate });
-  assistant = initAssistant({ model, account, calendar, openActivity, now });
+  assistant = initAssistant({ model, account, calendar, openActivity: showEventCard, now });
   // Holidays switch in Settings → Planning too.
   { const planning = document.querySelector('#settings-planning'); if (planning) { const block = document.createElement('div'); block.className = 'holiday-settings'; block.append(Object.assign(document.createElement('h4'), { textContent: 'Public holidays' }), holidayControls({ model, feedback })); planning.append(block); } }
   $('#open-reminder-settings').addEventListener('click', () => { $('[data-panel=settings]').click(); $('[data-settings-view=notifications]').click(); $('#settings-panel').scrollIntoView({ block: 'start' }); });

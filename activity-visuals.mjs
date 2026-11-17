@@ -1,5 +1,6 @@
 // Decoration only: activity meaning never changes scheduling or saved records.
 export function activityVisual(item) {
+  if (item.isReminder) return { kind: 'reminder', icon: '\ud83d\udd14', label: 'Reminder' };
   const title = String(item.title || '').toLowerCase();
   if (/football|soccer|futboll/.test(title)) return { kind: 'football', icon: '\u26bd', label: 'Football' };
   if (/volleyball|volejboll/.test(title)) return { kind: 'volleyball', icon: '\ud83c\udfd0', label: 'Volleyball' };

@@ -64,6 +64,7 @@ export function initReminderBanner({ model, now, openActivity, openTasks }) {
     if (reminder.body) return { heading: reminder.title, body: reminder.body, icon: '🔔' }; // already worded (cloud notification)
     const time = now(), stamp = dayNumber(time.date) * 1440 + time.minute;
     if (reminder.key.startsWith('deadline|')) return { heading: reminder.title.replace(/^Deadline: /, ''), body: 'Deadline reminder', icon: '⏰' };
+    if (findItem(reminder)?.isReminder) return { heading: reminder.title, body: `Reminder · ${reminder.start}`, icon: '🔔' };
     const left = reminder.startStamp - stamp;
     const when = left <= 0 ? 'Starting now' : left < 60 ? `Starts in ${left} min · ${reminder.start}` : left < 1440 ? `Starts in ${Math.floor(left / 60)} h${left % 60 ? ` ${left % 60} min` : ''} · ${reminder.start}` : `Starts ${reminder.start} on ${reminder.date}`;
     const item = findItem(reminder);

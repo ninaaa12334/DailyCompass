@@ -498,3 +498,45 @@ body.hub-layout .hub { position: relative; z-index: 1; }
 .task-ring b { position: relative; font-size: .72rem; font-weight: 700; color: var(--text); }
 .hub .hub-tile-tasks { grid-template-columns: 46px minmax(0, 1fr) auto; }
 .task-spark { color: var(--accent) !important; font-size: 1.3rem !important; opacity: .8; }
+
+/* Event card (tap an event) */
+.event-card[open] { display: block !important; width: min(420px, calc(100vw - 32px)); overflow: hidden; }
+.event-card-bar { height: 8px; }
+.event-card-body { padding: 14px 20px 20px; }
+.event-card-head { display: flex; align-items: flex-start; gap: 12px; }
+.event-card-head h2 { margin: 0; font-size: 1.25rem; flex: 1; }
+.event-card-when { margin: 6px 0 0; color: var(--muted); font-size: .9rem; }
+.event-card-note { margin: 8px 0 0; font-size: .88rem; }
+.event-card-note:empty { display: none; }
+.event-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.event-card-actions button { min-height: 42px; border-radius: 12px; padding: .4rem 1rem; }
+.event-card-actions .hub-primary { flex: 1 1 100%; }
+.event-card-actions .danger { background: color-mix(in srgb, #d32f2f 12%, var(--surface)); color: #c62828; border: 0; font-weight: 600; flex: 1; }
+:root[data-mode=dark] .event-card-actions .danger { color: #ff8a80; }
+
+/* ---------- Slim icon column on the right + wide calendar ---------- */
+.hub { grid-template-columns: 244px minmax(0, 1fr) 64px; }
+body[data-calendar-wide=true] .hub { grid-template-columns: 0 minmax(0, 1fr) 64px; column-gap: 12px; }
+body[data-calendar-wide=true] .hub-left { visibility: hidden; width: 0; overflow: hidden; }
+.hub-rail-icons { gap: 10px; overflow: visible; align-items: center; }
+.hub .hub-rail-icons .hub-tile { position: relative; width: 56px; min-height: 56px; height: 56px; padding: 0; display: grid; place-items: center; grid-template-columns: 1fr; }
+.hub .hub-rail-icons .hub-tile .hub-tile-text, .hub .hub-rail-icons .hub-tile .hub-tile-chevron { display: none; }
+.hub .hub-rail-icons .hub-tile .hub-icon { width: 40px; height: 40px; }
+.hub .hub-rail-icons .hub-tile::after { content: attr(data-label); position: absolute; right: calc(100% + 10px); top: 50%; transform: translate(6px, -50%); opacity: 0; pointer-events: none; white-space: nowrap; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, var(--text) 90%, transparent); color: var(--background); font-size: .8rem; font-weight: 600; transition: opacity .15s ease, transform .2s var(--hub-spring); z-index: 20; }
+.hub .hub-rail-icons .hub-tile:hover::after, .hub .hub-rail-icons .hub-tile:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
+.hub .hub-rail-icons .hub-tile-helper { width: 56px; height: 56px; }
+.calendar-expand { width: 34px !important; height: 34px !important; box-shadow: none !important; }
+@media (max-width: 1199px) { .hub { grid-template-columns: 232px minmax(0, 1fr); } body[data-calendar-wide=true] .hub { grid-template-columns: 0 minmax(0, 1fr); } .calendar-expand { display: none !important; } }
+@media (max-width: 899px) { .hub, body[data-calendar-wide=true] .hub { grid-template-columns: minmax(0, 1fr); } }
+
+/* Add a reminder (Reminders sheet) */
+.reminder-add { display: grid; gap: 8px; padding: 12px 14px; background: var(--surface); }
+.reminder-add strong { font-size: .92rem; }
+.reminder-add input { min-height: 40px; border-radius: 10px; }
+.reminder-add-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+.reminder-add-row .hub-primary { min-height: 40px; padding: 0 1rem; }
+@media (max-width: 480px) { .reminder-add-row { grid-template-columns: 1fr 1fr; } .reminder-add-row .hub-primary { grid-column: 1 / -1; } }
+
+/* Reminders in the week/day grid: a slim, readable pill */
+.week-event.reminder-event { z-index: 3; border-radius: 999px; padding-block: 0; display: flex; align-items: center; }
+.week-event.reminder-event .event-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .78rem; }

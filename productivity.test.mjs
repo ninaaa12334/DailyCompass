@@ -43,3 +43,16 @@ test('rounding cannot hide unfinished work or credit future work to today', () =
   assert.equal(taskProductivity(copy, '2026-11-08').percent, 99);
   assert.equal(taskProductivity({ tasks: [{ id: 'future', completed: false }], plans: { '2026-11-20': [{ kind: 'task', taskId: 'future' }] } }, '2026-11-08').total, 0);
 });
+
+import { busyProductivity } from './productivity.mjs';
+import { createPlannerStore } from './planner-store.mjs';
+import { parseScheduleRequest, scheduleInputs } from './schedule-request.mjs';
+test('productivity follows how full your time is: a busy day high, one busy day in a week lower', () => {
+  const data = new Map(), model = createPlannerStore({ getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, v) });
+  model.saveSettings({ timeZone: 'UTC', planningStart: '08:00', planningEnd: '20:00' });
+  let n = 0; model.saveActivities(scheduleInputs(parseScheduleRequest('school on wednesday from 8 to 20', { timeZone: 'UTC' }, new Date('2026-11-16T07:00:00Z')), () => `e${n++}`));
+  const settings = model.getSettings();
+  const busyDay = busyProductivity(model.getDay, settings, '2026-11-18', 'day'), week = busyProductivity(model.getDay, settings, '2026-11-18', 'week'), quiet = busyProductivity(model.getDay, settings, '2026-11-19', 'day');
+  assert.equal(busyDay.percent, 100); assert.equal(quiet.percent, 0);
+  assert.ok(week.percent > 0 && week.percent < 25, `week ${week.percent}`);
+});

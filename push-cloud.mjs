@@ -45,7 +45,7 @@ export function collectReminders(model, now = Date.now()) {
       if (item.kind === 'break' || item.completed || item.reminder === 'off') continue;
       const lead = item.reminder === 'default' || item.reminder === undefined ? settings.reminderMinutes : Number(item.reminder);
       let start; try { start = wallToInstant(date, item.start, zone, item.dstChoice || 'earlier'); } catch { continue; }
-      const when = lead === 0 ? `Starting now · ${item.start}` : `Starts at ${item.start} · in ${lead >= 60 && lead % 60 === 0 ? `${lead / 60} h` : `${lead} min`}`;
+      const when = item.isReminder ? `Reminder · ${item.start}` : lead === 0 ? `Starting now · ${item.start}` : `Starts at ${item.start} · in ${lead >= 60 && lead % 60 === 0 ? `${lead / 60} h` : `${lead} min`}`;
       add(`${item.id}|${date}|${item.start}|${lead}`, start - lead * 60000, item.title, offset > 0 && lead >= 1440 ? `${dateLabel(date)} at ${item.start}` : when);
     }
   }
