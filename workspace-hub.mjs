@@ -122,77 +122,65 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
 
   const remindersWidget = $('.reminders-widget');
   const remindersTile = tile('reminders', 'bell', 'Reminders', () => openSheet('reminders'));
-  // Simple controls on top; the detailed (technical) notification settings stay one tap away.
+  // One switch does everything: the in-page banner and real notifications on this device.
   const controls = node('div', undefined, 'reminder-controls');
   controls.innerHTML = `
-    <div class="reminder-push">
-      <label class="hub-switch"><span><strong>Notify me even when Day Compass is closed</strong><small data-push-status></small></span><input type="checkbox" role="switch" data-reminder="push"></label>
-      <div class="reminder-push-actions" hidden><button type="button" class="secondary" data-reminder="push-test">Send a test notification</button></div>
-    </div>
-    <label class="hub-switch"><span><strong>Remind me in the page</strong><small>A banner and soft chime while Day Compass is open</small></span><input type="checkbox" role="switch" data-reminder="enabled"></label>
-    <label class="hub-switch"><span><strong>Play a sound</strong><small>Soft two-note chime</small></span><input type="checkbox" role="switch" data-reminder="sound"></label>
-    <label class="hub-row"><span><strong>Default reminder</strong><small>Each event can change this in its edit form</small></span>
-      <select data-reminder="lead"><option value="0">When it starts</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="15">15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option><option value="1440">1 day before</option></select></label>
-    <div class="reminder-controls-actions"><button type="button" class="hub-primary" data-reminder="test">Try it</button><button type="button" class="secondary" data-reminder="more">More settings</button></div>
-    <p class="fine-print reminder-controls-note">Reminders appear while this page is open in a tab. Snooze brings one back in 5 minutes.</p>
-    <div class="reminder-export">
-      <strong>Reminders when Day Compass is closed</strong>
-      <p>Send your upcoming events to your phone's calendar. The phone then reminds you itself, even when this site is closed.</p>
-      <button type="button" class="hub-primary" data-reminder="export">Send to my calendar</button>
-      <details><summary>How to add it</summary>
-        <p><b>iPhone:</b> open this site in Safari on the phone, tap the button, then <i>Add All</i>.</p>
-        <p><b>Android / Google Calendar:</b> on a computer go to calendar.google.com → Settings → Import, and choose the downloaded file.</p>
-        <p><b>Windows / Outlook:</b> open the downloaded file and choose <i>Import</i>.</p>
-        <p>It's a copy: if you change events here, send it again. Events keep the same ID, so most calendars update them instead of adding duplicates.</p>
-      </details>
-    </div>`;
+    <label class="hub-switch"><span><strong>Reminders</strong><small data-reminder-status></small></span><input type="checkbox" role="switch" data-reminder="on"></label>
+    <label class="hub-row"><span><strong>Remind me</strong></span><select data-reminder="lead"><option value="0">When it starts</option><option value="5">5 min before</option><option value="10">10 min before</option><option value="15">15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option><option value="1440">1 day before</option></select></label>
+    <label class="hub-switch"><span><strong>Sound</strong></span><input type="checkbox" role="switch" data-reminder="sound"></label>
+    <details class="reminder-more"><summary>More options</summary><div class="reminder-more-body">
+      <button type="button" class="secondary" data-reminder="test">Send a test reminder</button>
+      <button type="button" class="secondary" data-reminder="more">Quiet hours &amp; other settings</button>
+      <button type="button" class="secondary" data-reminder="export">Add my events to my phone’s calendar</button>
+    </div></details>`;
   const control = name => controls.querySelector(`[data-reminder=${name}]`);
-  let pushNote = '';
-  function syncPushControls() {
-    const on = pushEnabled(), support = pushSupport(), toggle = control('push');
-    toggle.checked = on; toggle.disabled = !on && !support.ok;
-    controls.querySelector('[data-push-status]').textContent = pushNote || (on ? 'On for this device. Reminders arrive like messages, even with the site closed.' : support.ok ? 'Works on phones and computers. Turn it on separately on each device.' : support.reason);
-    controls.querySelector('.reminder-push-actions').hidden = !on;
-  }
-  control('push').addEventListener('change', async event => {
-    const toggle = event.target, turnOn = toggle.checked; toggle.disabled = true;
-    pushNote = turnOn ? 'Turning on… allow notifications if the browser asks.' : 'Turning off…';
-    controls.querySelector('[data-push-status]').textContent = pushNote;
-    try {
-      if (turnOn) { const result = await enablePush(model); pushNote = `On for this device · ${result.saved ?? 0} reminder${result.saved === 1 ? '' : 's'} scheduled in the next 60 days.`; feedback('Notifications are on for this device.'); }
-      else { await disablePush(); pushNote = ''; feedback('Notifications are off for this device.'); }
-    } catch (problem) { pushNote = problem.message; if (!pushEnabled()) toggle.checked = false; }
-    toggle.disabled = false; syncPushControls();
-  });
-  control('push-test').addEventListener('click', async event => {
-    event.target.disabled = true;
-    try { const result = await testPush(); pushNote = result.sent ? 'Test sent. It should appear within a few seconds (close or switch away from this tab to see it as a notification).' : `The notification service didn’t accept it (code ${result.status}).`; }
-    catch (problem) { pushNote = problem.message; }
-    event.target.disabled = false; syncPushControls();
-  });
-  startPushSync(model, result => { if (result.error) { pushNote = `Couldn’t update notifications: ${result.error}`; syncPushControls(); } else if (!result.unchanged && pushEnabled()) { pushNote = `On for this device · ${result.saved} reminder${result.saved === 1 ? '' : 's'} scheduled in the next 60 days.`; syncPushControls(); } });
+  const leadText = minutes => minutes === 0 ? 'when each event starts' : minutes === 1440 ? '1 day before each event' : minutes % 60 === 0 ? `${minutes / 60} hour${minutes === 60 ? '' : 's'} before each event` : `${minutes} min before each event`;
+  let note = '';
   function syncControls() {
-    syncPushControls();
-    const settings = model.getSettings();
-    control('enabled').checked = Boolean(settings.remindersEnabled);
+    const settings = model.getSettings(), on = Boolean(settings.remindersEnabled), support = pushSupport();
+    control('on').checked = on;
     control('sound').checked = reminderSound.enabled();
     const lead = String(settings.reminderMinutes);
     if (![...control('lead').options].some(option => option.value === lead)) control('lead').append(Object.assign(node('option', `${lead} min before`), { value: lead }));
     control('lead').value = lead;
+    control('lead').closest('label').hidden = !on; control('sound').closest('label').hidden = !on;
+    controls.querySelector('[data-reminder-status]').textContent = note || (!on ? 'Off'
+      : pushEnabled() ? `You’ll get a notification ${leadText(settings.reminderMinutes)}, even when Day Compass is closed.`
+      : support.ok ? `On while Day Compass is open, ${leadText(settings.reminderMinutes)}.`
+      : `On while Day Compass is open. ${support.reason}`);
   }
-  control('enabled').addEventListener('change', event => { try { model.saveSettings({ remindersEnabled: event.target.checked }); feedback(event.target.checked ? 'Reminders are on.' : 'Reminders are off.'); } catch (problem) { feedback(problem.message); syncControls(); } });
+  control('on').addEventListener('change', async event => {
+    const turnOn = event.target.checked; event.target.disabled = true; note = '';
+    try {
+      model.saveSettings({ remindersEnabled: turnOn });
+      if (turnOn && pushSupport().ok && !pushEnabled()) {
+        note = 'Turning on… allow notifications if your browser asks.'; syncControls();
+        try { await enablePush(model); note = ''; } catch { note = 'Notifications weren’t allowed, so reminders only show while Day Compass is open.'; }
+      }
+      if (!turnOn && pushEnabled()) await disablePush();
+      feedback(turnOn ? 'Reminders are on.' : 'Reminders are off.');
+    } catch (problem) { feedback(problem.message); }
+    event.target.disabled = false; syncControls();
+  });
   control('sound').addEventListener('change', event => { reminderSound.set(event.target.checked); });
   control('lead').addEventListener('change', event => { try { model.saveSettings({ reminderMinutes: Number(event.target.value) }); } catch (problem) { feedback(problem.message); syncControls(); } });
-  control('test').addEventListener('click', () => banner?.test());
+  control('test').addEventListener('click', async event => {
+    if (!pushEnabled()) { banner?.test(); return; }
+    event.target.disabled = true;
+    try { const result = await testPush(); feedback(result.sent ? 'Test sent. Switch to another tab to see it as a notification.' : 'The notification didn’t go through. Try turning Reminders off and on.'); }
+    catch (problem) { feedback(problem.message); }
+    event.target.disabled = false;
+  });
   control('more').addEventListener('click', () => $('#open-reminder-settings')?.click());
   control('export').addEventListener('click', () => {
     try {
       const { text, count } = buildCalendarFile(model.snapshot(), { fromDate: now().date });
-      if (!count) { feedback('There are no upcoming events to send yet.'); return; }
+      if (!count) { feedback('There are no upcoming events to add yet.'); return; }
       downloadCalendarFile(text);
-      feedback(`Saved day-compass.ics with ${count} event${count === 1 ? '' : 's'} and their reminders. Open it to add them to your calendar.`);
+      feedback(`Saved a calendar file with ${count} event${count === 1 ? '' : 's'}. Open it on your phone to add them with their reminders.`);
     } catch (problem) { feedback(`Could not create the calendar file: ${problem.message}`); }
   });
+  startPushSync(model, () => syncControls());
   remindersWidget.prepend(controls);
   sheet('reminders', 'Reminders', remindersWidget, syncControls);
   model.subscribe(syncControls); syncControls();

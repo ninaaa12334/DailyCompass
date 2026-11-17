@@ -467,3 +467,8 @@ body.hub-layout .hub { position: relative; z-index: 1; }
 .holiday-controls { display: grid; gap: 2px; border-radius: 16px; overflow: hidden; background: color-mix(in srgb, var(--text) 4%, transparent); }
 .holiday-controls .hub-row[hidden] { display: none; }
 .holiday-settings { display: grid; gap: 8px; margin-top: 1rem; }
+.reminder-controls .hub-switch[hidden], .reminder-controls .hub-row[hidden] { display: none; }
+.reminder-more { background: var(--surface); padding: 4px 14px 10px; }
+.reminder-more summary { cursor: pointer; min-height: 38px; padding: 8px 0 4px; font-size: .88rem; font-weight: 600; color: var(--muted); }
+.reminder-more-body { display: grid; gap: 8px; }
+.reminder-more-body .secondary { min-height: 40px; border-radius: 12px; text-align: left; justify-content: flex-start; }
