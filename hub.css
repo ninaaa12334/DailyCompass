@@ -557,3 +557,16 @@ body[data-calendar-wide=true] .hub-left { visibility: hidden; width: 0; overflow
 .idea-nudge[hidden] { display: none; }
 .idea-nudge:hover { background: color-mix(in srgb, #f6bf26 26%, var(--surface)); }
 .idea-delete:hover { background: color-mix(in srgb, #d32f2f 16%, var(--surface)); }
+
+/* ---------- Phones: the page scrolls normally and the calendar gets almost the whole screen ---------- */
+@media (max-width: 899px) {
+  body.hub-layout { height: auto; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
+  body.hub-layout #planner { height: auto; min-height: 100dvh; }
+  .hub { height: auto; min-height: 100dvh; grid-template-rows: auto auto auto; }
+  .hub-center, .hub-center .calendar-widget { height: auto; min-height: 0; }
+  .hub-center #week-view, .hub-center #month-view { height: calc(100svh - 96px) !important; min-height: 380px; max-height: none; -webkit-overflow-scrolling: touch; }
+}
+/* The date strip above already shows the day, so the grid doesn't repeat it. */
+@media (max-width: 580px) {
+  .hub-center #week-grid .week-day-heading, .hub-center #week-grid .week-corner { display: none; }
+}
