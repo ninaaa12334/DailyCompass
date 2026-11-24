@@ -47,12 +47,17 @@ test('rounding cannot hide unfinished work or credit future work to today', () =
 import { busyProductivity } from './productivity.mjs';
 import { createPlannerStore } from './planner-store.mjs';
 import { parseScheduleRequest, scheduleInputs } from './schedule-request.mjs';
-test('productivity follows how full your time is: a busy day high, one busy day in a week lower', () => {
+test('productivity grows with finished things, not with plans or reminders', () => {
   const data = new Map(), model = createPlannerStore({ getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, v) });
   model.saveSettings({ timeZone: 'UTC', planningStart: '08:00', planningEnd: '20:00' });
   let n = 0; model.saveActivities(scheduleInputs(parseScheduleRequest('school on wednesday from 8 to 20', { timeZone: 'UTC' }, new Date('2026-11-16T07:00:00Z')), () => `e${n++}`));
-  const settings = model.getSettings();
-  const busyDay = busyProductivity(model.getDay, settings, '2026-11-18', 'day'), week = busyProductivity(model.getDay, settings, '2026-11-18', 'week'), quiet = busyProductivity(model.getDay, settings, '2026-11-19', 'day');
-  assert.equal(busyDay.percent, 100); assert.equal(quiet.percent, 0);
-  assert.ok(week.percent > 0 && week.percent < 25, `week ${week.percent}`);
+  model.saveActivities([{ kind: 'fixed', id: 'r1', title: 'Call mom', category: 'Personal projects', priority: 'Medium', date: '2026-11-19', start: '10:00', end: '10:05', notes: '', repeat: 'none', repeatUntil: '', reminder: 0, completed: false, locked: false, isReminder: true }]);
+  const settings = model.getSettings(), after = { now: { date: '2026-11-25', minute: 600 } }, before = { now: { date: '2026-11-17', minute: 600 } };
+  assert.equal(busyProductivity(model.getDay, settings, '2026-11-18', 'day', after).percent, 100, 'a full day that has happened');
+  assert.equal(busyProductivity(model.getDay, settings, '2026-11-18', 'day', before).percent, 0, 'plans still ahead do not count');
+  assert.equal(busyProductivity(model.getDay, settings, '2026-11-19', 'day', after).percent, 0, 'reminders do not count');
+  const week = busyProductivity(model.getDay, settings, '2026-11-18', 'week', after).percent;
+  assert.ok(week > 0 && week < 25, `one busy day in a week scores low: ${week}`);
+  const tasks = [{ id: 't1', completed: true, date: '2026-11-20', duration: 360 }, { id: 't2', completed: false, date: '2026-11-20', duration: 360 }];
+  assert.equal(busyProductivity(model.getDay, settings, '2026-11-20', 'day', { ...after, tasks }).percent, 50, 'finished tasks count, unfinished ones do not');
 });

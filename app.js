@@ -261,7 +261,7 @@ export async function startApp() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderSummary(); tickReminders(); } });
   window.addEventListener('storage', event => { if (event.key === PLANNER_KEY && !isDemo) attempt(() => model.reload()); });
   if (isDemo) { $('#planner-mode').textContent = 'Sample demo. Data and preferences stay separate from your personal planner.'; $('#task-help').textContent = 'Sample data saves only in this demo session.'; }
-  productivity = initProductivity({ model, storage, selectedDate: calendar.getSelectedDate });
+  productivity = initProductivity({ model, storage, selectedDate: calendar.getSelectedDate, now });
   assistant = initAssistant({ model, account, calendar, openActivity: showEventCard, now });
   // Holidays switch in Settings → Planning too.
   { const planning = document.querySelector('#settings-planning'); if (planning) { const block = document.createElement('div'); block.className = 'holiday-settings'; block.append(Object.assign(document.createElement('h4'), { textContent: 'Public holidays' }), holidayControls({ model, feedback })); planning.append(block); } }

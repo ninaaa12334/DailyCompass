@@ -413,7 +413,8 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     const idea = text.match(/^\s*(?:idea|💡)\s*[:\-–]?\s+(.+)$/iu)?.[1] || (/^\s*i wonder\b/i.test(text) ? text.trim() : '');
     if (idea && from === 'bar') { if (addIdea(idea.charAt(0).toUpperCase() + idea.slice(1))) { askInput.value = ''; feedback('Saved to Ideas 💡'); } return; }
     lastText = text; askedFrom = from;
-    const result = parseSchedule(text, model.getSettings());
+    // Reminders are short, so late ones (e.g. 11:30pm) don't get a guessed hour that runs past midnight.
+    const result = parseSchedule(isReminderRequest(text) && !/\bfor\s+\d/i.test(text) ? `${text} for 5 minutes` : text, model.getSettings());
     if (result.clarification) { showQuestion(isReminderRequest(text) && /What time/.test(result.clarification) ? 'When should I remind you? For example “remind me to go to the shop at 5pm” or “… tomorrow at 9am”.' : result.clarification, text); return; }
     if (isReminderRequest(text)) {
       // Keep the person's own words as the title: "remind me to go to the shop at 5" -> "Go to the shop".
