@@ -64,6 +64,8 @@ export function validatePlanner(state) {
     }
     ensure(Number.isInteger(task.duration) && task.duration > 0 && task.duration <= 1440 && Number.isInteger(task.spent) && task.spent >= 0 && task.spent <= task.duration, 'Duration must be 1–1440 minutes; time already worked cannot exceed it.');
   }
+  // All-day items: a name on a date with no time (e.g. a test). Calendar only; never tasks.
+  if (state.allDay !== undefined) ensure(Array.isArray(state.allDay) && state.allDay.length <= 2000 && state.allDay.every(item => item && typeof item.id === 'string' && item.id && validDate(item.date) && typeof item.title === 'string' && item.title.trim() && item.title.length <= 120 && (item.notes === undefined || (typeof item.notes === 'string' && item.notes.length <= 2000)) && (item.color === undefined || /^[a-z]{3,12}$/.test(item.color))), 'Invalid all-day item.');
   // Ideas: little things you're curious about. No dates, no deadlines; they never count as tasks.
   if (state.ideas !== undefined) ensure(Array.isArray(state.ideas) && state.ideas.length <= 500 && state.ideas.every(idea => idea && typeof idea.id === 'string' && idea.id && typeof idea.text === 'string' && idea.text.trim() && idea.text.length <= 300 && validDate(idea.added)), 'The ideas list could not be read.');
   for (const [date, day] of Object.entries(state.days)) {
@@ -179,6 +181,36 @@ export function createPlannerStore(storage) {
     getPlanning: () => clone({ plans: state.plans, tasks: state.tasks }),
     subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); },
     getTasks: () => clone(state.tasks),
+    getAllDay: date => clone((state.allDay || []).filter(item => !date || item.date === date)),
+    addAllDay(items) {
+      const clean = items.map(({ id, date, title, notes, color }) => ({ id, date, title: String(title || '').replace(/\s+/g, ' ').trim().slice(0, 120), ...(notes ? { notes: String(notes).slice(0, 2000) } : {}), ...(color ? { color } : {}) }));
+      for (const item of clean) ensure(item.title, 'Give it a name first.');
+      commit(next => { next.allDay = [...(next.allDay || []), ...clean]; });
+    },
+    updateAllDay(id, changes) {
+      commit(next => {
+        const item = (next.allDay || []).find(entry => entry.id === id); ensure(item, 'This item no longer exists.');
+        if (changes.title !== undefined) item.title = String(changes.title).replace(/\s+/g, ' ').trim().slice(0, 120);
+        if (changes.date !== undefined) { ensure(validDate(changes.date), 'Choose a valid date.'); item.date = changes.date; }
+        ensure(item.title, 'Give it a name first.');
+      });
+    },
+    saveActivitiesAndAllDay(inputs, items) {
+      const clean = items.map(({ id, date, title, notes }) => ({ id, date, title: String(title || '').replace(/\s+/g, ' ').trim().slice(0, 120), ...(notes ? { notes: String(notes).slice(0, 2000) } : {}) }));
+      commit(next => { for (const input of inputs) applyActivity(next, input); if (clean.length) next.allDay = [...(next.allDay || []), ...clean]; });
+    },
+    removeAllDay(id) { commit(next => { next.allDay = (next.allDay || []).filter(item => item.id !== id); }); },
+    // Tests added from photos used to be saved as deadline tasks; move the unfinished ones to the calendar only.
+    movePhotoDeadlinesToCalendar() {
+      const moving = state.tasks.filter(task => !task.completed && !task.date && task.deadline && /^Added from a photo of your notes/.test(task.notes || '') && !Object.values(state.plans).some(entries => entries.some(entry => entry.taskId === task.id)));
+      if (!moving.length) return 0;
+      const ids = new Set(moving.map(task => task.id));
+      commit(next => {
+        next.tasks = next.tasks.filter(task => !ids.has(task.id));
+        next.allDay = [...(next.allDay || []), ...moving.map(task => ({ id: task.id, date: task.deadline, title: task.title, ...(task.notes ? { notes: task.notes } : {}), ...(task.color ? { color: task.color } : {}) }))];
+      });
+      return moving.length;
+    },
     getIdeas: () => clone(state.ideas || []),
     addIdea(text, id, added) { const clean = String(text || '').replace(/\s+/g, ' ').trim(); ensure(clean, 'Write the idea first.'); ensure(clean.length <= 300, 'Keep the idea under 300 characters.'); commit(next => { next.ideas = [{ id, text: clean, added }, ...(next.ideas || [])]; }); },
     removeIdea(id) { commit(next => { next.ideas = (next.ideas || []).filter(idea => idea.id !== id); }); },
@@ -202,6 +234,10 @@ export function createPlannerStore(storage) {
     // Change only the colour ('' = automatic), keeping repeats linked. allRepeats colours the whole series.
     setColor(kind, id, color, allRepeats = false) {
       commit(next => {
+        if (kind === 'allDay') {
+          const item = (next.allDay || []).find(entry => entry.id === id); ensure(item, 'This item no longer exists.');
+          if (color) item.color = color; else delete item.color; return;
+        }
         if (kind === 'task') {
           const task = next.tasks.find(t => t.id === id); ensure(task, 'This activity no longer exists.');
           for (const t of next.tasks) if (t.id === id || (allRepeats && task.seriesId && t.seriesId === task.seriesId)) { if (color) t.color = color; else delete t.color; }

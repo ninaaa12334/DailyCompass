@@ -52,7 +52,7 @@ test('doubtful dates and times from the AI become blank instead of guessed', () 
   ]);
 });
 
-test('timed rows become events, untimed rows deadlines, and overlaps fall back to deadlines', () => {
+test('timed rows become events, untimed rows all-day items (never tasks), and overlaps fall back to all-day', () => {
   const school = [{ title: 'School', start: '08:00', end: '14:00' }];
   const planned = planPhotoRows([
     { title: 'Maths test', date: '2026-12-03', start: '', end: '' },
@@ -60,20 +60,39 @@ test('timed rows become events, untimed rows deadlines, and overlaps fall back t
     { title: 'Chemistry test', date: '2026-12-04', start: '10:00', end: '11:00' },
     { title: 'Essay', date: '', start: '', end: '' }
   ], date => date === '2026-12-04' ? school : []);
-  assert.deepEqual(planned.map(p => p.as), ['deadline', 'event', 'deadline', 'missing-date']);
+  assert.deepEqual(planned.map(p => p.as), ['allDay', 'event', 'allDay', 'missing-date']);
   assert.equal(planned[1].end, '17:00');
   assert.equal(planned[2].clash.title, 'School');
-  let n = 0; const inputs = photoInputs(planned, () => `id-${++n}`);
-  assert.equal(inputs.length, 3);
-  const model = memoryModel(); model.saveActivities(inputs);
-  assert.deepEqual(model.getTasks().map(t => [t.title, t.deadline, t.category]), [['Maths test', '2026-12-03', 'Study'], ['Chemistry test', '2026-12-04', 'Study']]);
-  assert.match(model.getTasks()[1].notes, /Time on the note: 10:00–11:00/);
+  let n = 0; const { events, allDay } = photoInputs(planned, () => `id-${++n}`);
+  const model = memoryModel(); model.saveActivitiesAndAllDay(events, allDay);
+  assert.deepEqual(model.getTasks(), []);
+  assert.deepEqual(model.getAllDay().map(i => [i.title, i.date]), [['Maths test', '2026-12-03'], ['Chemistry test', '2026-12-04']]);
+  assert.match(model.getAllDay('2026-12-04')[0].notes, /Time on the note: 10:00–11:00/);
   assert.deepEqual(model.getDay('2026-12-03').commitments.map(e => [e.title, e.start, e.end]), [['Piano exam', '16:00', '17:00']]);
+});
+
+test('all-day items can be renamed, moved, recoloured and deleted', () => {
+  const model = memoryModel(); model.addAllDay([{ id: 'a', date: '2026-12-03', title: 'Maths test' }]);
+  model.updateAllDay('a', { title: 'Maths exam', date: '2026-12-04' }); model.setColor('allDay', 'a', 'tomato');
+  assert.deepEqual(model.getAllDay(), [{ id: 'a', date: '2026-12-04', title: 'Maths exam', color: 'tomato' }]);
+  assert.throws(() => model.updateAllDay('a', { title: '  ' }), /name/);
+  model.removeAllDay('a'); assert.deepEqual(model.getAllDay(), []);
+});
+
+test('tests saved as tasks from earlier photos move out of Tasks once', () => {
+  const model = memoryModel();
+  const task = (id, title, extra) => ({ id, kind: 'task', title, date: '', deadline: '2026-12-03', duration: 30, spent: 0, completed: false, locked: false, category: 'Study', priority: 'Medium', repeat: 'none', repeatUntil: '', reminder: 'default', notes: 'Added from a photo of your notes.', ...extra });
+  model.saveActivities([task('p1', 'Maths test', { color: 'grape' }), task('p2', 'Done test'), task('own', 'Essay', { notes: 'my own task' })]);
+  model.toggle('task', 'p2');
+  assert.equal(model.movePhotoDeadlinesToCalendar(), 1);
+  assert.deepEqual(model.getTasks().map(t => t.title), ['Done test', 'Essay']);
+  assert.deepEqual(model.getAllDay().map(i => [i.id, i.title, i.date, i.color]), [['p1', 'Maths test', '2026-12-03', 'grape']]);
+  assert.equal(model.movePhotoDeadlinesToCalendar(), 0);
 });
 
 test('two timed rows from the same photo that overlap do not both become events', () => {
   const planned = planPhotoRows([{ title: 'Test A', date: '2026-12-03', start: '09:00', end: '10:00' }, { title: 'Test B', date: '2026-12-03', start: '09:30', end: '10:30' }], () => []);
-  assert.deepEqual(planned.map(p => p.as), ['event', 'deadline']);
+  assert.deepEqual(planned.map(p => p.as), ['event', 'allDay']);
 });
 
 test('photo reading checks Supabase sign-in tokens', async () => {

@@ -33,13 +33,22 @@ export function renderTimetable(grid, options) {
     const dueTasks = tasks.filter(task => !task.completed && task.deadline === date), due = dueTasks.length;
     const detail = document.createElement('small');
     detail.textContent = `${Math.round(booked / 6) / 10}h booked`;
-    // Deadlines show by name (like an all-day item) instead of "1 due".
-    if (due) { detail.className = 'deadline-name'; detail.textContent = `📝 ${dueTasks.map(task => task.title).join(' · ')}`; detail.title = dueTasks.map(task => `${task.title} (due)`).join('\n'); if (dueTasks[0].color) { const { fill, line, ink } = eventPalette(colorOf(dueTasks[0]), document.documentElement.dataset.mode === 'dark'); Object.assign(detail.style, { background: fill, color: ink, boxShadow: `inset 3px 0 0 ${line}` }); } }
+    // All-day items and deadlines show by name under the date instead of "1 due".
     header.setAttribute('aria-label', `${date}, ${day.commitments.length} activities, ${booked} minutes booked within planning hours, ${due} incomplete task deadlines. Select day.`);
     const holiday = options.getHoliday?.(date) || [];
     if (holiday.length) { const tag = document.createElement('small'); tag.className = 'holiday-name'; tag.textContent = holiday.join(' · '); tag.title = holiday.join(' · '); header.dataset.holiday = 'true'; header.append(label, number, tag, detail); }
     else header.append(label, number, detail);
     header.addEventListener('click', () => onSelect(date));
+    // All-day items and deadlines by name. The header is already a button, so this is a label that
+    // forwards the tap to the real chip (also reachable in Month view and the phone agenda).
+    const chips = options.getChips?.(date) || [];
+    if (chips.length) {
+      const tag = document.createElement('small'); tag.className = 'deadline-name';
+      tag.textContent = chips.length > 1 ? `${chips[0].textContent} +${chips.length - 1}` : chips[0].textContent;
+      tag.title = chips.map(chip => chip.textContent).join('\n'); tag.style.cssText = chips[0].style.cssText;
+      tag.addEventListener('click', event => { event.stopPropagation(); chips[0].click(); });
+      detail.replaceWith(tag);
+    }
     grid.append(header);
   }
 

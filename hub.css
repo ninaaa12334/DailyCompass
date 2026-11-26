@@ -631,3 +631,8 @@ body[data-calendar-wide=true] .hub-left { visibility: hidden; width: 0; overflow
 .event-card-colors .color-swatch span { width: 22px; height: 22px; }
 .event-card-colors .color-auto small { font-size: .72rem; margin-right: 4px; }
 .color-all-repeats { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: .82rem; color: var(--muted); cursor: pointer; }
+/* All-day item card: inline edit form. */
+.all-day-edit { display: grid; gap: 10px; margin: 4px 0 12px; }
+.all-day-edit label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); }
+.all-day-edit-actions { display: flex; gap: 8px; }
+.week-day-heading .deadline-name { cursor: pointer; }

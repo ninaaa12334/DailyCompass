@@ -69,7 +69,9 @@ export async function startApp() {
     field('repeatUntil').required = field('repeat').value !== 'none' && !original;
     field('repeatUntil').disabled = Boolean(original) || field('repeat').value === 'none';
   }
-  function openActivity({ date = calendar.getSelectedDate(), item = null, start, end, title = '', kind = 'fixed' } = {}) {
+  let replacingAllDay = null;
+  function openActivity({ date = calendar.getSelectedDate(), item = null, start, end, title = '', kind = 'fixed', replaceAllDay = null } = {}) {
+    replacingAllDay = replaceAllDay;
     if (item?.sourceRoutine) { assistant.openSetup(); return; }
     if (item?.sourceImport) { feedback('Imported Google event. Edit it in Google Calendar, then sync in Settings.'); return; }
     form.reset(); original = null; placement = null;
@@ -187,9 +189,30 @@ export async function startApp() {
   const card = document.createElement('dialog'); card.className = 'hub-sheet event-card'; card.setAttribute('aria-labelledby', 'event-card-title');
   document.body.append(card);
   card.addEventListener('click', event => { if (event.target === card) card.close(); });
+  // All-day item (e.g. a test with no time): calendar-only, never a task.
+  function showAllDayCard(item) {
+    card.innerHTML = '<div class="event-card-bar"></div><div class="event-card-body"><div class="event-card-head"><h2 id="event-card-title"></h2><button type="button" class="hub-sheet-done" data-act="close">Close</button></div><p class="event-card-when"></p><p class="event-card-note"></p><form class="all-day-edit" hidden><label>Name<input name="title" maxlength="120" required></label><label>Date<input name="date" type="date" required></label><div class="all-day-edit-actions"><button class="hub-primary">Save</button><button type="button" class="secondary" data-act="cancel">Cancel</button></div></form><div class="event-card-actions"></div></div>';
+    const bar = card.querySelector('.event-card-bar'), paint = color => { bar.style.background = color ? colorOf({ color }) : '#e8a33d'; };
+    paint(item.color);
+    card.querySelector('h2').textContent = item.title;
+    card.querySelector('.event-card-when').textContent = `📝 All day · ${dateLabel(item.date, { year: 'numeric' })}`;
+    card.querySelector('.event-card-note').textContent = item.notes || '';
+    card.querySelector('.event-card-note').after(colorRow({ current: item.color || '', auto: '#e8a33d', repeats: false, onPick: color => attempt(() => { model.setColor('allDay', item.id, color); paint(color); }) }));
+    const edit = card.querySelector('.all-day-edit'), actions = card.querySelector('.event-card-actions');
+    const add = (label, handler, style = 'secondary') => { const b = document.createElement('button'); b.type = 'button'; b.className = style; b.textContent = label; b.addEventListener('click', handler); actions.append(b); return b; };
+    add('Edit', () => { edit.hidden = false; actions.hidden = true; edit.elements.title.value = item.title; edit.elements.date.value = item.date; edit.elements.title.focus(); }, 'hub-primary');
+    // Turns it into a normal timed event; the all-day item goes once that event is saved.
+    add('Add a time', () => { card.close(); openActivity({ date: item.date, title: item.title, start: 9 * 60, replaceAllDay: item.id }); });
+    add('🗑 Delete', () => { if (attempt(() => model.removeAllDay(item.id))) { card.close(); feedback('Deleted. Undo is at the top.'); } }, 'danger');
+    edit.addEventListener('submit', event => { event.preventDefault(); if (attempt(() => model.updateAllDay(item.id, { title: edit.elements.title.value, date: edit.elements.date.value }))) { card.close(); calendar.selectDate(edit.elements.date.value); feedback('Saved.'); } });
+    edit.querySelector('[data-act=cancel]').addEventListener('click', () => { edit.hidden = true; actions.hidden = false; });
+    card.querySelector('[data-act=close]').addEventListener('click', () => card.close());
+    if (!card.open) card.showModal();
+  }
   function showEventCard(args = {}) {
     const { item } = args, date = args.date || calendar.getSelectedDate();
     if (!item) { openActivity(args); return; }
+    if (item.allDay) { showAllDayCard(item); return; }
     const isImport = Boolean(item.sourceImport), isRoutine = Boolean(item.sourceRoutine), isTask = item.kind === 'task';
     const task = isTask ? model.getTasks().find(t => t.id === item.taskId || t.id === item.id) : null;
     card.innerHTML = '<div class="event-card-bar"></div><div class="event-card-body"><div class="event-card-head"><h2 id="event-card-title"></h2><button type="button" class="hub-sheet-done" data-act="close">Close</button></div><p class="event-card-when"></p><p class="event-card-note"></p><div class="event-card-actions"></div></div>';
@@ -234,7 +257,7 @@ export async function startApp() {
     if (data.kind === 'task' && field('deadlineAlertDate').value) data.deadlineReminder = { date: field('deadlineAlertDate').value, time: field('deadlineAlertTime').value };
     if (!['default', 'off'].includes(data.reminder)) data.reminder = Number(data.reminder);
     data.dstChoice = field('dstChoice').value;
-    if (attempt(() => { if (data.kind === 'fixed') { wallToInstant(data.date, data.start, model.getSettings().timeZone, data.dstChoice); wallToInstant(data.date, data.end, model.getSettings().timeZone, data.dstChoice); } model.saveActivity(data, original, field('scope').value); }, '#activity-error')) { calendar.selectDate(data.date); $('#activity-dialog').close(); feedback(data.kind === 'task' ? 'Task saved. Generate or replan your day to preview where it fits.' : 'Activity saved. Undo is available.'); }
+    if (attempt(() => { if (data.kind === 'fixed') { wallToInstant(data.date, data.start, model.getSettings().timeZone, data.dstChoice); wallToInstant(data.date, data.end, model.getSettings().timeZone, data.dstChoice); } model.saveActivity(data, original, field('scope').value); if (replacingAllDay) { model.removeAllDay(replacingAllDay); replacingAllDay = null; } }, '#activity-error')) { calendar.selectDate(data.date); $('#activity-dialog').close(); feedback(data.kind === 'task' ? 'Task saved. Generate or replan your day to preview where it fits.' : 'Activity saved. Undo is available.'); }
     saving = false; $('#save-activity').disabled = false;
   });
   $('#complete-activity').addEventListener('click', () => { if (attempt(() => model.toggle(original.kind, original.id, original.date), '#activity-error')) $('#activity-dialog').close(); });
@@ -284,4 +307,7 @@ export async function startApp() {
   }
   renderTasks(); renderSummary(); tickReminders(); initInterfaceMotion();
   initWorkspaceHub({ model, now, feedback, account, banner });
+  // Tests added from photos before all-day items existed were saved as tasks; move them out of Tasks once.
+  // Runs after account sync is connected so the change is saved to the account like any other edit.
+  try { const moved = model.movePhotoDeadlinesToCalendar(); if (moved) feedback(`Moved ${moved} test${moved === 1 ? '' : 's'} from your photo out of Tasks. ${moved === 1 ? 'It stays' : 'They stay'} in the calendar for the whole day.`); } catch {}
 }

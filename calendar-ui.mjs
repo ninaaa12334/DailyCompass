@@ -42,6 +42,16 @@ export function initCalendar(model, handlers) {
     if (task.color) paintDeadline(chip, task);
     return chip;
   }
+  // All-day items (e.g. a test with no time): same chip, but they're calendar-only, not tasks.
+  function allDayChip(date, item) {
+    const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'deadline-chip all-day-chip';
+    chip.textContent = `📝 ${item.title}`; chip.title = `${item.title} · all day ${dateLabel(date)}`; chip.setAttribute('aria-label', `${item.title}, all day ${dateLabel(date)}. Open.`);
+    chip.addEventListener('click', event => { event.stopPropagation(); choose(date); handlers.onActivity({ date, item: { ...item, allDay: true } }); });
+    if (item.color) paintDeadline(chip, item);
+    return chip;
+  }
+  // Everything shown by name above a day's times: all-day items first, then task deadlines.
+  const chipsFor = (date, dueTasks = model.getTasks().filter(task => !task.completed && task.deadline === date)) => [...model.getAllDay(date).map(item => allDayChip(date, item)), ...dueTasks.map(task => deadlineChip(date, task))];
   function monthCell(date, settingsNow, dueOn) {
       const day = model.getDay(date), { ratio, booked } = planningCapacity(day, model.getSettings());
       const dueTasks = dueOn.get(date) || [], due = dueTasks.length;
@@ -64,8 +74,8 @@ export function initCalendar(model, handlers) {
       }
       if (events.length > 3) { const more = document.createElement('button'); more.type = 'button'; more.className = 'month-more'; more.textContent = `+${events.length - 3} more`; more.addEventListener('click', () => { view = 'day'; choose(date); }); cell.append(more); }
       // Deadlines (e.g. a test with no time) show by name, like all-day items; tap to open.
-      for (const task of dueTasks.slice(0, 2)) cell.append(deadlineChip(date, task));
-      if (due > 2) { const note = document.createElement('small'); note.className = 'month-due'; note.textContent = `+${due - 2} more due`; cell.append(note); }
+      const chips = chipsFor(date, dueTasks); cell.append(...chips.slice(0, 2));
+      if (chips.length > 2) { const note = document.createElement('small'); note.className = 'month-due'; note.textContent = `+${chips.length - 2} more`; cell.append(note); }
       return cell;
   }
   function renderMonth() {
@@ -236,9 +246,9 @@ export function initCalendar(model, handlers) {
     const list = $('#mobile-agenda-list'); list.replaceChildren();
     const activities = model.getDay(selected).commitments.sort((a, b) => minutes(a.start) - minutes(b.start));
     $('#mobile-agenda-empty').textContent = activities.length ? '' : 'A clear day. Tap + Add to plan something.';
-    const dueToday = model.getTasks().filter(task => !task.completed && task.deadline === selected);
-    if (dueToday.length) $('#mobile-agenda-empty').textContent = '';
-    for (const task of dueToday) { const li = document.createElement('li'); li.className = 'mobile-agenda-deadline'; li.append(deadlineChip(selected, task)); list.append(li); }
+    const chipsToday = chipsFor(selected);
+    if (chipsToday.length) $('#mobile-agenda-empty').textContent = '';
+    for (const chip of chipsToday) { const li = document.createElement('li'); li.className = 'mobile-agenda-deadline'; li.append(chip); list.append(li); }
     for (const item of activities) {
       const li = document.createElement('li');
       const entry = document.createElement(item.kind === 'break' ? 'div' : 'button');
@@ -269,7 +279,7 @@ export function initCalendar(model, handlers) {
     if (view === 'month') renderMonth();
     else if (view === 'year') renderYear();
     else {
-      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, getHoliday: date => holidaysOn(model.getSettings(), date),  timeZone: model.getSettings().timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.getSettings()),
+      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, getHoliday: date => holidaysOn(model.getSettings(), date), getChips: date => chipsFor(date),  timeZone: model.getSettings().timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.getSettings()),
         onSelect: date => view === 'week' ? openDay(date) : choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
         onNavigate: (date, hour) => { focusHour = hour; choose(date); [...document.querySelectorAll('.time-slot')].find(node => node.dataset.date === date && Number(node.dataset.hour) === hour)?.focus(); }
       });

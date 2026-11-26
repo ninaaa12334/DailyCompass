@@ -431,7 +431,7 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     }
     showPlans(result.plans, text);
   }
-  // ---------- Photo of notes -> review list -> events and deadlines ----------
+  // ---------- Photo of notes -> review list -> events and all-day items ----------
   photoInput.addEventListener('change', () => { const file = photoInput.files?.[0]; photoInput.value = ''; if (file) readPhotoFile(file); });
   // Paste a photo or screenshot (Cmd/Ctrl+V) anywhere, or drop one on the page; text pastes are left alone.
   const imageFrom = list => [...(list || [])].find(item => item.kind === 'file' && item.type.startsWith('image/'))?.getAsFile();
@@ -481,14 +481,14 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
       planned.forEach((plan, i) => {
         const row = rows[i], on = row.check.checked && plan.title;
         row.box.classList.toggle('is-off', !row.check.checked);
-        row.status.textContent = !plan.title ? 'Needs a name.' : plan.as === 'missing-date' ? 'Couldn’t read the date. Pick it above.' : plan.clash ? `Overlaps “${plan.clash.title}” ${plan.clash.start}–${plan.clash.end}, so it will be added as a deadline on ${dateLabel(plan.date)}.` : plan.as === 'event' ? `Calendar event · ${dateLabel(plan.date)} ${plan.start}–${plan.end}` : `Deadline on ${dateLabel(plan.date)} (no time on the note — add one to make it an event)`;
+        row.status.textContent = !plan.title ? 'Needs a name.' : plan.as === 'missing-date' ? 'Couldn’t read the date. Pick it above.' : plan.clash ? `Overlaps “${plan.clash.title}” ${plan.clash.start}–${plan.clash.end}, so it will be added for the whole day on ${dateLabel(plan.date)}.` : plan.as === 'event' ? `Calendar event · ${dateLabel(plan.date)} ${plan.start}–${plan.end}` : `All day on ${dateLabel(plan.date)} (no time on the note — add one to give it a time)`;
         row.status.className = `hub-photo-status${plan.clash || plan.as === 'missing-date' ? ' is-warning' : ''}`;
-        if (on && plan.as === 'event') events++; else if (on && plan.as === 'deadline') deadlines++;
+        if (on && plan.as === 'event') events++; else if (on && plan.as === 'allDay') deadlines++;
         row.plan = plan;
       });
       const total = events + deadlines;
       add.disabled = !total || rows.some(row => row.check.checked && (row.plan.as === 'missing-date' || !row.plan.title));
-      add.textContent = !total ? 'Nothing selected' : [events && `${events} event${events === 1 ? '' : 's'}`, deadlines && `${deadlines} deadline${deadlines === 1 ? '' : 's'}`].filter(Boolean).join(' + ').replace(/^/, 'Add ');
+      add.textContent = !total ? 'Nothing selected' : `Add ${total} to calendar`;
     }
     for (const item of result.items) {
       const box = node('fieldset', undefined, 'hub-photo-item');
@@ -509,11 +509,12 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     add.addEventListener('click', () => {
       try {
         const chosen = rows.filter(row => row.check.checked).map(row => row.plan);
-        const inputs = photoInputs(chosen, newId);
-        model.saveActivities(inputs);
+        const { events, allDay } = photoInputs(chosen, newId);
+        // One save for both, so a single Undo takes the whole photo back.
+        model.saveActivitiesAndAllDay(events, allDay);
         closeSheet(reviewDialog); askInput.value = '';
-        const events = inputs.filter(input => input.kind === 'fixed').length, deadlines = inputs.length - events;
-        feedback(`Added ${[events && `${events} event${events === 1 ? '' : 's'}`, deadlines && `${deadlines} deadline${deadlines === 1 ? '' : 's'}`].filter(Boolean).join(' and ')} from your photo. Undo is at the top if anything looks wrong.`);
+        const total = events.length + allDay.length;
+        feedback(`Added ${total} item${total === 1 ? '' : 's'} from your photo to the calendar. Undo is at the top if anything looks wrong.`);
       } catch (problem) { error.textContent = problem.message || String(problem); }
     });
     review.append(list, error, add); update();
