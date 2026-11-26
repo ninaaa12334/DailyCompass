@@ -7,6 +7,8 @@ import { database } from './database.mjs';
 import { google } from './google.mjs';
 import { pushWorker, validSubscription, pushReceipt, recordPushReceipt } from './push.mjs';
 import { memoryModel, proposeAI, acceptProposal } from './plans.mjs';
+import { readPhoto, supabaseUser } from './photo-import.mjs';
+import { SUPABASE_URL, SUPABASE_KEY } from '../cloud.mjs';
 import { validatePlanner } from '../planner-store.mjs';
 import { zonedNow, validDate } from '../clock.mjs';
 import { wallToInstant } from '../zoned-time.mjs';
@@ -158,6 +160,18 @@ export function createApplication(options = {}) {
         failures.delete(address); const token = randomBytes(32).toString('base64url');
         db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), account.id, Date.now() + 2592000000); response.setHeader('Set-Cookie', cookie(token)); return json(response, { user: { id: account.id, name }, onboardingRequired: readDocument(account.id).state.settings.onboardingComplete !== true });
       }
+      // Photo of notes -> dated items to review. Signed in with either account type; rate limited because API use costs money.
+      if (route === '/api/ai/photo' && request.method === 'POST') {
+        const input = await body(request);
+        const reader = user || await supabaseUser(String(request.headers.authorization || '').replace(/^Bearer\s+/i, ''), { url: SUPABASE_URL, key: SUPABASE_KEY }, options.fetcher);
+        assert(reader, 'Sign in to read photos with AI.', 401);
+        const key = `photo:${reader.id}`, rate = failures.get(key) || { count: 0, until: Date.now() + 3600000, last: 0 };
+        if (rate.until < Date.now()) { rate.count = 0; rate.until = Date.now() + 3600000; }
+        assert(Date.now() - rate.last > 4000 && rate.count < 40, 'Too many photos in a short time. Wait a little and try again.', 429);
+        rate.count++; rate.last = Date.now(); failures.set(key, rate);
+        try { return json(response, await readPhoto(input, config, options.fetcher)); }
+        catch (problem) { if (problem.name === 'TimeoutError' || problem.name === 'AbortError') throw Object.assign(new Error('The AI took too long to answer. Try again, or crop the photo to just the dates.'), { status: 504 }); throw problem; }
+      }
       assert(user, 'Sign in to use your private server planner.', 401);
       assert(!request.headers['x-compass-user'] || request.headers['x-compass-user'] === user.id, 'The signed-in account changed in another tab. Export unsynced changes, then reload.', 401);
       if (route === '/api/logout' && request.method === 'POST') { db.prepare('DELETE FROM sessions WHERE hash=?').run(user.sessionHash); db.prepare('DELETE FROM subscriptions WHERE user_id=?').run(user.id); response.setHeader('Set-Cookie', cookie('')); return json(response, { ok: true }); }
@@ -211,7 +225,7 @@ export function createApplication(options = {}) {
       if (route === '/api/push/unsubscribe' && request.method === 'POST') { const input = await body(request); db.prepare('DELETE FROM subscriptions WHERE user_id=? AND endpoint=?').run(user.id, input.endpoint); return json(response, { ok: true }); }
       if (route === '/api/reminders' && request.method === 'GET') { await push.tick(); const pending = db.prepare("SELECT body,status,error FROM deliveries WHERE user_id=? AND status='pending' ORDER BY due ASC LIMIT 200").all(user.id), recent = db.prepare("SELECT body,status,error FROM deliveries WHERE user_id=? AND status!='pending' ORDER BY due DESC LIMIT 50").all(user.id); return json(response, [...pending, ...recent].map(r => { const item = JSON.parse(r.body); return { ...item, status: r.status, error: r.error, receipt: pushReceipt(db, user.id, item.key) }; })); }
       json(response, { error: 'Not found' }, 404);
-    } catch (error) { json(response, { error: error.status ? error.message : (error.code?.startsWith('ERR_SQLITE') ? 'The database could not save this change.' : error.message || 'Request failed.') }, error.status || 400); }
+    } catch (error) { json(response, { error: error.status ? error.message : (String(error.code ?? '').startsWith('ERR_SQLITE') ? 'The database could not save this change.' : error.message || 'Request failed.') }, error.status || 400); }
   });
   const timer = options.worker === false ? null : setInterval(() => { push.tick().catch(() => console.error('Background reminder check failed; inspect notification center and database availability.')); }, 15000); timer?.unref();
   const googleTimer = options.worker === false ? null : setInterval(() => { syncGoogleAccounts().catch(() => console.error('Google sync check failed.')); syncCalendarFeeds().catch(() => console.error('Private calendar refresh failed.')); }, 300000); googleTimer?.unref();

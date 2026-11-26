@@ -9,6 +9,8 @@ import { holidayControls } from './holidays.mjs';
 import { taskProductivity } from './productivity.mjs';
 import { isDarkMode, toggleDarkMode } from './theme-ui.mjs';
 import { dateLabel } from './clock.mjs';
+import { planPhotoRows, photoInputs, shrinkPhoto } from './photo-notes.mjs';
+import { accessToken } from './cloud.mjs';
 
 // Calendar-centred workspace: the calendar fills the middle of the screen and every other
 // feature is a tile around it that opens in a sheet. Existing widgets are moved (not copied),
@@ -31,6 +33,7 @@ const ICONS = {
   shrink: '<svg viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>',
   sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>',
+  camera: '<svg viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5Z"/><circle cx="12" cy="12.5" r="3.5"/></svg>',
   send: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'
 };
 const icon = name => { const span = node('span', undefined, 'hub-icon'); span.setAttribute('aria-hidden', 'true'); span.innerHTML = ICONS[name]; return span; };
@@ -84,7 +87,11 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   const askInput = node('input'); askInput.name = 'request'; askInput.autocomplete = 'off'; askInput.maxLength = 300;
   askInput.placeholder = 'Ask: “school every weekday 8–2 until June 20”'; askInput.setAttribute('aria-label', 'Tell Day Compass what to add to your calendar');
   const askSend = node('button', undefined, 'hub-ask-send'); askSend.type = 'submit'; askSend.setAttribute('aria-label', 'Add to calendar'); askSend.append(icon('send'));
-  ask.append(askIcon, askInput, askSend);
+  // Photo of notes (e.g. test dates): read by AI on the server, then reviewed before anything is added.
+  const photoInput = node('input'); photoInput.type = 'file'; photoInput.accept = 'image/*'; photoInput.hidden = true; photoInput.className = 'hub-ask-file';
+  const photoButton = node('button', undefined, 'hub-ask-photo'); photoButton.type = 'button'; photoButton.title = 'Add from a photo of your notes (or paste / drop one)'; photoButton.setAttribute('aria-label', 'Add dates from a photo of your notes'); photoButton.append(icon('camera'));
+  photoButton.addEventListener('click', () => photoInput.click());
+  ask.append(askIcon, askInput, photoInput, photoButton, askSend);
   const actions = node('div', undefined, 'hub-actions');
   const iconButton = (name, label, handler) => { const b = node('button', undefined, 'hub-icon-button'); b.type = 'button'; b.setAttribute('aria-label', label); b.title = label; b.append(icon(name)); b.addEventListener('click', handler); return b; };
   const undo = $('#undo-action');
@@ -423,6 +430,93 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
       result.plans = result.plans.map(plan => ({ ...plan, title: title || plan.title, reminderOnly: true, end: plus(plan.start, 5), guessedLength: false }));
     }
     showPlans(result.plans, text);
+  }
+  // ---------- Photo of notes -> review list -> events and deadlines ----------
+  photoInput.addEventListener('change', () => { const file = photoInput.files?.[0]; photoInput.value = ''; if (file) readPhotoFile(file); });
+  // Paste a photo or screenshot (Cmd/Ctrl+V) anywhere, or drop one on the page; text pastes are left alone.
+  const imageFrom = list => [...(list || [])].find(item => item.kind === 'file' && item.type.startsWith('image/'))?.getAsFile();
+  document.addEventListener('paste', event => {
+    const file = imageFrom(event.clipboardData?.items); if (!file) return;
+    event.preventDefault(); readPhotoFile(file);
+  });
+  const hasImage = event => [...(event.dataTransfer?.items || [])].some(item => item.kind === 'file' && item.type.startsWith('image/'));
+  document.addEventListener('dragover', event => { if (hasImage(event)) { event.preventDefault(); document.body.dataset.photoDrop = 'true'; } });
+  document.addEventListener('dragleave', event => { if (!event.relatedTarget) delete document.body.dataset.photoDrop; });
+  document.addEventListener('drop', event => {
+    delete document.body.dataset.photoDrop;
+    const file = imageFrom(event.dataTransfer?.items); if (!file) return;
+    event.preventDefault(); readPhotoFile(file);
+  });
+  async function readPhotoFile(file) {
+    askedFrom = 'photo';
+    const status = node('p', 'Reading your photo… this can take a few seconds.', 'hub-review-note'); status.setAttribute('role', 'status');
+    const preview = node('img', undefined, 'hub-photo-preview'); preview.alt = 'Your photo';
+    review.replaceChildren(preview, status); openSheet('add');
+    try {
+      const image = await shrinkPhoto(file); preview.src = image;
+      const token = await Promise.race([accessToken(), new Promise(resolve => setTimeout(() => resolve(''), 5000))]).catch(() => '');
+      const response = await fetch('/api/ai/photo', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ image, timeZone: model.getSettings().timeZone, note: askInput.value.trim() }), signal: AbortSignal.timeout(75000) });
+      const result = await response.json().catch(() => ({ error: 'The Day Compass server isn’t answering. Start it with npm start.' }));
+      if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
+      showPhotoItems(result, preview);
+    } catch (problem) {
+      status.textContent = problem.name === 'TimeoutError' ? 'Reading the photo took too long. Try again, or crop it to just the dates.' : problem.message || String(problem);
+      status.className = 'hub-review-error';
+    }
+  }
+  function showPhotoItems(result, preview) {
+    review.replaceChildren(preview);
+    if (!result.items.length) {
+      review.append(node('p', result.message || 'I couldn’t find any dates in that photo.', 'hub-review-question'), node('p', 'Try a sharper, well-lit photo with the dates in view, or type them in the ask bar.', 'hub-review-note'));
+      return;
+    }
+    review.append(node('p', result.message || `Found ${result.items.length} item${result.items.length === 1 ? '' : 's'}.`, 'hub-review-echo'), node('p', 'Check each one against your notes. Fix anything that was misread, untick what you don’t want, then add.', 'hub-review-note'));
+    const list = node('div', undefined, 'hub-photo-list'), rows = [];
+    const add = node('button', '', 'hub-primary'); add.type = 'button';
+    const error = node('p', '', 'hub-review-error'); error.setAttribute('role', 'alert');
+    const field = (label, type, value, extra = {}) => { const wrap = node('label', undefined, 'hub-photo-field'), input = node('input'); Object.assign(input, { type, value, ...extra }); wrap.append(node('span', label), input); return { wrap, input }; };
+    function update() {
+      const planned = planPhotoRows(rows.map(row => ({ title: row.title.input.value, date: row.date.input.value, start: row.start.input.value, end: row.end.input.value })), date => model.getDay(date).commitments);
+      let events = 0, deadlines = 0;
+      planned.forEach((plan, i) => {
+        const row = rows[i], on = row.check.checked && plan.title;
+        row.box.classList.toggle('is-off', !row.check.checked);
+        row.status.textContent = !plan.title ? 'Needs a name.' : plan.as === 'missing-date' ? 'Couldn’t read the date. Pick it above.' : plan.clash ? `Overlaps “${plan.clash.title}” ${plan.clash.start}–${plan.clash.end}, so it will be added as a deadline on ${dateLabel(plan.date)}.` : plan.as === 'event' ? `Calendar event · ${dateLabel(plan.date)} ${plan.start}–${plan.end}` : `Deadline on ${dateLabel(plan.date)} (no time on the note — add one to make it an event)`;
+        row.status.className = `hub-photo-status${plan.clash || plan.as === 'missing-date' ? ' is-warning' : ''}`;
+        if (on && plan.as === 'event') events++; else if (on && plan.as === 'deadline') deadlines++;
+        row.plan = plan;
+      });
+      const total = events + deadlines;
+      add.disabled = !total || rows.some(row => row.check.checked && (row.plan.as === 'missing-date' || !row.plan.title));
+      add.textContent = !total ? 'Nothing selected' : [events && `${events} event${events === 1 ? '' : 's'}`, deadlines && `${deadlines} deadline${deadlines === 1 ? '' : 's'}`].filter(Boolean).join(' + ').replace(/^/, 'Add ');
+    }
+    for (const item of result.items) {
+      const box = node('fieldset', undefined, 'hub-photo-item');
+      const check = node('input'); check.type = 'checkbox'; check.checked = !item.past; check.setAttribute('aria-label', `Include ${item.title}`);
+      const title = field('What', 'text', item.title, { maxLength: 120, required: true });
+      const date = field('Date', 'date', item.date, { required: true });
+      const start = field('Start (optional)', 'time', item.start), end = field('End', 'time', item.end);
+      const head = node('div', undefined, 'hub-photo-head'); head.append(check, title.wrap);
+      const when = node('div', undefined, 'hub-photo-when'); when.append(date.wrap, start.wrap, end.wrap);
+      const status = node('p', '', 'hub-photo-status');
+      box.append(head, when, status);
+      if (item.seen) box.append(node('small', `On the note: “${item.seen}”`, 'hub-photo-seen'));
+      if (item.past) box.append(node('small', 'This date has already passed, so it’s unticked.', 'hub-photo-seen'));
+      const row = { box, check, title, date, start, end, status }; rows.push(row);
+      for (const input of [check, title.input, date.input, start.input, end.input]) input.addEventListener(input === check ? 'change' : 'input', update);
+      list.append(box);
+    }
+    add.addEventListener('click', () => {
+      try {
+        const chosen = rows.filter(row => row.check.checked).map(row => row.plan);
+        const inputs = photoInputs(chosen, newId);
+        model.saveActivities(inputs);
+        closeSheet(reviewDialog); askInput.value = '';
+        const events = inputs.filter(input => input.kind === 'fixed').length, deadlines = inputs.length - events;
+        feedback(`Added ${[events && `${events} event${events === 1 ? '' : 's'}`, deadlines && `${deadlines} deadline${deadlines === 1 ? '' : 's'}`].filter(Boolean).join(' and ')} from your photo. Undo is at the top if anything looks wrong.`);
+      } catch (problem) { error.textContent = problem.message || String(problem); }
+    });
+    review.append(list, error, add); update();
   }
   ask.addEventListener('submit', event => {
     event.preventDefault();

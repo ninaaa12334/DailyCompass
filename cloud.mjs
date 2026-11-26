@@ -2,7 +2,7 @@
 // The URL and publishable key are public by design; security comes from row level security, so each
 // signed-in person can only read and save their own planner (see supabase-tools/schema.sql).
 export const SUPABASE_URL = 'https://ffjjvkbojuetcdmpqapx.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_uL03_LEg7r7fkqc0FkQGRg_1GzUSsVk';
+export const SUPABASE_KEY = 'sb_publishable_uL03_LEg7r7fkqc0FkQGRg_1GzUSsVk';
 
 let clientPromise = null;
 // supabase-umd.js is a local copy of @supabase/supabase-js 2.118.0 (the home server only allows its own scripts).
@@ -86,6 +86,8 @@ export async function finishGoogleSignIn(idToken) {
   if (error) throw fail(error);
   return data.user;
 }
+// The signed-in person's token, so our own server can check who is asking (used for reading photos).
+export async function accessToken() { const sb = await cloud(); const { data } = await sb.auth.getSession(); return data?.session?.access_token || ''; }
 export async function signOut() { const sb = await cloud(); await sb.auth.signOut(); }
 export async function sendPasswordReset(email) {
   const sb = await cloud();

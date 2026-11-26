@@ -52,6 +52,12 @@ The server independently checks proposals against sleep, commitments, buffers, k
 
 Personalization is opt-in. Explicit task completions and date postponements are recorded, capped at 1,000 entries per account. View, delete/reset or disable history in Settings. Interests, energy and style provide context when history is sparse. Time spent on a subject is never treated as proof of difficulty.
 
+### Add dates from a photo
+
+The camera button in the ask bar (or pasting / dropping an image anywhere on the dashboard) reads a photo of notes (for example handwritten test dates) and lists every dated item it finds for review. Items with a written time become calendar events; items without a time become deadlines on that day (type a time to make one an event). Timed items that would overlap something already in the calendar, such as school, are saved as deadlines instead. Nothing is saved until you press Add, and Undo works afterwards.
+
+The browser shrinks the photo (at most 1600px, JPEG) and sends it to the Node server's `/api/ai/photo`, which forwards it to Google Gemini when `GEMINI_API_KEY` is set (free tier, key from https://aistudio.google.com/apikey; on the free tier Google may use requests to improve its products) or otherwise to OpenAI with `store: false` (needs `OPENAI_API_KEY` and an image-capable `OPENAI_MODEL`; paid). It also needs a signed-in account and the Node server (`npm start`); a static-only deployment can't read photos. Requests are limited to one every few seconds and 40 per hour per account.
+
 ### Sign up, log in and Google accounts
 
 New username/password, Google OAuth and Clerk accounts start with a three-step welcome setup before the planner: choose a live-preview theme, planning hours/timezone and default reminder lead. “Let’s get started” saves these choices to the private account and opens the planner with a dismissible, optional Google Calendar connection invitation. No calendar grant or notification permission is requested during setup. Incomplete new-account setup resumes on the next login. Existing accounts without the new flag bypass onboarding and keep their schedules and notification preferences.
