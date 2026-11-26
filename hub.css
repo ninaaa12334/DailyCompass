@@ -624,3 +624,10 @@ body[data-calendar-wide=true] .hub-left { visibility: hidden; width: 0; overflow
 :root[data-mode=dark] .compass-workspace .week-day-heading small.deadline-name, .week-day-heading .deadline-name { opacity: 1; color: #ffd59a; }
 .mobile-agenda-deadline .deadline-chip { width: 100%; margin: 0; padding: 10px 12px; border-radius: 12px; font-size: .9rem; }
 @media (max-width: 580px) { .compass-workspace .month-cell .deadline-chip, .month-cell .deadline-chip { display: none; } }
+/* Quick colour row on the event card. */
+.event-card-colors { border: 0; padding: 0; margin: 4px 0 12px; min-width: 0; }
+.event-card-colors legend { font-size: .78rem; color: var(--muted); padding: 0; margin-bottom: 6px; }
+.event-card-colors .color-swatches { gap: 5px; }
+.event-card-colors .color-swatch span { width: 22px; height: 22px; }
+.event-card-colors .color-auto small { font-size: .72rem; margin-right: 4px; }
+.color-all-repeats { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: .82rem; color: var(--muted); cursor: pointer; }

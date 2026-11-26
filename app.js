@@ -17,6 +17,7 @@ import { initInterfaceMotion } from './interface-motion.mjs';
 import { initWorkspaceHub } from './workspace-hub.mjs';
 import { initReminderBanner } from './reminder-banner.mjs';
 import { EVENT_COLORS, colorOf } from './event-colors.mjs';
+import { colorRow } from './color-row.mjs';
 import { holidayControls } from './holidays.mjs';
 
 export async function startApp() {
@@ -205,6 +206,16 @@ export async function startApp() {
       if (item.seriesId && !isTask) { add('🗑 Delete this one', () => remove('one'), 'danger'); add('🗑 Delete all repeats', () => remove('series'), 'danger'); }
       else add('🗑 Delete', () => remove('one'), 'danger');
     }
+    // Quick colour: tap a swatch to recolour this item straight away (your own events and tasks only).
+    const colorTarget = isTask ? task : !isImport && !isRoutine && item.kind !== 'break' ? item : null;
+    if (colorTarget) card.querySelector('.event-card-note').after(colorRow({
+      current: colorTarget.color || '', auto: colorOf({ ...colorTarget, color: '' }), repeats: Boolean(colorTarget.seriesId),
+      onPick: (color, allRepeats) => attempt(() => {
+        model.setColor(isTask ? 'task' : 'fixed', colorTarget.id, color, allRepeats);
+        card.querySelector('.event-card-bar').style.background = colorOf({ ...colorTarget, color });
+        return true;
+      })
+    }));
     card.querySelector('[data-act=close]').addEventListener('click', () => card.close());
     if (!card.open) card.showModal();
   }

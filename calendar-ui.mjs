@@ -1,7 +1,7 @@
 ﻿import { capacity, minutes } from './calendar-store.mjs';
 import { storage } from './runtime.mjs';
 import { addDays, weekDates, monthDates } from './calendar-view.mjs';
-import { paintEvent } from './event-colors.mjs';
+import { paintEvent, eventPalette, colorOf } from './event-colors.mjs';
 import { holidaysOn } from './holidays.mjs';
 import { renderTimetable, updateNowLines } from './timetable-ui.mjs';
 import { zonedNow, dateLabel, durationLabel } from './clock.mjs';
@@ -31,10 +31,15 @@ export function initCalendar(model, handlers) {
   let monthFrom = '', monthTo = '', monthScrollTarget = '', extending = false, jumpScheduled = false;
   const addMonths = (month, n) => { const d = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + n, 1)); return d.toISOString().slice(0, 7); };
   const monthTitle = month => dateLabel(`${month}-01`, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' });
+  function paintDeadline(element, task) {
+    const { fill, line, ink } = eventPalette(colorOf(task), document.documentElement.dataset.mode === 'dark');
+    Object.assign(element.style, { background: fill, color: ink, boxShadow: `inset 3px 0 0 ${line}` });
+  }
   function deadlineChip(date, task) {
     const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'deadline-chip';
     chip.textContent = `📝 ${task.title}`; chip.title = `${task.title} · due ${dateLabel(date)}`; chip.setAttribute('aria-label', `Deadline: ${task.title}, due ${dateLabel(date)}. Open.`);
     chip.addEventListener('click', event => { event.stopPropagation(); open(date, { ...task, kind: 'task' }); });
+    if (task.color) paintDeadline(chip, task);
     return chip;
   }
   function monthCell(date, settingsNow, dueOn) {

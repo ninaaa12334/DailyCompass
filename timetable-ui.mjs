@@ -2,7 +2,7 @@ import { addDays, eventPosition, timeLabel } from './calendar-view.mjs';
 import { minutes, capacity } from './calendar-store.mjs';
 import { zonedNow } from './clock.mjs';
 import { activityVisual } from './activity-visuals.mjs';
-import { paintEvent } from './event-colors.mjs';
+import { paintEvent, eventPalette, colorOf } from './event-colors.mjs';
 
 export function renderTimetable(grid, options) {
   const { dates, selected, focusHour, getDay, getTasks, onSelect, onAdd, onEdit, onNavigate } = options;
@@ -34,7 +34,7 @@ export function renderTimetable(grid, options) {
     const detail = document.createElement('small');
     detail.textContent = `${Math.round(booked / 6) / 10}h booked`;
     // Deadlines show by name (like an all-day item) instead of "1 due".
-    if (due) { detail.className = 'deadline-name'; detail.textContent = `📝 ${dueTasks.map(task => task.title).join(' · ')}`; detail.title = dueTasks.map(task => `${task.title} (due)`).join('\n'); }
+    if (due) { detail.className = 'deadline-name'; detail.textContent = `📝 ${dueTasks.map(task => task.title).join(' · ')}`; detail.title = dueTasks.map(task => `${task.title} (due)`).join('\n'); if (dueTasks[0].color) { const { fill, line, ink } = eventPalette(colorOf(dueTasks[0]), document.documentElement.dataset.mode === 'dark'); Object.assign(detail.style, { background: fill, color: ink, boxShadow: `inset 3px 0 0 ${line}` }); } }
     header.setAttribute('aria-label', `${date}, ${day.commitments.length} activities, ${booked} minutes booked within planning hours, ${due} incomplete task deadlines. Select day.`);
     const holiday = options.getHoliday?.(date) || [];
     if (holiday.length) { const tag = document.createElement('small'); tag.className = 'holiday-name'; tag.textContent = holiday.join(' · '); tag.title = holiday.join(' · '); header.dataset.holiday = 'true'; header.append(label, number, tag, detail); }

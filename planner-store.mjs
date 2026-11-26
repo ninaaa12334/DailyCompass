@@ -187,7 +187,7 @@ export function createPlannerStore(storage) {
       const day = clone(state.days[date] || { start: state.settings.planningStart, end: state.settings.planningEnd, color: 'theme', commitments: [] }); day.date = date;
       const planned = (state.plans[date] || []).map(entry => {
         const task = entry.kind === 'task' ? state.tasks.find(task => task.id === entry.taskId) : null;
-        return { ...entry, ...(task ? { title: task.title, category: task.category, priority: task.priority, notes: task.notes, reminder: task.reminder, completed: task.completed || entry.completed } : {}), date };
+        return { ...entry, ...(task ? { title: task.title, category: task.category, priority: task.priority, notes: task.notes, reminder: task.reminder, completed: task.completed || entry.completed, ...(task.color ? { color: task.color } : {}) } : {}), date };
       });
       if (importSource !== state.imports || importZone !== state.settings.timeZone || !importCache) { importCache = importedDays(state.imports || [], state.settings.timeZone); importSource = state.imports; importZone = state.settings.timeZone; }
       day.commitments = [...day.commitments.map(item => ({ ...item, date })), ...planned, ...routineEvents(date, state.settings), ...(importCache[date] || []).map(e => ({ ...e, kind: 'fixed', sourceImport: true, reminder: 'default' }))];
@@ -199,6 +199,18 @@ export function createPlannerStore(storage) {
     setHours(date, settings) { commit(next => { Object.assign(ensureDay(next, date), settings); }); },
     saveActivity(input, original = null, scope = 'one') { commit(next => applyActivity(next, input, original, scope)); },
     // Several new activities as one change (one undo step), e.g. school on Mon–Fri.
+    // Change only the colour ('' = automatic), keeping repeats linked. allRepeats colours the whole series.
+    setColor(kind, id, color, allRepeats = false) {
+      commit(next => {
+        if (kind === 'task') {
+          const task = next.tasks.find(t => t.id === id); ensure(task, 'This activity no longer exists.');
+          for (const t of next.tasks) if (t.id === id || (allRepeats && task.seriesId && t.seriesId === task.seriesId)) { if (color) t.color = color; else delete t.color; }
+          return;
+        }
+        const found = Object.values(next.days).flatMap(day => day.commitments).find(item => item.id === id); ensure(found, 'This activity no longer exists.');
+        for (const day of Object.values(next.days)) for (const item of day.commitments) if (item.id === id || (allRepeats && found.seriesId && item.seriesId === found.seriesId)) { if (color) item.color = color; else delete item.color; }
+      });
+    },
     saveActivities(inputs) { commit(next => { for (const input of inputs) applyActivity(next, input); }); },
 
     toggle(kind, id, date) { commit(next => {
