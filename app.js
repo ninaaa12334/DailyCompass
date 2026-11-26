@@ -194,7 +194,7 @@ export async function startApp() {
     card.innerHTML = '<div class="event-card-bar"></div><div class="event-card-body"><div class="event-card-head"><h2 id="event-card-title"></h2><button type="button" class="hub-sheet-done" data-act="close">Close</button></div><p class="event-card-when"></p><p class="event-card-note"></p><div class="event-card-actions"></div></div>';
     card.querySelector('.event-card-bar').style.background = colorOf(item);
     card.querySelector('h2').textContent = item.title;
-    card.querySelector('.event-card-when').textContent = `${dateLabel(date, { year: 'numeric' })} · ${item.isReminder ? `🔔 Reminder at ${item.start}` : `${item.start}–${item.end}`}${item.seriesId ? ' · repeats' : ''}`;
+    card.querySelector('.event-card-when').textContent = isTask && !item.start ? `📝 Due ${dateLabel(item.deadline || date, { year: 'numeric' })}` : `${dateLabel(date, { year: 'numeric' })} · ${item.isReminder ? `🔔 Reminder at ${item.start}` : `${item.start}–${item.end}`}${item.seriesId ? ' · repeats' : ''}`;
     card.querySelector('.event-card-note').textContent = isImport ? 'From Google Calendar. Change or delete it in Google Calendar.' : isRoutine ? 'Part of your weekly routines.' : item.notes || '';
     const actions = card.querySelector('.event-card-actions');
     const add = (label, handler, style = 'secondary') => { const b = document.createElement('button'); b.type = 'button'; b.className = style; b.textContent = label; b.addEventListener('click', handler); actions.append(b); return b; };

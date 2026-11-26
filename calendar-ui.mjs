@@ -31,9 +31,15 @@ export function initCalendar(model, handlers) {
   let monthFrom = '', monthTo = '', monthScrollTarget = '', extending = false, jumpScheduled = false;
   const addMonths = (month, n) => { const d = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + n, 1)); return d.toISOString().slice(0, 7); };
   const monthTitle = month => dateLabel(`${month}-01`, { weekday: undefined, month: 'long', day: undefined, year: 'numeric' });
+  function deadlineChip(date, task) {
+    const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'deadline-chip';
+    chip.textContent = `📝 ${task.title}`; chip.title = `${task.title} · due ${dateLabel(date)}`; chip.setAttribute('aria-label', `Deadline: ${task.title}, due ${dateLabel(date)}. Open.`);
+    chip.addEventListener('click', event => { event.stopPropagation(); open(date, { ...task, kind: 'task' }); });
+    return chip;
+  }
   function monthCell(date, settingsNow, dueOn) {
       const day = model.getDay(date), { ratio, booked } = planningCapacity(day, model.getSettings());
-      const due = dueOn.get(date) || 0;
+      const dueTasks = dueOn.get(date) || [], due = dueTasks.length;
       const cell = document.createElement('div'); cell.className = 'month-cell';
       const button = document.createElement('button'); button.type = 'button'; button.className = 'calendar-day'; button.textContent = Number(date.slice(-2));
       Object.assign(button.dataset, { date, color: day.color, load: ratio === 0 ? '0' : ratio <= 1 / 3 ? '1' : ratio <= 2 / 3 ? '2' : '3', due: due ? 'true' : 'false' });
@@ -52,14 +58,16 @@ export function initCalendar(model, handlers) {
         if (item.kind !== 'break') event.addEventListener('click', () => open(date, item)); cell.append(event);
       }
       if (events.length > 3) { const more = document.createElement('button'); more.type = 'button'; more.className = 'month-more'; more.textContent = `+${events.length - 3} more`; more.addEventListener('click', () => { view = 'day'; choose(date); }); cell.append(more); }
-      if (due) { const note = document.createElement('small'); note.className = 'month-due'; note.textContent = `${due} due`; cell.append(note); }
+      // Deadlines (e.g. a test with no time) show by name, like all-day items; tap to open.
+      for (const task of dueTasks.slice(0, 2)) cell.append(deadlineChip(date, task));
+      if (due > 2) { const note = document.createElement('small'); note.className = 'month-due'; note.textContent = `+${due - 2} more due`; cell.append(note); }
       return cell;
   }
   function renderMonth() {
     const scroller = $('#month-view'), host = $('#calendar-days'), month = selected.slice(0, 7);
     if (!monthFrom || month < monthFrom || month > monthTo) { monthFrom = addMonths(month, -2); monthTo = addMonths(month, 6); monthScrollTarget ||= month; }
     const keep = scroller.scrollTop, settingsNow = model.getSettings(), dueOn = new Map();
-    for (const task of model.getTasks()) if (!task.completed && task.deadline) dueOn.set(task.deadline, (dueOn.get(task.deadline) || 0) + 1);
+    for (const task of model.getTasks()) if (!task.completed && task.deadline) dueOn.set(task.deadline, [...(dueOn.get(task.deadline) || []), task]);
     host.replaceChildren();
     for (let m = monthFrom; m <= monthTo; m = addMonths(m, 1)) {
       const block = document.createElement('section'); block.className = 'month-block'; block.dataset.month = m;
@@ -223,6 +231,9 @@ export function initCalendar(model, handlers) {
     const list = $('#mobile-agenda-list'); list.replaceChildren();
     const activities = model.getDay(selected).commitments.sort((a, b) => minutes(a.start) - minutes(b.start));
     $('#mobile-agenda-empty').textContent = activities.length ? '' : 'A clear day. Tap + Add to plan something.';
+    const dueToday = model.getTasks().filter(task => !task.completed && task.deadline === selected);
+    if (dueToday.length) $('#mobile-agenda-empty').textContent = '';
+    for (const task of dueToday) { const li = document.createElement('li'); li.className = 'mobile-agenda-deadline'; li.append(deadlineChip(selected, task)); list.append(li); }
     for (const item of activities) {
       const li = document.createElement('li');
       const entry = document.createElement(item.kind === 'break' ? 'div' : 'button');
@@ -253,7 +264,7 @@ export function initCalendar(model, handlers) {
     if (view === 'month') renderMonth();
     else if (view === 'year') renderYear();
     else {
-      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, getHoliday: date => holidaysOn(model.getSettings(), date), timeZone: model.getSettings().timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.getSettings()),
+      renderTimetable($('#week-grid'), { dates: compact && view === 'week' ? [selected] : dates, selected, focusHour, getHoliday: date => holidaysOn(model.getSettings(), date),  timeZone: model.getSettings().timeZone, getDay: model.getDay, getTasks: model.getTasks, getCapacity: day => planningCapacity(day, model.getSettings()),
         onSelect: date => view === 'week' ? openDay(date) : choose(date), onAdd: (date, start) => open(date, null, start), onEdit: (date, item) => open(date, item),
         onNavigate: (date, hour) => { focusHour = hour; choose(date); [...document.querySelectorAll('.time-slot')].find(node => node.dataset.date === date && Number(node.dataset.hour) === hour)?.focus(); }
       });

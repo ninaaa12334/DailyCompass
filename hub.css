@@ -615,3 +615,12 @@ body[data-calendar-wide=true] .hub-left { visibility: hidden; width: 0; overflow
 .hub .hub-rail-icons .hub-tile:hover { transform: none !important; }
 :root[data-decor] .hub .hub-rail-icons > *::before { content: none !important; display: none !important; }
 :root[data-mode=dark] .hub .hub-rail-icons .hub-tile .hub-icon { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+
+/* Deadlines (tasks with a due date, e.g. a test with no time) shown by name in the calendar. */
+.compass-workspace .deadline-chip, .deadline-chip { display: block; width: 100%; max-width: none; align-self: stretch; box-sizing: border-box; margin: 2px 0 0; padding: 2px 6px; min-height: 0; border: 0; border-radius: 6px; text-align: left; font: inherit; font-size: .68rem; font-weight: 650; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; color: #8a4b00; background: color-mix(in srgb, #e8a33d 22%, transparent); box-shadow: inset 3px 0 0 #e8a33d; }
+.deadline-chip:hover, .deadline-chip:focus-visible { background: color-mix(in srgb, #e8a33d 34%, transparent); }
+:root[data-mode=dark] .deadline-chip { color: #ffd59a; }
+.compass-workspace .week-day-heading small.deadline-name, .week-day-heading .deadline-name { opacity: 1; display: block; max-width: 100%; margin-top: 2px; padding: 2px 6px; font-size: .72rem; border-radius: 5px; color: #8a4b00; background: color-mix(in srgb, #e8a33d 22%, transparent); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root[data-mode=dark] .compass-workspace .week-day-heading small.deadline-name, .week-day-heading .deadline-name { opacity: 1; color: #ffd59a; }
+.mobile-agenda-deadline .deadline-chip { width: 100%; margin: 0; padding: 10px 12px; border-radius: 12px; font-size: .9rem; }
+@media (max-width: 580px) { .compass-workspace .month-cell .deadline-chip, .month-cell .deadline-chip { display: none; } }

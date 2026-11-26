@@ -400,7 +400,7 @@ textarea { width: 100%; font: inherit; color: var(--text); background: var(--sur
   .month-cell .calendar-day { width: 100%; min-height: 3.5rem; padding: .2rem 0; flex-direction: column; gap: .15rem; font-size: 1rem; border-radius: .6rem; }
   .mobile-month-indicator { display: block; min-height: .65rem; font-size: .6rem; line-height: 1; letter-spacing: .1em; }
   .month-cell .calendar-day[data-due="true"]::after { left: auto; right: .2rem; top: .2rem; bottom: auto; }
-  .month-cell .month-event, .month-cell .month-more, .month-cell .month-due { display: none; }
+  .month-cell .month-event, .month-cell .month-more, .month-cell .month-due, .month-cell .deadline-chip { display: none; }
   .mobile-month-agenda { display: block; border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem; }
   .mobile-month-agenda h3 { margin-bottom: 0; font-size: .95rem; }
   #mobile-agenda-list { margin-top: .5rem; }

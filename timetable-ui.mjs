@@ -30,9 +30,11 @@ export function renderTimetable(grid, options) {
     label.textContent = new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' });
     const number = document.createElement('strong');
     number.textContent = Number(date.slice(-2));
-    const due = tasks.filter(task => !task.completed && task.deadline === date).length;
+    const dueTasks = tasks.filter(task => !task.completed && task.deadline === date), due = dueTasks.length;
     const detail = document.createElement('small');
-    detail.textContent = due ? `${due} due` : `${Math.round(booked / 6) / 10}h booked`;
+    detail.textContent = `${Math.round(booked / 6) / 10}h booked`;
+    // Deadlines show by name (like an all-day item) instead of "1 due".
+    if (due) { detail.className = 'deadline-name'; detail.textContent = `📝 ${dueTasks.map(task => task.title).join(' · ')}`; detail.title = dueTasks.map(task => `${task.title} (due)`).join('\n'); }
     header.setAttribute('aria-label', `${date}, ${day.commitments.length} activities, ${booked} minutes booked within planning hours, ${due} incomplete task deadlines. Select day.`);
     const holiday = options.getHoliday?.(date) || [];
     if (holiday.length) { const tag = document.createElement('small'); tag.className = 'holiday-name'; tag.textContent = holiday.join(' · '); tag.title = holiday.join(' · '); header.dataset.holiday = 'true'; header.append(label, number, tag, detail); }
