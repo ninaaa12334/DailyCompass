@@ -308,7 +308,7 @@ export async function startApp() {
     welcome.querySelector('button').addEventListener('click', () => welcome.remove()); $('.dashboard-heading').after(welcome);
   }
   renderTasks(); renderSummary(); tickReminders(); initInterfaceMotion();
-  initWorkspaceHub({ model, now, feedback, account, banner, openActivity: showEventCard });
+  initWorkspaceHub({ model, now, feedback, account, banner });
   // Tests added from photos before all-day items existed were saved as tasks; move them out of Tasks once.
   // Runs after account sync is connected so the change is saved to the account like any other edit.
   try { const moved = model.movePhotoDeadlinesToCalendar(); if (moved) feedback(`Moved ${moved} test${moved === 1 ? '' : 's'} from your photo out of Tasks. ${moved === 1 ? 'It stays' : 'They stay'} in the calendar for the whole day.`); } catch {}
