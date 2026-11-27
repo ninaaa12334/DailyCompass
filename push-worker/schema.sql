@@ -39,3 +39,13 @@ CREATE TABLE IF NOT EXISTS google_states (
 -- Sign-in with Google through this service (added later; run once on existing databases):
 -- ALTER TABLE google_states ADD COLUMN purpose TEXT NOT NULL DEFAULT 'connect';
 -- ALTER TABLE google_states ADD COLUMN nonce TEXT NOT NULL DEFAULT '';
+
+-- How often each person used the AI photo reader (rate limit). Also created automatically on first use.
+CREATE TABLE IF NOT EXISTS ai_usage (
+  user_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  window_start INTEGER NOT NULL,
+  count INTEGER NOT NULL,
+  last INTEGER NOT NULL,
+  PRIMARY KEY (user_id, kind)
+);

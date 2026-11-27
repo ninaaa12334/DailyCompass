@@ -33,7 +33,9 @@ export function taskProductivity(state, date, period = 'day') {
 // filled with finished things, averaged over every day in the period, so one busy day in a quiet week
 // scores lower than a full week.
 const toMin = time => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
-export function busyProductivity(getDay, settings, date, period = 'day', { now = null, tasks = [], scheduledTaskIds = new Set() } = {}) {
+// All-day items (a test with no time) count as an hour once their day is over, or when ticked off.
+export const ALL_DAY_CREDIT = 60;
+export function busyProductivity(getDay, settings, date, period = 'day', { now = null, tasks = [], scheduledTaskIds = new Set(), allDay = [] } = {}) {
   let start = date, end = date;
   if (period === 'week') [start, , , , , , end] = weekDates(date);
   if (period === 'month') { start = `${date.slice(0, 7)}-01`; const next = new Date(`${start}T12:00:00Z`); next.setUTCMonth(next.getUTCMonth() + 1); end = addDays(next.toISOString().slice(0, 10), -1); }
@@ -60,6 +62,7 @@ export function busyProductivity(getDay, settings, date, period = 'day', { now =
     for (const [a, b] of intervals) { if (b > reach) { minutes += b - Math.max(a, reach); reach = b; } }
     // Finished tasks that were never put on the calendar still count, on their own date.
     for (const task of tasks) if (task.completed && !scheduledTaskIds.has(task.id) && (task.date || task.deadline) === day) { minutes += task.duration || 30; tasksDone++; }
+    for (const item of allDay) if (item.date === day && (item.done || (now && day < now.date))) { minutes += ALL_DAY_CREDIT; tasksDone++; }
     const dayRatio = Math.min(1, minutes / usable);
     ratio += dayRatio; doneMinutes += minutes; days++;
     if (!busiest || dayRatio > busiest.ratio) busiest = { date: day, ratio: dayRatio };
@@ -78,7 +81,7 @@ export function initProductivity({ model, storage, selectedDate, now }) {
   close.type = 'button'; close.className = 'secondary productivity-close'; close.textContent = 'Close';
   close.addEventListener('click', () => dialog.close());
   dialog.append(close, $('.progress-widget'));
-  dialog.querySelector('.productivity-definition').textContent = 'What you actually got done: finished tasks, plus events and classes once their time has passed. Plans still ahead and reminders don’t count. It’s the share of your planning hours filled with finished things, averaged over every day in the period.';
+  dialog.querySelector('.productivity-definition').textContent = 'What you actually got done: finished tasks, tests and other all-day items once they’re over (or ticked off), plus events and classes once their time has passed. Plans still ahead and reminders don’t count. It’s the share of your planning hours filled with finished things, averaged over every day in the period.';
   document.body.append(dialog);
   const summary = document.createElement('div'); summary.className = 'workspace-summary';
   const trigger = document.createElement('button');
@@ -92,7 +95,7 @@ export function initProductivity({ model, storage, selectedDate, now }) {
   try { const saved = storage.getItem('day-compass.productivity-period.v1'); if (['day', 'week', 'month'].includes(saved)) period = saved; } catch {}
   function render() {
     const planning = model.getPlanning(), scheduledTaskIds = new Set(Object.values(planning.plans).flatMap(entries => entries.filter(e => e.kind === 'task').map(e => e.taskId)));
-    const date = selectedDate(), result = busyProductivity(model.getDay, model.getSettings(), date, period, { now: now?.(), tasks: planning.tasks, scheduledTaskIds });
+    const date = selectedDate(), result = busyProductivity(model.getDay, model.getSettings(), date, period, { now: now?.(), tasks: planning.tasks, scheduledTaskIds, allDay: model.getAllDay() });
     const ring = $('#task-progress'), word = { day: 'day', week: 'week', month: 'month' }[period];
     ring.setAttribute('aria-valuenow', result.percent);
     ring.setAttribute('aria-valuetext', `${result.percent}% of your planning time filled with finished things this ${word}`);
@@ -101,10 +104,11 @@ export function initProductivity({ model, storage, selectedDate, now }) {
     $('#productivity-percent').textContent = `${result.percent}%`;
     $('#mini-productivity-percent').textContent = `${result.percent}%`;
     $('.mini-productivity-ring').style.setProperty('--completion', `${result.percent}%`);
-    $('#mini-productivity-period').textContent = `${{ day: 'Daily', week: 'Weekly', month: 'Monthly' }[period]} progress`;
+
     trigger.setAttribute('aria-label', `Productivity: ${result.percent}% done this ${word}. Open daily, weekly and monthly details`);
     const hours = Math.round(result.doneMinutes / 6) / 10;
-    $('#progress-value').textContent = `${hours} h done this ${word}${result.tasksDone ? ` · ${result.tasksDone} task${result.tasksDone === 1 ? '' : 's'} finished` : ''}`;
+    $('#mini-productivity-period').textContent = `${period === 'day' ? (date === now?.()?.date ? 'Today' : dateLabel(date)) : { week: 'This week', month: 'This month' }[period]} · ${hours} h done`;
+    $('#progress-value').textContent = `${hours} h done this ${word}${result.tasksDone ? ` · ${result.tasksDone} thing${result.tasksDone === 1 ? '' : 's'} finished` : ''}`;
     $('#productivity-message').textContent = result.percent >= 75 ? `A really productive ${word}. Remember to rest too.` : result.percent >= 40 ? `Good progress this ${word}.` : result.percent > 0 ? `A steady start. Finish a task to keep it growing.` : `Nothing finished this ${word} yet. Tick off a task to start.`;
     $('#progress-scope').textContent = period === 'month' ? dateLabel(date, { weekday: undefined, day: undefined, month: 'long', year: 'numeric' }) : period === 'week' ? `${dateLabel(result.start)} – ${dateLabel(result.end)}` : dateLabel(date, { year: 'numeric' });
     document.querySelectorAll('[data-productivity-period]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.productivityPeriod === period)));

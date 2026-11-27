@@ -9,3 +9,8 @@ test('specific sports keep their visual identity independently of broader catego
   assert.equal(activityVisual({ title: 'Maths revision' }).kind, 'study');
   assert.equal(activityVisual({ title: 'Tea break', kind: 'break' }).kind, 'rest');
 });
+test('tests and exams look the same however they were added', () => {
+  for (const title of ['History test', 'Maths test', 'Biology exam', 'English quiz', 'Physics midterm', 'Test: chapter 4', 'Testi i matematikës'])
+    assert.equal(activityVisual({ title, category: 'Personal projects' }).kind, 'test', title);
+  assert.notEqual(activityVisual({ title: 'Latest news' }).kind, 'test');
+});

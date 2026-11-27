@@ -192,15 +192,17 @@ export async function startApp() {
   // All-day item (e.g. a test with no time): calendar-only, never a task.
   function showAllDayCard(item) {
     card.innerHTML = '<div class="event-card-bar"></div><div class="event-card-body"><div class="event-card-head"><h2 id="event-card-title"></h2><button type="button" class="hub-sheet-done" data-act="close">Close</button></div><p class="event-card-when"></p><p class="event-card-note"></p><form class="all-day-edit" hidden><label>Name<input name="title" maxlength="120" required></label><label>Date<input name="date" type="date" required></label><div class="all-day-edit-actions"><button class="hub-primary">Save</button><button type="button" class="secondary" data-act="cancel">Cancel</button></div></form><div class="event-card-actions"></div></div>';
-    const bar = card.querySelector('.event-card-bar'), paint = color => { bar.style.background = color ? colorOf({ color }) : '#e8a33d'; };
+    const bar = card.querySelector('.event-card-bar'), paint = color => { bar.style.background = colorOf({ ...item, color }); };
     paint(item.color);
     card.querySelector('h2').textContent = item.title;
     card.querySelector('.event-card-when').textContent = `📝 All day · ${dateLabel(item.date, { year: 'numeric' })}`;
     card.querySelector('.event-card-note').textContent = item.notes || '';
-    card.querySelector('.event-card-note').after(colorRow({ current: item.color || '', auto: '#e8a33d', repeats: false, onPick: color => attempt(() => { model.setColor('allDay', item.id, color); paint(color); }) }));
+    card.querySelector('.event-card-note').after(colorRow({ current: item.color || '', auto: colorOf({ ...item, color: '' }), repeats: false, onPick: color => attempt(() => { model.setColor('allDay', item.id, color); paint(color); }) }));
     const edit = card.querySelector('.all-day-edit'), actions = card.querySelector('.event-card-actions');
     const add = (label, handler, style = 'secondary') => { const b = document.createElement('button'); b.type = 'button'; b.className = style; b.textContent = label; b.addEventListener('click', handler); actions.append(b); return b; };
-    add('Edit', () => { edit.hidden = false; actions.hidden = true; edit.elements.title.value = item.title; edit.elements.date.value = item.date; edit.elements.title.focus(); }, 'hub-primary');
+    // Ticking it off counts it towards productivity today (it counts by itself once the day is over).
+    add(item.done ? '✓ Done · undo' : 'Mark done', () => { if (attempt(() => model.toggleAllDay(item.id))) { card.close(); feedback(item.done ? 'Marked not done.' : 'Nice one! It counts towards your productivity.'); } }, item.done ? 'secondary' : 'hub-primary');
+    add('Edit', () => { edit.hidden = false; actions.hidden = true; edit.elements.title.value = item.title; edit.elements.date.value = item.date; edit.elements.title.focus(); });
     // Turns it into a normal timed event; the all-day item goes once that event is saved.
     add('Add a time', () => { card.close(); openActivity({ date: item.date, title: item.title, start: 9 * 60, replaceAllDay: item.id }); });
     add('🗑 Delete', () => { if (attempt(() => model.removeAllDay(item.id))) { card.close(); feedback('Deleted. Undo is at the top.'); } }, 'danger');
@@ -306,7 +308,7 @@ export async function startApp() {
     welcome.querySelector('button').addEventListener('click', () => welcome.remove()); $('.dashboard-heading').after(welcome);
   }
   renderTasks(); renderSummary(); tickReminders(); initInterfaceMotion();
-  initWorkspaceHub({ model, now, feedback, account, banner });
+  initWorkspaceHub({ model, now, feedback, account, banner, openActivity: showEventCard });
   // Tests added from photos before all-day items existed were saved as tasks; move them out of Tasks once.
   // Runs after account sync is connected so the change is saved to the account like any other edit.
   try { const moved = model.movePhotoDeadlinesToCalendar(); if (moved) feedback(`Moved ${moved} test${moved === 1 ? '' : 's'} from your photo out of Tasks. ${moved === 1 ? 'It stays' : 'They stay'} in the calendar for the whole day.`); } catch {}

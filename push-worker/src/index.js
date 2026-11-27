@@ -1,5 +1,6 @@
 import { sendPush, b64url } from './webpush.js';
 import { handleGoogle } from './google.js';
+import { handleAi } from './ai.js';
 
 // Day Compass push service.
 //   GET    /vapid                      → public key browsers need to subscribe
@@ -7,6 +8,7 @@ import { handleGoogle } from './google.js';
 //   PUT    /devices/:id/reminders      → replace that device's upcoming reminders (Bearer token)
 //   POST   /devices/:id/test           → send a test notification now (Bearer token)
 //   DELETE /devices/:id                → turn notifications off and forget the device (Bearer token)
+//   POST   /ai/photo                   → read a photo of notes with AI (see ai.js)
 // Every minute (cron) due reminders are sent and removed.
 
 const MAX_REMINDERS = 1000, MAX_AHEAD = 70 * 86400000, LATE_LIMIT = 15 * 60000;
@@ -36,6 +38,7 @@ async function handle(request, env) {
   const url = new URL(request.url), path = url.pathname.replace(/\/+$/, '') || '/';
   if (request.method === 'GET' && path === '/vapid') return json({ publicKey: env.VAPID_PUBLIC_KEY });
   if (path.startsWith('/google/')) return handleGoogle(request, env, path);
+  if (path.startsWith('/ai/')) return handleAi(request, env, path);
   if (request.method === 'GET' && path === '/') return json({ service: 'Day Compass push', ok: true });
 
   if (request.method === 'POST' && path === '/devices') {

@@ -39,15 +39,15 @@ export function initCalendar(model, handlers) {
     const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'deadline-chip';
     chip.textContent = `📝 ${task.title}`; chip.title = `${task.title} · due ${dateLabel(date)}`; chip.setAttribute('aria-label', `Deadline: ${task.title}, due ${dateLabel(date)}. Open.`);
     chip.addEventListener('click', event => { event.stopPropagation(); open(date, { ...task, kind: 'task' }); });
-    if (task.color) paintDeadline(chip, task);
+    paintDeadline(chip, task);
     return chip;
   }
   // All-day items (e.g. a test with no time): same chip, but they're calendar-only, not tasks.
   function allDayChip(date, item) {
     const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'deadline-chip all-day-chip';
-    chip.textContent = `📝 ${item.title}`; chip.title = `${item.title} · all day ${dateLabel(date)}`; chip.setAttribute('aria-label', `${item.title}, all day ${dateLabel(date)}. Open.`);
+    chip.textContent = `${item.done ? '✓' : activityVisual(item).icon} ${item.title}`; chip.title = `${item.title} · all day ${dateLabel(date)}${item.done ? ' · done' : ''}`; if (item.done) chip.classList.add('done'); chip.setAttribute('aria-label', `${item.title}, all day ${dateLabel(date)}. Open.`);
     chip.addEventListener('click', event => { event.stopPropagation(); choose(date); handlers.onActivity({ date, item: { ...item, allDay: true } }); });
-    if (item.color) paintDeadline(chip, item);
+    paintDeadline(chip, item);
     return chip;
   }
   // Everything shown by name above a day's times: all-day items first, then task deadlines.
@@ -237,6 +237,9 @@ export function initCalendar(model, handlers) {
       const weekday = document.createElement('span'); weekday.textContent = dateLabel(date, { weekday: 'short', month: undefined, day: undefined });
       const number = document.createElement('strong'); number.textContent = Number(date.slice(-2));
       button.append(weekday, number);
+      // A dot under the date when there's an all-day item or deadline (e.g. a test), in its colour.
+      const first = model.getAllDay(date)[0] || model.getTasks().find(task => !task.completed && task.deadline === date);
+      if (first) { button.dataset.hasItems = 'true'; button.style.setProperty('--item-dot', colorOf(first)); }
       button.addEventListener('click', () => { choose(date); [...strip.querySelectorAll('button')].find(node => node.dataset.date === date)?.focus(); }); strip.append(button);
     }
   }
@@ -270,10 +273,14 @@ export function initCalendar(model, handlers) {
     document.querySelectorAll('[data-calendar-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.calendarView === view)));
     $('#month-view').hidden = view !== 'month'; $('#year-view').hidden = view !== 'year'; $('#week-view').hidden = view === 'month' || view === 'year';
     $('#mobile-week-days').hidden = !compact || view === 'month' || view === 'year';
+    // Phones hide the grid's day header, so the selected day's all-day items and deadlines go here.
+    // (They sit inside the date strip, under the dates, and are filled in after it's drawn.)
+    const dayChips = $('#mobile-day-chips');
     $('#mobile-month-agenda').hidden = !compact || view === 'week' || view === 'year';
     $('#calendar-timezone').textContent = `Times in ${model.getSettings().timeZone}`;
     $('#calendar-instructions').textContent = compact ? view === 'month' ? 'Tap a date to see its activities below. Dots mark activities.' : view === 'week' ? 'Choose a day above its timeline. Tap a time to add an activity.' : 'Tap a time to add, or an activity to edit.' : view === 'month' ? 'Select a date for its agenda. Click an activity to edit it.' : 'Click a time to add an activity. Arrow keys move between slots. Hatched areas are outside planning hours.';
     if (compact && !['month', 'year'].includes(view)) renderMobileWeek();
+    if (dayChips) { const list = compact && view === 'week' ? chipsFor(selected) : []; dayChips.replaceChildren(...list); dayChips.hidden = !list.length; if (list.length) $('#mobile-week-days').append(dayChips); }
     if (compact && !['week', 'year'].includes(view)) { renderMobileAgenda(); if (view === 'day') $('#week-view').before($('#mobile-month-agenda')); else $('#month-view').after($('#mobile-month-agenda')); }
     if (view !== 'year') yearKey = '';
     if (view === 'month') renderMonth();

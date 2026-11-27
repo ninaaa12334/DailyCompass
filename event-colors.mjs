@@ -11,7 +11,7 @@ export const EVENT_COLORS = {
 };
 // Google Calendar's event colour numbers.
 export const GOOGLE_COLOR_IDS = { 1: 'lavender', 2: 'sage', 3: 'grape', 4: 'flamingo', 5: 'banana', 6: 'tangerine', 7: 'peacock', 8: 'graphite', 9: 'blueberry', 10: 'basil', 11: 'tomato' };
-const BY_KIND = { reminder: 'tangerine', school: 'blueberry', study: 'peacock', football: 'basil', exercise: 'basil', volleyball: 'sage', creative: 'grape', rest: 'banana' };
+const BY_KIND = { test: 'tomato', reminder: 'tangerine', school: 'blueberry', study: 'peacock', football: 'basil', exercise: 'basil', volleyball: 'sage', creative: 'grape', rest: 'banana' };
 const BY_CATEGORY = { Study: 'peacock', Exercise: 'basil', Work: 'graphite', Social: 'flamingo', Appointments: 'tangerine', Chores: 'banana', 'Personal projects': 'lavender' };
 
 // Which colour an item shows: its own choice, then (for Google events) Google's colour, then automatic.

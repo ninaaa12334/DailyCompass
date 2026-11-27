@@ -20,7 +20,9 @@
     "GOOGLE_CLIENT_ID": "88571627712-80ju191ofue37chvtar32l29gg1k7hcr.apps.googleusercontent.com",
     // Used only to check who is signed in (public key, safe to commit).
     "SUPABASE_URL": "https://ffjjvkbojuetcdmpqapx.supabase.co",
-    "SUPABASE_KEY": "sb_publishable_uL03_LEg7r7fkqc0FkQGRg_1GzUSsVk"
+    "SUPABASE_KEY": "sb_publishable_uL03_LEg7r7fkqc0FkQGRg_1GzUSsVk",
+    // Reading photos of notes with AI (secret GEMINI_API_KEY; free key from aistudio.google.com).
+    "GEMINI_MODEL": "gemini-flash-lite-latest"
   }
-  // Secrets (never committed): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, TOKEN_KEY, GOOGLE_CLIENT_SECRET
+  // Secrets (never committed): VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, TOKEN_KEY, GOOGLE_CLIENT_SECRET, GEMINI_API_KEY
 }

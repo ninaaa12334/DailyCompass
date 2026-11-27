@@ -61,3 +61,18 @@ test('productivity grows with finished things, not with plans or reminders', () 
   const tasks = [{ id: 't1', completed: true, date: '2026-11-20', duration: 360 }, { id: 't2', completed: false, date: '2026-11-20', duration: 360 }];
   assert.equal(busyProductivity(model.getDay, settings, '2026-11-20', 'day', { ...after, tasks }).percent, 50, 'finished tasks count, unfinished ones do not');
 });
+
+test('tests added as all-day items count once they are over or ticked off', () => {
+  const data = new Map(), model = createPlannerStore({ getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, v) });
+  model.saveSettings({ timeZone: 'UTC', planningStart: '08:00', planningEnd: '20:00' });
+  model.addAllDay([{ id: 'a1', date: '2026-11-20', title: 'History test' }, { id: 'a2', date: '2026-11-25', title: 'Maths test' }]);
+  const settings = model.getSettings(), now = { date: '2026-11-25', minute: 600 };
+  const score = date => busyProductivity(model.getDay, settings, date, 'day', { now, allDay: model.getAllDay() });
+  assert.ok(score('2026-11-20').percent > 0, 'a test whose day has passed counts');
+  assert.equal(score('2026-11-25').percent, 0, 'today’s test counts only once ticked off');
+  model.toggleAllDay('a2');
+  assert.equal(model.getAllDay('2026-11-25')[0].done, true);
+  assert.ok(score('2026-11-25').percent > 0, 'ticked off today');
+  model.toggleAllDay('a2');
+  assert.equal(model.getAllDay('2026-11-25')[0].done, undefined);
+});

@@ -8,6 +8,19 @@ import { PRESETS } from './appearance.mjs';
 import { storage } from './runtime.mjs';
 
 const node = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
+// What's coming up in the next seven days (from now): all-day items (e.g. tests) first on each day,
+// then events and scheduled tasks by start time. Finished things, breaks and past times are left out.
+export function upcomingItems(model, current, days = 7) {
+  const items = [];
+  for (let i = 0; i < days; i++) {
+    const date = addDays(current.date, i);
+    for (const item of model.getAllDay(date)) if (!item.done) items.push({ ...item, allDay: true });
+    for (const item of model.getDay(date).commitments) if (!item.completed && item.kind !== 'break' && (date !== current.date || minutes(item.end) > current.minute)) items.push({ ...item, date });
+  }
+  return items.sort((a, b) => a.date.localeCompare(b.date) || (b.allDay ? 1 : 0) - (a.allDay ? 1 : 0) || minutes(a.start || '00:00') - minutes(b.start || '00:00'));
+}
+export const whenLabel = item => item.allDay ? 'All day' : item.isReminder ? `🔔 ${item.start}` : `${item.start}–${item.end}`;
+
 export function initDashboardDesign({ model, openActivity, now }) {
   const $ = selector => document.querySelector(selector);
   document.body.classList.add('compass-workspace');
@@ -32,7 +45,7 @@ export function initDashboardDesign({ model, openActivity, now }) {
   collapse.addEventListener('click', () => { document.body.dataset.sidebarAnimated = 'true'; compact = !compact; sidebarState(); try { storage.setItem('day-compass.sidebar-compact.v1', String(compact)); } catch {} });
   brand.after(collapse); sidebarState();
   const sidecar = node('aside', undefined, 'workspace-sidecar'); sidecar.setAttribute('aria-label', 'Upcoming events');
-  sidecar.innerHTML = '<section class="widget workspace-upcoming"><h2>Upcoming events</h2><p class="fine-print">Next activities from today, over the next seven days.</p><ul id="workspace-upcoming-list"></ul></section><section class="widget scene-themes"><p class="widget-label">A SPACE THAT FEELS LIKE YOU</p><h2>Choose a mood</h2><div class="scene-theme-grid"></div><button type="button" class="secondary calm-theme" data-open-full-themes>All themes</button></section>';
+  sidecar.innerHTML = '<section class="widget workspace-upcoming"><h2>Upcoming events</h2><p class="fine-print">Everything in the next seven days, starting now.</p><ul id="workspace-upcoming-list"></ul></section><section class="widget scene-themes"><p class="widget-label">A SPACE THAT FEELS LIKE YOU</p><h2>Choose a mood</h2><div class="scene-theme-grid"></div><button type="button" class="secondary calm-theme" data-open-full-themes>All themes</button></section>';
   $('.calendar-widget').after(sidecar);
   const dayDetails = node('details', undefined, 'day-details');
   dayDetails.append(node('summary', 'Day details'), $('.timeline-widget'));
@@ -55,11 +68,9 @@ export function initDashboardDesign({ model, openActivity, now }) {
   function render() {
     const unplaced = $('#day-unscheduled').children.length;
     dayDetails.querySelector('summary').textContent = unplaced ? `Day details \u00b7 ${unplaced} task${unplaced === 1 ? '' : 's'} could not fit` : 'Day details';
-    const current = now(), upcoming = [], from = current.date;
-    for (let i = 0; i < 7; i++) for (const item of model.getDay(addDays(from, i)).commitments) if (!item.completed && item.kind !== 'break' && (item.date !== current.date || minutes(item.end) > current.minute)) upcoming.push(item);
-    upcoming.sort((a, b) => a.date.localeCompare(b.date) || minutes(a.start) - minutes(b.start));
+    const upcoming = upcomingItems(model, now());
     const list = $('#workspace-upcoming-list'); list.replaceChildren();
-    for (const item of upcoming.slice(0, 6)) { const li = node('li'), b = node('button', undefined, 'upcoming-activity'); b.type = 'button'; b.dataset.activity = activityVisual(item).kind; paintEvent(b, item); const icon = node('span', activityVisual(item).icon, 'upcoming-mark'); icon.setAttribute('aria-hidden', 'true'); const text = node('span'); text.append(node('strong', item.title), node('small', `${dateLabel(item.date)} · ${item.start}–${item.end}`)); b.append(icon, text); b.addEventListener('click', () => openActivity({ date: item.date, item })); li.append(b); list.append(li); }
+    for (const item of upcoming.slice(0, 12)) { const li = node('li'), b = node('button', undefined, 'upcoming-activity'); b.type = 'button'; b.dataset.activity = activityVisual(item).kind; paintEvent(b, item); const icon = node('span', activityVisual(item).icon, 'upcoming-mark'); icon.setAttribute('aria-hidden', 'true'); const text = node('span'); text.append(node('strong', item.title), node('small', `${dateLabel(item.date)} · ${whenLabel(item)}`)); b.append(icon, text); b.addEventListener('click', () => openActivity({ date: item.date, item })); li.append(b); list.append(li); }
     if (!upcoming.length) list.append(node('li', 'No upcoming events in the next seven days.', 'fine-print'));
     themeState();
   }

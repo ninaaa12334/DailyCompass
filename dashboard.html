@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Your planner · Day Compass</title>
-  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="dashboard-design.css"><link rel="stylesheet" href="interface-polish.css"><link rel="stylesheet" href="calendar-polish.css"><link rel="stylesheet" href="hub.css">
+  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="dashboard-design.css"><link rel="stylesheet" href="interface-polish.css"><link rel="stylesheet" href="calendar-polish.css"><link rel="stylesheet" href="hub.css"><link rel="stylesheet" href="layout.css">
   <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#6554cf"><link rel="apple-touch-icon" href="compass-icon.svg">
   <script src="theme-ui.mjs" type="module"></script><script src="seasonal-decor.mjs" type="module"></script><script src="bootstrap.js" defer></script>
 </head>
@@ -38,7 +38,7 @@
         </div>
         <p id="calendar-timezone" class="calendar-timezone"></p>
         <div class="planner-actions calendar-planning-actions"><button type="button" id="generate-day">Generate my day</button><button type="button" class="secondary" id="replan-day">Replan remaining day</button></div>
-        <div id="mobile-week-days" class="mobile-week-days" role="group" aria-label="Choose a day in this week" hidden></div>
+        <div id="mobile-week-days" class="mobile-week-days" role="group" aria-label="Choose a day in this week" hidden></div><div id="mobile-day-chips" class="mobile-day-chips" aria-label="All day" hidden></div>
         <div id="week-view" class="week-scroller" tabindex="0" role="region" aria-label="Scrollable calendar timetable"><div id="week-grid" class="week-grid"></div></div>
         <div id="month-view" hidden><div class="weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div><div class="calendar-days" id="calendar-days" aria-label="Month calendar"></div></div>
         <div id="year-view" class="year-view" role="region" aria-label="Year overview" hidden></div>

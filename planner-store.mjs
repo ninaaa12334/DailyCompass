@@ -65,7 +65,7 @@ export function validatePlanner(state) {
     ensure(Number.isInteger(task.duration) && task.duration > 0 && task.duration <= 1440 && Number.isInteger(task.spent) && task.spent >= 0 && task.spent <= task.duration, 'Duration must be 1–1440 minutes; time already worked cannot exceed it.');
   }
   // All-day items: a name on a date with no time (e.g. a test). Calendar only; never tasks.
-  if (state.allDay !== undefined) ensure(Array.isArray(state.allDay) && state.allDay.length <= 2000 && state.allDay.every(item => item && typeof item.id === 'string' && item.id && validDate(item.date) && typeof item.title === 'string' && item.title.trim() && item.title.length <= 120 && (item.notes === undefined || (typeof item.notes === 'string' && item.notes.length <= 2000)) && (item.color === undefined || /^[a-z]{3,12}$/.test(item.color))), 'Invalid all-day item.');
+  if (state.allDay !== undefined) ensure(Array.isArray(state.allDay) && state.allDay.length <= 2000 && state.allDay.every(item => item && typeof item.id === 'string' && item.id && validDate(item.date) && typeof item.title === 'string' && item.title.trim() && item.title.length <= 120 && (item.notes === undefined || (typeof item.notes === 'string' && item.notes.length <= 2000)) && (item.color === undefined || /^[a-z]{3,12}$/.test(item.color)) && (item.done === undefined || typeof item.done === 'boolean')), 'Invalid all-day item.');
   // Ideas: little things you're curious about. No dates, no deadlines; they never count as tasks.
   if (state.ideas !== undefined) ensure(Array.isArray(state.ideas) && state.ideas.length <= 500 && state.ideas.every(idea => idea && typeof idea.id === 'string' && idea.id && typeof idea.text === 'string' && idea.text.trim() && idea.text.length <= 300 && validDate(idea.added)), 'The ideas list could not be read.');
   for (const [date, day] of Object.entries(state.days)) {
@@ -198,6 +198,10 @@ export function createPlannerStore(storage) {
     saveActivitiesAndAllDay(inputs, items) {
       const clean = items.map(({ id, date, title, notes }) => ({ id, date, title: String(title || '').replace(/\s+/g, ' ').trim().slice(0, 120), ...(notes ? { notes: String(notes).slice(0, 2000) } : {}) }));
       commit(next => { for (const input of inputs) applyActivity(next, input); if (clean.length) next.allDay = [...(next.allDay || []), ...clean]; });
+    },
+    // Ticking off an all-day item (e.g. you sat the test today) counts it towards productivity straight away.
+    toggleAllDay(id) {
+      commit(next => { const item = (next.allDay || []).find(entry => entry.id === id); ensure(item, 'This item no longer exists.'); if (item.done) delete item.done; else item.done = true; });
     },
     removeAllDay(id) { commit(next => { next.allDay = (next.allDay || []).filter(item => item.id !== id); }); },
     // Tests added from photos used to be saved as deadline tasks; move the unfinished ones to the calendar only.

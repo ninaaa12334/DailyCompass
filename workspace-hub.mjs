@@ -3,7 +3,7 @@ import { parseSchedule, scheduleInputs, describeSchedule } from './schedule-requ
 import { interpretPlanningRequest } from './planning-request.mjs';
 import { reminderSound } from './reminder-banner.mjs';
 import { buildCalendarFile, downloadCalendarFile } from './ics-export.mjs';
-import { pushSupport, pushEnabled, enablePush, disablePush, testPush, startPushSync } from './push-cloud.mjs';
+import { pushSupport, pushEnabled, enablePush, disablePush, testPush, startPushSync, PUSH_SERVICE } from './push-cloud.mjs';
 import { initGoogleCalendar } from './google-calendar.mjs';
 import { holidayControls } from './holidays.mjs';
 import { taskProductivity } from './productivity.mjs';
@@ -11,9 +11,15 @@ import { isDarkMode, toggleDarkMode } from './theme-ui.mjs';
 import { dateLabel } from './clock.mjs';
 import { planPhotoRows, photoInputs, shrinkPhoto } from './photo-notes.mjs';
 import { accessToken } from './cloud.mjs';
+import { backendReachable } from './backend.mjs';
+import { upcomingItems, whenLabel } from './dashboard-design.mjs';
+import { colorOf } from './event-colors.mjs';
+import { activityVisual } from './activity-visuals.mjs';
+import { addDays } from './calendar-view.mjs';
 
-// Calendar-centred workspace: the calendar fills the middle of the screen and every other
-// feature is a tile around it that opens in a sheet. Existing widgets are moved (not copied),
+// Calendar-centred workspace: three cards across the top (productivity, this week, tasks), the calendar
+// fills the rest of the screen, and every other feature opens in a sheet from the icon column (or the
+// More button on smaller screens). Existing widgets are moved (not copied),
 // so all their behaviour and event handlers keep working.
 const node = (tag, text, className) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; };
 const ICONS = {
@@ -34,11 +40,13 @@ const ICONS = {
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>',
   sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>',
   camera: '<svg viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5Z"/><circle cx="12" cy="12.5" r="3.5"/></svg>',
-  send: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'
+  send: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  more: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'
 };
 const icon = name => { const span = node('span', undefined, 'hub-icon'); span.setAttribute('aria-hidden', 'true'); span.innerHTML = ICONS[name]; return span; };
 
-export function initWorkspaceHub({ model, now, feedback, account, banner }) {
+export function initWorkspaceHub({ model, now, feedback, account, banner, openActivity }) {
   const $ = selector => document.querySelector(selector);
   const main = $('#planner');
   if (!main || !$('.calendar-widget')) return null;
@@ -107,7 +115,6 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   top.append(brand, titles, ask, actions);
 
   // ---------- Rails ----------
-  const left = node('aside', undefined, 'hub-rail hub-left'); left.setAttribute('aria-label', 'Your day at a glance');
   const right = node('aside', undefined, 'hub-rail hub-right'); right.setAttribute('aria-label', 'More tools');
   const center = node('section', undefined, 'hub-center');
   const tile = (key, iconName, label, onClick) => {
@@ -125,19 +132,42 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   nowWidget?.classList.add('hub-card'); freeWidget?.classList.add('hub-card');
 
   const tasksWidget = $('.tasks-widget');
-  const tasksTile = tile('tasks', 'tasks', 'Tasks', () => openSheet('tasks'));
-  const taskPreview = node('ul', undefined, 'hub-task-preview'); tasksTile.button.querySelector('.hub-tile-text').append(taskPreview);
-  // A little progress ring for today's tasks ("3/5 · Look at you go.") instead of the plain icon.
+  // ---------- The three cards across the top ----------
+  // Each card's header opens the full version in a sheet; the lists inside are shortcuts.
+  const summary = node('section', undefined, 'hub-summary'); summary.setAttribute('aria-label', 'At a glance');
+  const cardHead = (className, label, onClick) => {
+    const head = node('button', undefined, `hub-sum-head ${className}`); head.type = 'button'; head.setAttribute('aria-haspopup', 'dialog');
+    const text = node('span', undefined, 'hub-sum-text'), name = node('strong', label), detail = node('small', '');
+    text.append(name, detail); head.append(text); head.addEventListener('click', onClick);
+    return { head, name, detail };
+  };
+  // This week: what's coming up in the next seven days, tests included.
+  const weekCard = node('div', undefined, 'hub-sum-card hub-sum-week');
+  const week = cardHead('hub-sum-head-week', 'This week', () => openSheet('upcoming'));
+  const weekCount = node('span', '0', 'hub-sum-badge'); weekCount.setAttribute('aria-hidden', 'true'); week.head.prepend(weekCount);
+  const weekList = node('ul', undefined, 'hub-week-list');
+  weekCard.append(week.head, weekList);
+  // Tasks: today's progress ring, the next few to-dos with a tick box, and a quick add.
+  const tasksCard = node('div', undefined, 'hub-sum-card hub-sum-tasks');
+  const tasksHead = cardHead('hub-sum-head-tasks', 'Tasks', () => openSheet('tasks'));
   const taskRing = node('span', undefined, 'task-ring'); taskRing.setAttribute('aria-hidden', 'true');
   taskRing.innerHTML = '<svg viewBox="0 0 44 44"><circle class="task-ring-track" cx="22" cy="22" r="18"/><circle class="task-ring-fill" cx="22" cy="22" r="18" pathLength="100" stroke-dasharray="0 100"/></svg><b>0/0</b>';
-  tasksTile.button.querySelector('.hub-icon').replaceWith(taskRing);
-  tasksTile.button.querySelector('.hub-tile-chevron').textContent = '✦'; tasksTile.button.querySelector('.hub-tile-chevron').classList.add('task-spark');
+  tasksHead.head.prepend(taskRing);
+  const taskAdd = node('button', undefined, 'hub-sum-add'); taskAdd.type = 'button'; taskAdd.setAttribute('aria-label', 'Add a task'); taskAdd.title = 'Add a task'; taskAdd.append(icon('plus'));
+  taskAdd.addEventListener('click', () => openSheet('tasks'));
+  const taskList = node('ul', undefined, 'hub-task-list');
+  tasksCard.append(tasksHead.head, taskAdd, taskList);
+  const tasksTile = { button: tasksHead.head, detail: tasksHead.detail };
   const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
   sheet('tasks', 'Tasks & deadlines', tasksWidget, () => setTimeout(() => $('#task-title')?.focus(), 60));
 
   const timeline = $('.timeline-widget');
   const dayTile = tile('day', 'day', 'Your day', () => openSheet('day'));
-  sheet('day', 'Your day', timeline);
+  // "Right now" and "Space in your day" live here with the day's timeline, out of the way of the calendar.
+  const dayGlance = node('div', undefined, 'hub-day-glance'); dayGlance.append(...[nowWidget, freeWidget].filter(Boolean));
+  // "Generate my day" and "Replan" place flexible tasks into one day, so they live with that day's timeline.
+  const planActions = $('.calendar-planning-actions'); if (planActions) timeline.prepend(planActions);
+  sheet('day', 'Your day', [dayGlance, timeline]);
   $('.day-details')?.remove();
 
   const remindersWidget = $('.reminders-widget');
@@ -274,7 +304,8 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     nudge.hidden = false; nudge.replaceChildren(node('span', '💡', 'idea-nudge-icon'), node('span', `Free moment? Look into: ${idea.text}`));
   }
 
-  left.append(...[productivity, nowWidget, freeWidget, tasksTile.button].filter(Boolean));
+  productivity?.classList.add('hub-sum-card', 'hub-sum-progress');
+  summary.append(...[productivity, weekCard, tasksCard].filter(Boolean));
   // The right side is a slim column of icons; hovering shows the name. Upcoming opens in a sheet.
   const upcomingTile = tile('upcoming', 'day', 'Upcoming events', () => openSheet('upcoming'));
   upcomingTile.button.querySelector('.hub-icon').innerHTML = ICONS.list;
@@ -284,31 +315,36 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   if (helper) { helper.classList.add('hub-tile', 'hub-tile-helper'); helper.replaceChildren(icon('chat'), Object.assign(node('span', undefined, 'hub-tile-text'), { innerHTML: '<strong>Task helper</strong><small class="hub-tile-detail">Turn a thought into a task</small>' }), node('span', '›', 'hub-tile-chevron')); }
   aiTile.detail.textContent = 'Suggestions for a day';
   center.append($('.calendar-widget'));
-  // Make the calendar fill the screen (hides the left column); remembered on this device.
+  // Make the calendar fill the screen (hides the cards at the top); remembered on this device.
   const expand = node('button', undefined, 'hub-icon-button calendar-expand'); expand.type = 'button';
-  const setWide = wide => { document.body.dataset.calendarWide = wide ? 'true' : 'false'; expand.replaceChildren(icon(wide ? 'shrink' : 'expand')); expand.title = wide ? 'Make the calendar smaller' : 'Make the calendar bigger'; expand.setAttribute('aria-label', expand.title); expand.setAttribute('aria-pressed', String(wide)); try { localStorage.setItem('day-compass.calendar-wide.v1', String(wide)); } catch {} };
+  const setWide = wide => { document.body.dataset.calendarWide = wide ? 'true' : 'false'; expand.replaceChildren(icon(wide ? 'shrink' : 'expand')); expand.title = wide ? 'Show productivity, this week and tasks' : 'Make the calendar fill the screen'; expand.setAttribute('aria-label', expand.title); expand.setAttribute('aria-pressed', String(wide)); try { localStorage.setItem('day-compass.calendar-wide.v1', String(wide)); } catch {} };
   expand.addEventListener('click', () => setWide(document.body.dataset.calendarWide !== 'true'));
   center.querySelector('.calendar-header-actions')?.prepend(expand);
   let startWide = false; try { startWide = localStorage.getItem('day-compass.calendar-wide.v1') === 'true'; } catch {}
   setWide(startWide);
 
-  // Phone: a swipeable row of chips gives quick access to the same tiles.
-  const chips = node('nav', undefined, 'hub-chips'); chips.setAttribute('aria-label', 'Quick access');
-  const chip = (label, handler, id) => { const b = node('button', label, 'hub-chip'); b.type = 'button'; if (id) b.id = id; b.addEventListener('click', handler); chips.append(b); return b; };
-  const chipProgress = chip('0%', () => productivity?.click(), 'hub-chip-progress');
-  const chipTasks = chip('Tasks', () => openSheet('tasks'));
-  chip('Your day', () => openSheet('day'));
-  chip('Upcoming', () => openSheet('upcoming'));
-  chip('Reminders', () => openSheet('reminders'));
-  chip('Ideas', () => openSheet('ideas'));
-  chip('Google Calendar', () => openSheet('gcal'));
-  chip('Plan with AI', () => openSheet('ai'));
-  if (helper) chip('Task helper', () => helper.click());
+  // Phones and tablets have no icon column: the same tools are in a More sheet (the grid button at the top).
+  const moreGrid = node('div', undefined, 'hub-more-grid');
+  const moreItem = (iconName, label, detail, handler) => {
+    const b = node('button', undefined, 'hub-more-item'); b.type = 'button';
+    const text = node('span', undefined, 'hub-tile-text'); text.append(node('strong', label), node('small', detail, 'hub-tile-detail'));
+    b.append(icon(iconName), text); b.addEventListener('click', () => { closeSheet(sheets.get('more').dialog); setTimeout(handler, reduced.matches ? 0 : 230); }); moreGrid.append(b);
+  };
+  moreItem('day', 'Your day', 'Right now, free time, timeline', () => openSheet('day'));
+  moreItem('bell', 'Reminders', 'Notifications & alerts', () => openSheet('reminders'));
+  moreItem('spark', 'Plan with AI', 'Suggestions for a day', () => openSheet('ai'));
+  moreItem('bulb', 'Ideas', 'Things you’re curious about', () => openSheet('ideas'));
+  moreItem('calendars', 'Calendars', 'Google Calendar, holidays', () => openSheet('gcal'));
+  if (helper) moreItem('chat', 'Task helper', 'Turn a thought into a task', () => helper.click());
+  moreItem('gear', 'Settings', 'Planning hours, account', () => openSheet('settings'));
+  sheet('more', 'More', moreGrid);
+  const moreButton = iconButton('more', 'More tools', () => openSheet('more')); moreButton.classList.add('hub-more-button');
+  actions.prepend(moreButton);
   // On phones the upcoming list lives in a sheet; on wider screens it stays in the right rail.
   sheet('upcoming', 'Upcoming events', upcoming);
 
   const hub = node('div', undefined, 'hub');
-  hub.append(top, chips, left, center, right);
+  hub.append(top, summary, center, right);
   main.append(hub);
   if (scroller) scroller.scrollTop = scrollTop;
 
@@ -455,8 +491,10 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     try {
       const image = await shrinkPhoto(file); preview.src = image;
       const token = await Promise.race([accessToken(), new Promise(resolve => setTimeout(() => resolve(''), 5000))]).catch(() => '');
-      const response = await fetch('/api/ai/photo', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ image, timeZone: model.getSettings().timeZone, note: askInput.value.trim() }), signal: AbortSignal.timeout(75000) });
-      const result = await response.json().catch(() => ({ error: 'The Day Compass server isn’t answering. Start it with npm start.' }));
+      // Your own Node server when it's running (npm start); otherwise the online service, so it works for everyone.
+      const endpoint = await backendReachable ? '/api/ai/photo' : `${PUSH_SERVICE}/ai/photo`;
+      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ image, timeZone: model.getSettings().timeZone, note: askInput.value.trim() }), signal: AbortSignal.timeout(75000) });
+      const result = await response.json().catch(() => ({ error: 'The photo reader isn’t answering. Check your internet connection and try again.' }));
       if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
       showPhotoItems(result, preview);
     } catch (problem) {
@@ -539,21 +577,44 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
     const todayTasks = taskProductivity(model.getPlanning(), now().date, 'day'), done = todayTasks.done, total = todayTasks.total;
     taskRing.querySelector('b').textContent = `${done}/${total}`;
     taskRing.querySelector('.task-ring-fill').setAttribute('stroke-dasharray', `${total ? Math.round(done / total * 100) : 0} 100`);
-    const title = tasksTile.button.querySelector('.hub-tile-text strong');
+    const title = tasksHead.name;
     if (!total) { title.textContent = 'Tasks'; tasksTile.detail.textContent = tasks.length ? `${active.length} to do` : 'Nothing yet — add one'; }
     else if (done === total) { title.textContent = 'All done!'; tasksTile.detail.textContent = `Every task for today is finished. 🎉`; }
-    else if (done === 0) { title.textContent = 'Ready when you are.'; tasksTile.detail.textContent = `${WORDS[total] || total} little step${total === 1 ? '' : 's'} today.`; }
+    else if (done === 0) { title.textContent = 'Tasks'; tasksTile.detail.textContent = `${WORDS[total] || total} little step${total === 1 ? '' : 's'} today`; }
     else { title.textContent = 'Look at you go.'; tasksTile.detail.textContent = `${WORDS[done] || done} little win${done === 1 ? '' : 's'}. All yours.`; }
-    tasksTile.button.setAttribute('aria-label', `Tasks: ${done} of ${total} done today. ${title.textContent}`);
-    taskPreview.replaceChildren(...active.slice(0, 3).map(task => node('li', task.title)));
-    chipTasks.textContent = `Tasks · ${active.length}`;
-    const percent = $('#mini-productivity-percent')?.textContent || '0%';
-    chipProgress.textContent = `◔ ${percent}`;
+    tasksTile.button.setAttribute('aria-label', `Tasks: ${done} of ${total} done today. ${title.textContent} Open all tasks`);
+    // The next to-dos: soonest deadline or date first, then the rest in the order they were added.
+    const soon = task => task.deadline || task.date || '9999';
+    const next = [...active].sort((a, b) => soon(a).localeCompare(soon(b))).slice(0, 4);
+    taskList.replaceChildren(...next.map(task => {
+      const li = node('li', undefined, 'hub-task-row'), tick = node('button', undefined, 'hub-task-tick'), name = node('button', task.title, 'hub-task-name');
+      tick.type = 'button'; tick.setAttribute('aria-label', `Mark “${task.title}” done`); tick.style.setProperty('--tick', colorOf(task));
+      tick.addEventListener('click', () => { li.classList.add('ticking'); setTimeout(() => { try { model.toggle('task', task.id); feedback(`Done: ${task.title}. Undo is at the top.`); } catch (problem) { feedback(problem.message); li.classList.remove('ticking'); } }, reduced.matches ? 0 : 260); });
+      name.type = 'button'; name.addEventListener('click', () => openSheet('tasks'));
+      const due = task.deadline ? node('small', task.deadline === now().date ? 'today' : dateLabel(task.deadline, { weekday: undefined }), 'hub-task-due') : null;
+      li.append(tick, name, ...(due ? [due] : [])); return li;
+    }));
+    if (!next.length) taskList.append(node('li', tasks.length ? 'Everything’s ticked off. 🎉' : 'Nothing to do yet. Tap + to add a task.', 'hub-sum-empty'));
+    // This week
+    const current = now(), coming = upcomingItems(model, current);
+    const dayName = date => date === current.date ? 'Today' : date === addDays(current.date, 1) ? 'Tomorrow' : dateLabel(date, { month: undefined, day: undefined });
+    weekCount.textContent = String(coming.length);
+    week.detail.textContent = coming.length ? `Next: ${coming[0].title} · ${dayName(coming[0].date)}${coming[0].allDay ? '' : ` ${coming[0].start}`}` : 'Nothing planned in the next 7 days';
+    week.head.setAttribute('aria-label', `This week: ${coming.length} coming up. ${week.detail.textContent}. Open the full list`);
+    weekList.replaceChildren(...coming.slice(0, 6).map(item => {
+      const li = node('li'), b = node('button', undefined, 'hub-week-item'); b.type = 'button';
+      b.style.setProperty('--dot', colorOf(item));
+      const when = node('span', `${dayName(item.date)} · ${whenLabel(item)}`, 'hub-week-when');
+      b.append(node('span', activityVisual(item).icon, 'hub-week-icon'), node('strong', item.title), when);
+      b.setAttribute('aria-label', `${item.title}, ${dayName(item.date)}, ${whenLabel(item)}. Open`);
+      b.addEventListener('click', () => openActivity?.({ date: item.date, item }));
+      li.append(b); return li;
+    }));
+    if (!coming.length) weekList.append(node('li', 'A clear week ahead. Add something with the ask bar or +.', 'hub-sum-empty'));
     const capacity = $('#day-capacity')?.textContent.trim();
     dayTile.detail.textContent = capacity || 'Hours, timeline & unplaced work';
     const reminders = $('#reminder-list')?.children.length || 0;
     remindersTile.detail.textContent = reminders ? `${reminders} coming up` : 'Notification settings';
-    const current = now();
     today.textContent = dateLabel(current.date);
     mode.textContent = $('#planner-mode')?.textContent || '';
   }
@@ -562,7 +623,7 @@ export function initWorkspaceHub({ model, now, feedback, account, banner }) {
   renderIdeas(); renderNudge();
   model.subscribe(() => requestAnimationFrame(render));
   for (const id of ['#day-capacity', '#reminder-list', '#mini-productivity-percent', '#planner-mode']) { const el = $(id); if (el) new MutationObserver(render).observe(el, { childList: true, characterData: true, subtree: true }); }
-  render();
+  render(); setInterval(render, 60000);
   if (gcal.openAfterConnect) setTimeout(() => openSheet('gcal'), 300);
   return { render, openSheet };
 }

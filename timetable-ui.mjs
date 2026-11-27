@@ -42,12 +42,17 @@ export function renderTimetable(grid, options) {
     // All-day items and deadlines by name. The header is already a button, so this is a label that
     // forwards the tap to the real chip (also reachable in Month view and the phone agenda).
     const chips = options.getChips?.(date) || [];
+    // Up to two by name; a third or more becomes "+N more" (tap to open the day).
     if (chips.length) {
-      const tag = document.createElement('small'); tag.className = 'deadline-name';
-      tag.textContent = chips.length > 1 ? `${chips[0].textContent} +${chips.length - 1}` : chips[0].textContent;
-      tag.title = chips.map(chip => chip.textContent).join('\n'); tag.style.cssText = chips[0].style.cssText;
-      tag.addEventListener('click', event => { event.stopPropagation(); chips[0].click(); });
-      detail.replaceWith(tag);
+      const shown = chips.length > 2 ? 1 : chips.length;
+      const tags = chips.slice(0, shown).map(chip => {
+        const tag = document.createElement('small'); tag.className = 'deadline-name';
+        tag.textContent = chip.textContent; tag.title = chip.title; tag.style.cssText = chip.style.cssText;
+        tag.addEventListener('click', event => { event.stopPropagation(); chip.click(); });
+        return tag;
+      });
+      if (chips.length > shown) { const more = document.createElement('small'); more.className = 'deadline-name deadline-more'; more.textContent = `+${chips.length - shown} more`; more.title = chips.map(chip => chip.textContent).join('\n'); tags.push(more); }
+      detail.replaceWith(...tags);
     }
     grid.append(header);
   }
